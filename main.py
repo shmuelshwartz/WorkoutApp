@@ -60,7 +60,7 @@ class WorkoutMainScreen(BaseWorkoutScreen):
     pass
 
 
-class EditWorkoutScreenScreen(BaseWorkoutScreen):
+class EditWorkoutScreen(BaseWorkoutScreen):
     pass
 
 
@@ -81,7 +81,7 @@ class WorkoutApp(App):
     def build(self):
         sm = ScreenManager(transition=NoTransition())  # <- this makes transitions instant
         sm.add_widget(WorkoutMainScreen(name="main"))
-        sm.add_widget(EditWorkoutScreenScreen(name="edit"))
+        sm.add_widget(EditWorkoutScreen(name="edit"))
         sm.add_widget(WorkOutDataScreen(name="data"))
         sm.add_widget(ExerciseExecutionScreen(name="exercise"))
         sm.add_widget(EndWorkoutScreen(name="end"))
