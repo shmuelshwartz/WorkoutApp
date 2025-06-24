@@ -78,10 +78,8 @@ class WorkoutMainScreen(BaseWorkoutScreen):
     pass
 
 
-class EditWorkoutScreenScreen(BaseWorkoutScreen):
-    """Screen for editing workout routines."""
-
-    pass
+class EditWorkoutScreen(BaseWorkoutScreen):
+  pass
 
 
 class WorkOutDataScreen(BaseWorkoutScreen):
@@ -110,7 +108,7 @@ class WorkoutApp(App):
         """Construct the :class:`ScreenManager` and attach screens."""
         sm = ScreenManager(transition=NoTransition())  # transitions are instant
         sm.add_widget(WorkoutMainScreen(name="main"))
-        sm.add_widget(EditWorkoutScreenScreen(name="edit"))
+        sm.add_widget(EditWorkoutScreen(name="edit"))
         sm.add_widget(WorkOutDataScreen(name="data"))
         sm.add_widget(ExerciseExecutionScreen(name="exercise"))
         sm.add_widget(EndWorkoutScreen(name="end"))
