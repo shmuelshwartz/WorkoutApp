@@ -67,7 +67,7 @@ class BaseWorkoutScreen(Screen):
         self.manager.current = "main"
 
     def workout_data_button_action(self):
-        """Open the workout data screen."""
+        """Open the workout data screen!"""
         self.manager.current = "data"
 
 
