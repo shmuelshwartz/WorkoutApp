@@ -1,3 +1,5 @@
+"""Minimal KivyMD text editor used for manual testing."""
+
 from kivy.lang import Builder
 from kivymd.app import MDApp
 from kivymd.uix.filemanager import MDFileManager
@@ -34,13 +36,17 @@ BoxLayout:
 '''
 
 class TxtEditorApp(MDApp):
+    """Simple text editor implemented with KivyMD widgets."""
+
     def __init__(self, **kwargs):
+        """Initialise widgets used by the demo application."""
         super().__init__(**kwargs)
         self.file_manager = None
         self.current_file = None
         self.dialog = None
 
     def build(self):
+        """Create the interface and file manager."""
         self.theme_cls.primary_palette = "Blue"
         self.file_manager = MDFileManager(
             exit_manager=self.exit_manager,
@@ -50,7 +56,7 @@ class TxtEditorApp(MDApp):
         return Builder.load_string(KV)
 
     def file_manager_open(self):
-        # Start browsing from user's Documents folder or Home
+        """Open the file manager starting from the user's documents folder."""
         start_path = os.path.expanduser("~/Documents")
         if not os.path.exists(start_path):
             start_path = os.path.expanduser("~")
@@ -58,6 +64,7 @@ class TxtEditorApp(MDApp):
         self.file_manager.search = "all"  # or use: self.file_manager.ext = [".txt"]
 
     def select_path(self, path):
+        """Handle selection of a file from the file manager."""
         self.exit_manager()
         if path.endswith(".txt"):
             self.current_file = path
@@ -71,9 +78,11 @@ class TxtEditorApp(MDApp):
             self.show_error_dialog("Please select a .txt file.")
 
     def exit_manager(self, *args):
+        """Close the file manager widget."""
         self.file_manager.close()
 
     def save_file(self):
+        """Write the current editor contents back to disk."""
         if not self.current_file:
             self.show_error_dialog("No file loaded to save.")
             return
@@ -85,6 +94,7 @@ class TxtEditorApp(MDApp):
             self.show_error_dialog(f"Error saving file:\n{e}")
 
     def show_error_dialog(self, message):
+        """Display a simple dialog with an error message."""
         if self.dialog:
             self.dialog.dismiss()
         self.dialog = MDDialog(
