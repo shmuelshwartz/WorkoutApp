@@ -1,18 +1,27 @@
-# Ignore backup and temp files
+# Main SQLite database file (track this one!)
+# Example: workout.db
+# Uncomment and rename if needed
+# !workout.db
+
+# DB Browser for SQLite temp files
+*.sql
+*.json
+*.csv
+*-journal
+*-shm
+*-wal
+
+# Backup files
 *.bak
+*.backup
 *.tmp
-*.log
+*.temp
 
-# Ignore SQLite temporary files
-*.sqlite-journal
-*.sqlite-wal
-*.sqlite-shm
-
-# macOS and Windows system files
+# System files
 .DS_Store
 Thumbs.db
 
-# IDE/editor files
+# Editor/IDE files
 *.swp
 *.swo
 .idea/
