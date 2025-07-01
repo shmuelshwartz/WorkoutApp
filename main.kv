@@ -81,33 +81,30 @@ MDScreenManager:
 
 <SettingsScreen>:
     name: "settings"
+    md_bg_color: app.get_color_tuple(app.screen_color)
     MDBoxLayout:
         md_bg_color: app.get_color_tuple(app.screen_color)
         orientation: "vertical"
-        spacing: dp(20)
-        padding: dp(20)
-        MDLabel:
-            text: "Settings"
-            halign: "center"
-            font_style: "H5"
-        MDRaisedButton:
-            text: "Screen Color"
-            pos_hint: {"center_x": 0.5}
-            on_release: app.open_screen_color_picker()
-            md_bg_color: app.get_color_tuple(app.button_color)
-            text_color: app.get_color_tuple(app.button_text_color)
-        MDRaisedButton:
-            text: "Button Color"
-            pos_hint: {"center_x": 0.5}
-            on_release: app.open_button_color_picker()
-            md_bg_color: app.get_color_tuple(app.button_color)
-            text_color: app.get_color_tuple(app.button_text_color)
-        MDRaisedButton:
-            text: "Back"
-            pos_hint: {"center_x": 0.5}
-            on_release: app.go_home()
-            md_bg_color: app.get_color_tuple(app.button_color)
-            text_color: app.get_color_tuple(app.button_text_color)
+        MDToolbar:
+            title: "Settings"
+            left_action_items: [["arrow-left", lambda x: app.go_home()]]
+            elevation: 10
+        MDBoxLayout:
+            orientation: "vertical"
+            spacing: dp(20)
+            padding: dp(20)
+            MDRaisedButton:
+                text: "Change Screen Color"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.open_screen_color_picker()
+                md_bg_color: app.get_color_tuple(app.button_color)
+                text_color: app.get_color_tuple(app.button_text_color)
+            MDRaisedButton:
+                text: "Change Button Color"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.open_button_color_picker()
+                md_bg_color: app.get_color_tuple(app.button_color)
+                text_color: app.get_color_tuple(app.button_text_color)
 
 <StartWorkoutScreen>:
     name: "start_workout"

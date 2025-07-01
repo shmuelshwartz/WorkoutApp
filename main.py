@@ -4,9 +4,7 @@ from kivy.lang import Builder
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty
 from kivy.clock import Clock
 from kivy.utils import get_color_from_hex, get_hex_from_color
-from kivy.uix.colorpicker import ColorPicker
-from kivy.uix.popup import Popup
-from kivy.uix.boxlayout import BoxLayout
+from kivymd.uix.picker import MDColorPicker
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.button import MDRaisedButton
@@ -151,33 +149,22 @@ class WorkoutApp(MDApp):
         return get_color_from_hex(hex_color)
 
     def open_screen_color_picker(self):
-        picker = ColorPicker()
-        popup = Popup(title="Screen Color", content=picker, size_hint=(0.9, 0.9))
+        picker = MDColorPicker()
 
-        def on_color(instance, value):
-            self.change_screen_color(get_hex_from_color(value))
-            popup.dismiss()
+        def on_color(instance, color):
+            self.change_screen_color(get_hex_from_color(color))
 
-        picker.bind(color=on_color)
-        popup.open()
+        picker.bind(on_select_color=on_color)
+        picker.open()
 
     def open_button_color_picker(self):
-        picker = ColorPicker()
-        toggle = MDRaisedButton(text="Toggle Text Color")
-        layout = BoxLayout(orientation="vertical")
-        layout.add_widget(picker)
-        layout.add_widget(toggle)
-        popup = Popup(title="Button Color", content=layout, size_hint=(0.9, 0.9))
+        picker = MDColorPicker()
 
-        def on_color(instance, value):
-            self.change_button_color(get_hex_from_color(value))
+        def on_color(instance, color):
+            self.change_button_color(get_hex_from_color(color))
 
-        def on_toggle(instance):
-            self.toggle_button_text_color()
-
-        picker.bind(color=on_color)
-        toggle.bind(on_release=on_toggle)
-        popup.open()
+        picker.bind(on_select_color=on_color)
+        picker.open()
 
     def go_home(self):
         self.root.current = "home"
