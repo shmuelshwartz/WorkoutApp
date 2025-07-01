@@ -23,6 +23,7 @@ MDScreenManager:
             pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "home"
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
 
 <HomeScreen>:
     name: "home"
@@ -40,16 +41,19 @@ MDScreenManager:
             pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "select_workout"
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
         MDRaisedButton:
             text: "Settings"
             pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "settings"
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
         MDRaisedButton:
             text: "Start Workout"
             pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "start_workout"
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
 
 <SelectWorkoutScreen>:
     name: "select_workout"
@@ -67,11 +71,13 @@ MDScreenManager:
             pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "start_workout"
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
         MDRaisedButton:
             text: "Back"
             pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "home"
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
 
 <SettingsScreen>:
     name: "settings"
@@ -84,45 +90,24 @@ MDScreenManager:
             text: "Settings"
             halign: "center"
             font_style: "H5"
-        MDLabel:
-            text: "Select Color Scheme"
-            halign: "center"
-        MDGridLayout:
-            cols: 2
-            spacing: dp(10)
-            size_hint_y: None
-            height: self.minimum_height
-            MDRaisedButton:
-                text: "Blue"
-                on_release: app.change_color_scheme("Blue")
-                md_bg_color: app.get_color_tuple(app.button_color)
-            MDRaisedButton:
-                text: "Red"
-                on_release: app.change_color_scheme("Red")
-                md_bg_color: app.get_color_tuple(app.button_color)
-            MDRaisedButton:
-                text: "Green"
-                on_release: app.change_color_scheme("Green")
-                md_bg_color: app.get_color_tuple(app.button_color)
-            MDRaisedButton:
-                text: "Purple"
-                on_release: app.change_color_scheme("Purple")
-                md_bg_color: app.get_color_tuple(app.button_color)
         MDRaisedButton:
             text: "Screen Color"
             pos_hint: {"center_x": 0.5}
             on_release: app.open_screen_color_picker()
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
         MDRaisedButton:
             text: "Button Color"
             pos_hint: {"center_x": 0.5}
             on_release: app.open_button_color_picker()
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
         MDRaisedButton:
             text: "Back"
             pos_hint: {"center_x": 0.5}
             on_release: app.go_home()
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
 
 <StartWorkoutScreen>:
     name: "start_workout"
@@ -140,11 +125,13 @@ MDScreenManager:
             pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "active"
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
         MDRaisedButton:
             text: "Back"
             pos_hint: {"center_x": 0.5}
             on_release: app.go_home()
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
 
 <ActiveScreen>:
     name: "active"
@@ -162,11 +149,13 @@ MDScreenManager:
             pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "rest"
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
         MDRaisedButton:
             text: "Stop"
             pos_hint: {"center_x": 0.5}
             on_release: app.go_home()
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
 
 <RestScreen>:
     name: "rest"
@@ -184,8 +173,10 @@ MDScreenManager:
             pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "active"
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
         MDRaisedButton:
             text: "Stop"
             pos_hint: {"center_x": 0.5}
             on_release: app.go_home()
             md_bg_color: app.get_color_tuple(app.button_color)
+            text_color: app.get_color_tuple(app.button_text_color)
