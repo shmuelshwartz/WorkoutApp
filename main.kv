@@ -1,0 +1,143 @@
+ScreenManager:
+    WelcomeScreen:
+    HomeScreen:
+    SelectWorkoutScreen:
+    SettingsScreen:
+    StartWorkoutScreen:
+    ActiveScreen:
+    RestScreen:
+
+<WelcomeScreen>:
+    name: "welcome"
+    BoxLayout:
+        orientation: "vertical"
+        spacing: dp(10)
+        padding: dp(20)
+        Label:
+            text: "Welcome to the Workout App"
+            font_size: '24sp'
+        Button:
+            text: "Continue"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "home"
+
+<HomeScreen>:
+    name: "home"
+    BoxLayout:
+        orientation: "vertical"
+        spacing: dp(10)
+        padding: dp(20)
+        Label:
+            text: "Home"
+            font_size: '24sp'
+        Button:
+            text: "Select Workout"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "select_workout"
+        Button:
+            text: "Settings"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "settings"
+        Button:
+            text: "Start Workout"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "start_workout"
+
+<SelectWorkoutScreen>:
+    name: "select_workout"
+    BoxLayout:
+        orientation: "vertical"
+        spacing: dp(10)
+        padding: dp(20)
+        Label:
+            text: "Select Workout"
+            font_size: '24sp'
+        Button:
+            text: "Start"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "start_workout"
+        Button:
+            text: "Back"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "home"
+
+<SettingsScreen>:
+    name: "settings"
+    BoxLayout:
+        orientation: "vertical"
+        spacing: dp(10)
+        padding: dp(20)
+        Label:
+            text: "Settings"
+            font_size: '24sp'
+        Button:
+            text: "Back"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "home"
+
+<StartWorkoutScreen>:
+    name: "start_workout"
+    BoxLayout:
+        orientation: "vertical"
+        spacing: dp(10)
+        padding: dp(20)
+        Label:
+            text: "Ready to start?"
+            font_size: '24sp'
+        Button:
+            text: "Begin"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "active"
+        Button:
+            text: "Back"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "home"
+
+<ActiveScreen>:
+    name: "active"
+    BoxLayout:
+        orientation: "vertical"
+        spacing: dp(10)
+        padding: dp(20)
+        Label:
+            text: "Active Workout"
+            font_size: '24sp'
+        Button:
+            text: "Next"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "rest"
+        Button:
+            text: "Stop"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "home"
+
+<RestScreen>:
+    name: "rest"
+    BoxLayout:
+        orientation: "vertical"
+        spacing: dp(10)
+        padding: dp(20)
+        Label:
+            text: "Rest"
+            font_size: '24sp'
+        Button:
+            text: "Next"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "active"
+        Button:
+            text: "Stop"
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.root.current = "home"
