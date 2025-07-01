@@ -103,7 +103,7 @@ class RestScreen(MDScreen):
             self.manager.current = "active"
 
     def _tick(self, dt):
-        if self.ready and self.timer > 0:
+        if self.timer > 0:
             self.timer -= 1
             if self.timer <= 0:
                 self.timer = 0
