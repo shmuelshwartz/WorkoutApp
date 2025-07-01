@@ -10,6 +10,7 @@ from kivymd.uix.pickers import MDColorPicker
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.toolbar import MDToolbar
 
 DEFAULT_COLOR = "Blue"
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "settings", "config.json")
