@@ -3,8 +3,7 @@ import os
 from kivy.lang import Builder
 from kivy.properties import StringProperty
 from kivy.utils import get_color_from_hex, get_hex_from_color
-from kivy.uix.colorpicker import ColorPicker
-from kivy.uix.popup import Popup
+from kivymd.uix.picker import MDColorPicker
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 
@@ -103,26 +102,22 @@ class WorkoutApp(MDApp):
         return get_color_from_hex(hex_color)
 
     def open_screen_color_picker(self):
-        picker = ColorPicker()
-        popup = Popup(title="Screen Color", content=picker, size_hint=(0.9, 0.9))
+        picker = MDColorPicker()
 
         def on_color(instance, value):
             self.change_screen_color(get_hex_from_color(value))
-            popup.dismiss()
 
-        picker.bind(color=on_color)
-        popup.open()
+        picker.bind(on_select_color=on_color)
+        picker.open()
 
     def open_button_color_picker(self):
-        picker = ColorPicker()
-        popup = Popup(title="Button Color", content=picker, size_hint=(0.9, 0.9))
+        picker = MDColorPicker()
 
         def on_color(instance, value):
             self.change_button_color(get_hex_from_color(value))
-            popup.dismiss()
 
-        picker.bind(color=on_color)
-        popup.open()
+        picker.bind(on_select_color=on_color)
+        picker.open()
 
     def go_home(self):
         self.root.current = "home"

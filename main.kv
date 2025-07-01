@@ -76,53 +76,62 @@ MDScreenManager:
 <SettingsScreen>:
     name: "settings"
     MDBoxLayout:
-        md_bg_color: app.get_color_tuple(app.screen_color)
         orientation: "vertical"
-        spacing: dp(20)
-        padding: dp(20)
-        MDLabel:
-            text: "Settings"
-            halign: "center"
-            font_style: "H5"
-        MDLabel:
-            text: "Select Color Scheme"
-            halign: "center"
-        MDGridLayout:
-            cols: 2
-            spacing: dp(10)
-            size_hint_y: None
-            height: self.minimum_height
-            MDRaisedButton:
-                text: "Blue"
-                on_release: app.change_color_scheme("Blue")
-                md_bg_color: app.get_color_tuple(app.button_color)
-            MDRaisedButton:
-                text: "Red"
-                on_release: app.change_color_scheme("Red")
-                md_bg_color: app.get_color_tuple(app.button_color)
-            MDRaisedButton:
-                text: "Green"
-                on_release: app.change_color_scheme("Green")
-                md_bg_color: app.get_color_tuple(app.button_color)
-            MDRaisedButton:
-                text: "Purple"
-                on_release: app.change_color_scheme("Purple")
-                md_bg_color: app.get_color_tuple(app.button_color)
-        MDRaisedButton:
-            text: "Screen Color"
-            pos_hint: {"center_x": 0.5}
-            on_release: app.open_screen_color_picker()
-            md_bg_color: app.get_color_tuple(app.button_color)
-        MDRaisedButton:
-            text: "Button Color"
-            pos_hint: {"center_x": 0.5}
-            on_release: app.open_button_color_picker()
-            md_bg_color: app.get_color_tuple(app.button_color)
-        MDRaisedButton:
-            text: "Back"
-            pos_hint: {"center_x": 0.5}
-            on_release: app.go_home()
-            md_bg_color: app.get_color_tuple(app.button_color)
+        md_bg_color: app.get_color_tuple(app.screen_color)
+
+        MDTopAppBar:
+            title: "Settings"
+            elevation: 10
+            left_action_items: [["arrow-left", lambda x: app.go_home()]]
+
+        ScrollView:
+            MDBoxLayout:
+                orientation: "vertical"
+                padding: dp(20)
+                spacing: dp(20)
+                size_hint_y: None
+                height: self.minimum_height
+
+                MDLabel:
+                    text: "Color Scheme"
+                    halign: "center"
+                    theme_text_color: "Primary"
+
+                MDGridLayout:
+                    cols: 2
+                    spacing: dp(10)
+                    adaptive_height: True
+                    MDRaisedButton:
+                        text: "Blue"
+                        on_release: app.change_color_scheme("Blue")
+                        md_bg_color: app.get_color_tuple(app.button_color)
+                    MDRaisedButton:
+                        text: "Red"
+                        on_release: app.change_color_scheme("Red")
+                        md_bg_color: app.get_color_tuple(app.button_color)
+                    MDRaisedButton:
+                        text: "Green"
+                        on_release: app.change_color_scheme("Green")
+                        md_bg_color: app.get_color_tuple(app.button_color)
+                    MDRaisedButton:
+                        text: "Purple"
+                        on_release: app.change_color_scheme("Purple")
+                        md_bg_color: app.get_color_tuple(app.button_color)
+
+                MDSeparator:
+                    height: dp(1)
+
+                MDRaisedButton:
+                    text: "Screen Color"
+                    pos_hint: {"center_x": 0.5}
+                    on_release: app.open_screen_color_picker()
+                    md_bg_color: app.get_color_tuple(app.button_color)
+
+                MDRaisedButton:
+                    text: "Button Color"
+                    pos_hint: {"center_x": 0.5}
+                    on_release: app.open_button_color_picker()
+                    md_bg_color: app.get_color_tuple(app.button_color)
 
 <StartWorkoutScreen>:
     name: "start_workout"
