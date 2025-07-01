@@ -1,7 +1,8 @@
 import json
 import os
 from kivy.lang import Builder
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty, NumericProperty, BooleanProperty
+from kivy.clock import Clock
 from kivy.utils import get_color_from_hex, get_hex_from_color
 from kivy.uix.colorpicker import ColorPicker
 from kivy.uix.popup import Popup
@@ -69,11 +70,47 @@ class StartWorkoutScreen(MDScreen):
 
 
 class ActiveScreen(MDScreen):
-    pass
+    time_elapsed = NumericProperty(0)
+    _event = None
+
+    def on_pre_enter(self, *args):
+        self.time_elapsed = 0
+        self._event = Clock.schedule_interval(self._update_time, 1)
+
+    def on_leave(self, *args):
+        if self._event:
+            self._event.cancel()
+
+    def _update_time(self, dt):
+        self.time_elapsed += 1
 
 
 class RestScreen(MDScreen):
-    pass
+    timer = NumericProperty(20)
+    ready = BooleanProperty(False)
+    _event = None
+
+    def on_pre_enter(self, *args):
+        self.timer = 20
+        self.ready = False
+        self._event = Clock.schedule_interval(self._tick, 1)
+
+    def on_leave(self, *args):
+        if self._event:
+            self._event.cancel()
+
+    def toggle_ready(self):
+        self.ready = not self.ready
+        if self.timer == 0 and self.ready:
+            self.manager.current = "active"
+
+    def _tick(self, dt):
+        if self.ready and self.timer > 0:
+            self.timer -= 1
+            if self.timer <= 0:
+                self.timer = 0
+                if self.ready:
+                    self.manager.current = "active"
 
 
 class WorkoutApp(MDApp):
