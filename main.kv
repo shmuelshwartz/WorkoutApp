@@ -1,4 +1,4 @@
-ScreenManager:
+MDScreenManager:
     WelcomeScreen:
     HomeScreen:
     SelectWorkoutScreen:
@@ -9,135 +9,149 @@ ScreenManager:
 
 <WelcomeScreen>:
     name: "welcome"
-    BoxLayout:
+    MDBoxLayout:
         orientation: "vertical"
-        spacing: dp(10)
+        spacing: dp(20)
         padding: dp(20)
-        Label:
+        MDLabel:
             text: "Welcome to the Workout App"
-            font_size: '24sp'
-        Button:
+            halign: "center"
+            font_style: "H5"
+        MDRaisedButton:
             text: "Continue"
-            size_hint_y: None
-            height: dp(48)
+            pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "home"
 
 <HomeScreen>:
     name: "home"
-    BoxLayout:
+    MDBoxLayout:
         orientation: "vertical"
-        spacing: dp(10)
+        spacing: dp(20)
         padding: dp(20)
-        Label:
+        MDLabel:
             text: "Home"
-            font_size: '24sp'
-        Button:
+            halign: "center"
+            font_style: "H5"
+        MDRaisedButton:
             text: "Select Workout"
-            size_hint_y: None
-            height: dp(48)
+            pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "select_workout"
-        Button:
+        MDRaisedButton:
             text: "Settings"
-            size_hint_y: None
-            height: dp(48)
+            pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "settings"
-        Button:
+        MDRaisedButton:
             text: "Start Workout"
-            size_hint_y: None
-            height: dp(48)
+            pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "start_workout"
 
 <SelectWorkoutScreen>:
     name: "select_workout"
-    BoxLayout:
+    MDBoxLayout:
         orientation: "vertical"
-        spacing: dp(10)
+        spacing: dp(20)
         padding: dp(20)
-        Label:
+        MDLabel:
             text: "Select Workout"
-            font_size: '24sp'
-        Button:
+            halign: "center"
+            font_style: "H5"
+        MDRaisedButton:
             text: "Start"
-            size_hint_y: None
-            height: dp(48)
+            pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "start_workout"
-        Button:
+        MDRaisedButton:
             text: "Back"
-            size_hint_y: None
-            height: dp(48)
+            pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "home"
 
 <SettingsScreen>:
     name: "settings"
-    BoxLayout:
+    MDBoxLayout:
         orientation: "vertical"
-        spacing: dp(10)
+        spacing: dp(20)
         padding: dp(20)
-        Label:
+        MDLabel:
             text: "Settings"
-            font_size: '24sp'
-        Button:
-            text: "Back"
+            halign: "center"
+            font_style: "H5"
+        MDLabel:
+            text: "Select Color Scheme"
+            halign: "center"
+        MDGridLayout:
+            cols: 2
+            spacing: dp(10)
             size_hint_y: None
-            height: dp(48)
-            on_release: app.root.current = "home"
+            height: self.minimum_height
+            MDRaisedButton:
+                text: "Blue"
+                on_release: app.change_color_scheme("Blue")
+            MDRaisedButton:
+                text: "Red"
+                on_release: app.change_color_scheme("Red")
+            MDRaisedButton:
+                text: "Green"
+                on_release: app.change_color_scheme("Green")
+            MDRaisedButton:
+                text: "Purple"
+                on_release: app.change_color_scheme("Purple")
+        MDRaisedButton:
+            text: "Back"
+            pos_hint: {"center_x": 0.5}
+            on_release: app.go_home()
 
 <StartWorkoutScreen>:
     name: "start_workout"
-    BoxLayout:
+    MDBoxLayout:
         orientation: "vertical"
-        spacing: dp(10)
+        spacing: dp(20)
         padding: dp(20)
-        Label:
+        MDLabel:
             text: "Ready to start?"
-            font_size: '24sp'
-        Button:
+            halign: "center"
+            font_style: "H5"
+        MDRaisedButton:
             text: "Begin"
-            size_hint_y: None
-            height: dp(48)
+            pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "active"
-        Button:
+        MDRaisedButton:
             text: "Back"
-            size_hint_y: None
-            height: dp(48)
-            on_release: app.root.current = "home"
+            pos_hint: {"center_x": 0.5}
+            on_release: app.go_home()
 
 <ActiveScreen>:
     name: "active"
-    BoxLayout:
+    MDBoxLayout:
         orientation: "vertical"
-        spacing: dp(10)
+        spacing: dp(20)
         padding: dp(20)
-        Label:
+        MDLabel:
             text: "Active Workout"
-            font_size: '24sp'
-        Button:
+            halign: "center"
+            font_style: "H5"
+        MDRaisedButton:
             text: "Next"
-            size_hint_y: None
-            height: dp(48)
+            pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "rest"
-        Button:
+        MDRaisedButton:
             text: "Stop"
-            size_hint_y: None
-            height: dp(48)
-            on_release: app.root.current = "home"
+            pos_hint: {"center_x": 0.5}
+            on_release: app.go_home()
 
 <RestScreen>:
     name: "rest"
-    BoxLayout:
+    MDBoxLayout:
         orientation: "vertical"
-        spacing: dp(10)
+        spacing: dp(20)
         padding: dp(20)
-        Label:
+        MDLabel:
             text: "Rest"
-            font_size: '24sp'
-        Button:
+            halign: "center"
+            font_style: "H5"
+        MDRaisedButton:
             text: "Next"
-            size_hint_y: None
-            height: dp(48)
+            pos_hint: {"center_x": 0.5}
             on_release: app.root.current = "active"
-        Button:
+        MDRaisedButton:
             text: "Stop"
-            size_hint_y: None
-            height: dp(48)
-            on_release: app.root.current = "home"
+            pos_hint: {"center_x": 0.5}
+            on_release: app.go_home()
