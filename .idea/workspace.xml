@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9b0c482d-8b1e-4f39-8129-96329290d48d" name="Changes" comment="" />
+    <list default="true" id="9b0c482d-8b1e-4f39-8129-96329290d48d" name="Changes" comment="cr">
+      <change afterPath="$PROJECT_DIR$/core.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -40,6 +44,11 @@
     &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\shmue\PycharmProjects\WorkoutApp\data" />
+    </key>
+  </component>
   <component name="RunManager" selected="Python.main">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="WorkoutApp" />
@@ -124,7 +133,39 @@
       <option name="project" value="LOCAL" />
       <updated>1751278368919</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="made files">
+      <option name="closed" value="true" />
+      <created>1751295110980</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1751295110980</updated>
+    </task>
+    <task id="LOCAL-00004" summary="made files">
+      <option name="closed" value="true" />
+      <created>1751295161897</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1751295161897</updated>
+    </task>
+    <task id="LOCAL-00005" summary="made database">
+      <option name="closed" value="true" />
+      <created>1751365920588</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1751365920588</updated>
+    </task>
+    <task id="LOCAL-00006" summary="created db">
+      <option name="closed" value="true" />
+      <created>1751366105433</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1751366105433</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -157,6 +198,10 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Initial commit" />
     <MESSAGE value="deleted everything..." />
-    <option name="LAST_COMMIT_MESSAGE" value="deleted everything..." />
+    <MESSAGE value="made files" />
+    <MESSAGE value="made database" />
+    <MESSAGE value="cr" />
+    <MESSAGE value="created db" />
+    <option name="LAST_COMMIT_MESSAGE" value="created db" />
   </component>
 </project>
