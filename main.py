@@ -4,18 +4,10 @@ from kivy.lang import Builder
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty
 from kivy.clock import Clock
 from kivy.utils import get_color_from_hex, get_hex_from_color
-
-import kivymd, time
-print(kivymd.__version__, time.sleep(2))
-# KivyMD 1.2 moved color picker classes to the "pickers" module
-# instead of "picker".
 from kivymd.uix.pickers import MDColorPicker
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.button import MDRaisedButton
-# KivyMD >=1.2 renamed MDToolbar to MDTopAppBar and moved it to the
-# "appbar" module. Import the new widget to avoid import errors on
-# recent versions.
 from kivymd.uix.toolbar.toolbar import MDTopAppBar
 
 DEFAULT_COLOR = "Blue"
