@@ -18,13 +18,11 @@ WORKOUT_PRESETS = [
         "exercises": [
             "Bench Press",
             "Overhead Press",
-            "Tricep Dip",
         ],
     },
     {
         "name": "Pull",
         "exercises": [
-            "Pull Up",
             "Barbell Row",
             "Bicep Curl",
         ],
@@ -34,7 +32,6 @@ WORKOUT_PRESETS = [
         "exercises": [
             "Squat",
             "Lunge",
-            "Calf Raise",
         ],
     },
 ]
@@ -268,7 +265,7 @@ class WorkoutApp(MDApp):
 
     def start_workout(self, exercises):
         if exercises:
-            self.workout_session = WorkoutSession(exercises, sets_per_exercise=3)
+            self.workout_session = WorkoutSession(exercises, sets_per_exercise=2)
         else:
             self.workout_session = None
 
