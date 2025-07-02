@@ -171,8 +171,10 @@ class RestScreen(MDScreen):
             self.timer_label = f"{minutes:02d}:{seconds:02d}"
 
     def adjust_timer(self, seconds):
-        self.target_time += seconds
         now = time.time()
+        if self.target_time <= now:
+            self.target_time = now
+        self.target_time += seconds
         if self.target_time <= now:
             self.target_time = now
             if hasattr(self, "_event") and self._event:
