@@ -134,17 +134,29 @@ ScreenManager:
             text: "Back to Home"
             on_release: app.root.current = "home"
 
-<RestScreen@MDScreen>:
+<RestScreen>:
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: "RestScreen"
-            halign: "center"
-        MDRaisedButton:
-            text: "Start Set"
-            on_release: app.root.current = "workout_active"
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: None
+            height: self.minimum_height
+            MDIconButton:
+                icon: "plus"
+                on_release: root.adjust_timer(10)
+            MDLabel:
+                id: timer_label
+                text: root.timer_label
+                halign: "center"
+                font_style: "H4"
+            MDIconButton:
+                icon: "minus"
+                on_release: root.adjust_timer(-10)
+        Widget:
+            size_hint_y: None
+            height: "20dp"
         MDRaisedButton:
             text: "Record Metrics"
             on_release: app.root.current = "metric_input"
