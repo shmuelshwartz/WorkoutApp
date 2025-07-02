@@ -12,6 +12,8 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import OneLineListItem
+
+DEFAULT_SETS_PER_EXERCISE = 2
 WORKOUT_PRESETS = [
     {
         "name": "Day 1: Push",
@@ -56,6 +58,12 @@ class WorkoutSession:
             return self.exercises[self.current_exercise]["name"]
         return ""
 
+    def next_exercise_display(self):
+        if self.current_exercise < len(self.exercises):
+            ex = self.exercises[self.current_exercise]
+            return f"{ex['name']} set {self.current_set + 1} of {ex['sets']}"
+        return ""
+
     def record_metrics(self, metrics):
         if self.current_exercise >= len(self.exercises):
             return True
@@ -88,7 +96,7 @@ class WorkoutActiveScreen(MDScreen):
     def on_pre_enter(self, *args):
         session = MDApp.get_running_app().workout_session
         if session:
-            self.exercise_name = session.next_exercise_name()
+            self.exercise_name = session.next_exercise_display()
         self.start_timer()
         return super().on_pre_enter(*args)
 
@@ -114,7 +122,7 @@ class RestScreen(MDScreen):
     def on_enter(self, *args):
         session = MDApp.get_running_app().workout_session
         if session:
-            self.next_exercise_name = session.next_exercise_name()
+            self.next_exercise_name = session.next_exercise_display()
         if not self.target_time or self.target_time <= time.time():
             self.target_time = time.time() + 20
         self.update_timer(0)
@@ -219,6 +227,30 @@ class ExerciseLibraryScreen(MDScreen):
 
 
 class PresetOverviewScreen(MDScreen):
+    overview_list = ObjectProperty(None)
+    preset_label = ObjectProperty(None)
+
+    def on_pre_enter(self, *args):
+        self.populate()
+        return super().on_pre_enter(*args)
+
+    def populate(self):
+        if not self.overview_list or not self.preset_label:
+            return
+        self.overview_list.clear_widgets()
+        app = MDApp.get_running_app()
+        preset_name = app.selected_preset
+        self.preset_label.text = (
+            preset_name if preset_name else "Preset Overview - summary of the chosen preset"
+        )
+        for p in WORKOUT_PRESETS:
+            if p["name"] == preset_name:
+                for ex in p["exercises"]:
+                    self.overview_list.add_widget(
+                        OneLineListItem(text=f"{ex} - sets: {DEFAULT_SETS_PER_EXERCISE}")
+                    )
+                break
+
     def start_workout(self):
         app = MDApp.get_running_app()
         preset_name = app.selected_preset
@@ -265,7 +297,9 @@ class WorkoutApp(MDApp):
 
     def start_workout(self, exercises):
         if exercises:
-            self.workout_session = WorkoutSession(exercises, sets_per_exercise=2)
+            self.workout_session = WorkoutSession(
+                exercises, sets_per_exercise=DEFAULT_SETS_PER_EXERCISE
+            )
         else:
             self.workout_session = None
 
