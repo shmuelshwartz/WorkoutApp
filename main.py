@@ -18,12 +18,14 @@ class WorkoutActiveScreen(MDScreen):
 
     elapsed = NumericProperty(0.0)
     start_time = NumericProperty(0.0)
+    formatted_time = StringProperty("00:00")
     _event = None
 
     def start_timer(self, *args):
         """Start or resume the stopwatch."""
         self.stop_timer()
         self.elapsed = 0.0
+        self.formatted_time = "00:00"
         self.start_time = time.time()
         self._event = Clock.schedule_interval(self._update_elapsed, 0.1)
 
@@ -35,17 +37,14 @@ class WorkoutActiveScreen(MDScreen):
 
     def _update_elapsed(self, dt):
         self.elapsed = time.time() - self.start_time
-
-    def format_time(self):
-
         minutes, seconds = divmod(int(self.elapsed), 60)
-        return f"{minutes:02d}:{seconds:02d}"
+        self.formatted_time = f"{minutes:02d}:{seconds:02d}"
 
 
 
 
 class RestScreen(MDScreen):
-    timer_label = StringProperty("20")
+    timer_label = StringProperty("00:20")
     target_time = NumericProperty(0)
 
     def on_enter(self, *args):
@@ -63,13 +62,15 @@ class RestScreen(MDScreen):
     def update_timer(self, dt):
         remaining = self.target_time - time.time()
         if remaining <= 0:
-            self.timer_label = "0"
+            self.timer_label = "00:00"
             if hasattr(self, "_event") and self._event:
                 self._event.cancel()
             if self.manager:
                 self.manager.current = "workout_active"
         else:
-            self.timer_label = str(math.ceil(remaining))
+            total_seconds = math.ceil(remaining)
+            minutes, seconds = divmod(total_seconds, 60)
+            self.timer_label = f"{minutes:02d}:{seconds:02d}"
 
     def adjust_timer(self, seconds):
         self.target_time += seconds
