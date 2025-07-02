@@ -1,12 +1,16 @@
 from kivymd.app import MDApp
 from kivy.lang import Builder
 from kivy.clock import Clock
+from kivy.metrics import dp
 from kivy.properties import (
     NumericProperty,
     StringProperty,
     ObjectProperty,
 )
 from kivymd.uix.screen import MDScreen
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.textfield import MDTextField
+from kivymd.uix.label import MDLabel
 from core import WORKOUT_PRESETS
 
 import time
@@ -80,6 +84,24 @@ class RestScreen(MDScreen):
             if self.manager:
                 self.manager.current = "workout_active"
 
+
+class MetricInputScreen(MDScreen):
+    """Screen for entering workout metrics."""
+
+    metric_list = ObjectProperty(None)
+    default_metrics = ["Weight", "Reps", "RPE"]
+
+    def populate_metrics(self, metrics=None):
+        """Populate the metric list with rows of labels and text fields."""
+        metrics = metrics or self.default_metrics
+        if not self.metric_list:
+            return
+        self.metric_list.clear_widgets()
+        for name in metrics:
+            row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
+            row.add_widget(MDLabel(text=name, size_hint_x=0.4))
+            row.add_widget(MDTextField(multiline=False))
+            self.metric_list.add_widget(row)
 
 class PresetsScreen(MDScreen):
     """Screen to select a workout preset."""

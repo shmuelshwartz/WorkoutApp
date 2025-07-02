@@ -211,7 +211,9 @@ ScreenManager:
             text: "End Set"
             on_release: app.root.current = "metric_input"
 
-<MetricInputScreen@MDScreen>:
+<MetricInputScreen>:
+    on_pre_enter: root.populate_metrics()
+    metric_list: metric_list
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -219,6 +221,9 @@ ScreenManager:
         MDLabel:
             text: "MetricInputScreen"
             halign: "center"
+        ScrollView:
+            MDList:
+                id: metric_list
         MDRaisedButton:
             text: "Back to Rest"
             on_release: app.root.current = "rest"
