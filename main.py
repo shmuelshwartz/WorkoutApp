@@ -14,68 +14,21 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import OneLineListItem
+from pathlib import Path
 
-DEFAULT_SETS_PER_EXERCISE = 2
-WORKOUT_PRESETS = [
-    {
-        "name": "Day 1: Push",
-        "exercises": [
-            "Bench Press",
-            "Overhead Press",
-        ],
-    },
-    {
-        "name": "Day 2: Pull",
-        "exercises": [
-            "Barbell Row",
-            "Bicep Curl",
-        ],
-    },
-    {
-        "name": "Day 3: Legs",
-        "exercises": [
-            "Squat",
-            "Lunge",
-        ],
-    },
-]
+from core import (
+    DEFAULT_SETS_PER_EXERCISE,
+    WORKOUT_PRESETS,
+    WorkoutSession,
+    load_workout_presets,
+)
+
+# Load workout presets from the database at startup
+load_workout_presets(Path(__file__).resolve().parent / "data" / "workout.db")
 
 import time
 import math
 
-
-class WorkoutSession:
-    """Simple in-memory representation of a workout session."""
-
-    def __init__(self, exercises, sets_per_exercise=1):
-        self.exercises = [
-            {"name": name, "sets": sets_per_exercise, "results": []}
-            for name in exercises
-        ]
-        self.current_exercise = 0
-        self.current_set = 0
-
-    def next_exercise_name(self):
-        if self.current_exercise < len(self.exercises):
-            return self.exercises[self.current_exercise]["name"]
-        return ""
-
-    def next_exercise_display(self):
-        if self.current_exercise < len(self.exercises):
-            ex = self.exercises[self.current_exercise]
-            return f"{ex['name']} set {self.current_set + 1} of {ex['sets']}"
-        return ""
-
-    def record_metrics(self, metrics):
-        if self.current_exercise >= len(self.exercises):
-            return True
-        ex = self.exercises[self.current_exercise]
-        ex["results"].append(metrics)
-        self.current_set += 1
-        if self.current_set >= ex["sets"]:
-            self.current_set = 0
-            self.current_exercise += 1
-        return self.current_exercise >= len(self.exercises)
 
 
 class WorkoutActiveScreen(MDScreen):
