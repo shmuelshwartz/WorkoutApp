@@ -12,7 +12,32 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import OneLineListItem
-from core import WORKOUT_PRESETS
+WORKOUT_PRESETS = [
+    {
+        "name": "Push",
+        "exercises": [
+            "Bench Press",
+            "Overhead Press",
+            "Tricep Dip",
+        ],
+    },
+    {
+        "name": "Pull",
+        "exercises": [
+            "Pull Up",
+            "Barbell Row",
+            "Bicep Curl",
+        ],
+    },
+    {
+        "name": "Legs",
+        "exercises": [
+            "Squat",
+            "Lunge",
+            "Calf Raise",
+        ],
+    },
+]
 
 import time
 import math
