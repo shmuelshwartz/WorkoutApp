@@ -56,6 +56,8 @@ ScreenManager:
             on_release: app.root.current = "workout_history"
 
 <PresetsScreen>:
+    on_pre_enter: root.populate()
+    preset_list: preset_list
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -67,18 +69,7 @@ ScreenManager:
             text_color: 0.2, 0.6, 0.86, 1
         ScrollView:
             MDList:
-                OneLineListItem:
-                    id: preset_push
-                    text: "Day 1: Push"
-                    on_release: root.select_preset("Day 1: Push", self)
-                OneLineListItem:
-                    id: preset_pull
-                    text: "Day 2: Pull"
-                    on_release: root.select_preset("Day 2: Pull", self)
-                OneLineListItem:
-                    id: preset_legs
-                    text: "Day 3: Legs"
-                    on_release: root.select_preset("Day 3: Legs", self)
+                id: preset_list
         MDLabel:
             text: "Selected: " + root.selected_preset if root.selected_preset else "Select a preset"
             halign: "center"

@@ -180,8 +180,22 @@ class MetricInputScreen(MDScreen):
 class PresetsScreen(MDScreen):
     """Screen to select a workout preset."""
 
+    preset_list = ObjectProperty(None)
     selected_preset = StringProperty("")
     selected_item = ObjectProperty(None, allownone=True)
+
+    def on_pre_enter(self, *args):
+        self.populate()
+        return super().on_pre_enter(*args)
+
+    def populate(self):
+        if not self.preset_list:
+            return
+        self.preset_list.clear_widgets()
+        for preset in WORKOUT_PRESETS:
+            item = OneLineListItem(text=preset["name"])
+            item.bind(on_release=lambda inst, name=preset["name"]: self.select_preset(name, inst))
+            self.preset_list.add_widget(item)
 
     def select_preset(self, name, item):
         """Select a preset from WORKOUT_PRESETS and highlight item."""
