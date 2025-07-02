@@ -1,9 +1,17 @@
 from kivymd.app import MDApp
 from kivy.lang import Builder
-
 from kivy.clock import Clock
+from kivy.properties import (
+    NumericProperty,
+    StringProperty,
+    ObjectProperty,
+)
+from kivymd.uix.screen import MDScreen
+from core import WORKOUT_PRESETS
+
 from kivy.properties import NumericProperty, StringProperty
 from kivymd.uix.screen import MDScreen
+
 import time
 
 
@@ -31,8 +39,10 @@ class WorkoutActiveScreen(MDScreen):
         self.elapsed = time.time() - self.start_time
 
     def format_time(self):
-        minutes, seconds = divmod(self.elapsed, 60)
-        return f"{int(minutes):02d}:{seconds:04.1f}"
+
+        minutes, seconds = divmod(int(self.elapsed), 60)
+        return f"{minutes:02d}:{seconds:02d}"
+
 
 
 
@@ -72,16 +82,39 @@ class RestScreen(MDScreen):
                 self.manager.current = "workout_active"
 
 
-
 class PresetsScreen(MDScreen):
     """Screen to select a workout preset."""
 
     selected_preset = StringProperty("")
+    selected_item = ObjectProperty(None, allownone=True)
 
-    def select_preset(self, name):
-        """Select a preset from WORKOUT_PRESETS."""
+    def select_preset(self, name, item):
+        """Select a preset from WORKOUT_PRESETS and highlight item."""
+        if self.selected_item:
+            self.selected_item.md_bg_color = (0, 0, 0, 0)
+        self.selected_item = item
+        self.selected_item.md_bg_color = MDApp.get_running_app().theme_cls.primary_light
         if name in WORKOUT_PRESETS:
             self.selected_preset = name
+
+    def confirm_selection(self):
+        if self.selected_preset and self.manager:
+            detail = self.manager.get_screen("preset_detail")
+            detail.preset_name = self.selected_preset
+            self.manager.current = "preset_detail"
+
+
+class PresetDetailScreen(MDScreen):
+    preset_name = StringProperty("")
+
+
+class ExerciseLibraryScreen(MDScreen):
+    previous_screen = StringProperty("home")
+
+    def go_back(self):
+        if self.manager:
+            self.manager.current = self.previous_screen
+
 
 class WorkoutApp(MDApp):
     def build(self):
