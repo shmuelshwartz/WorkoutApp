@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS "section_exercises" (
 	"section_id"	INTEGER NOT NULL,
 	"exercise_id"	INTEGER NOT NULL,
 	"position"	INTEGER NOT NULL,
+	"number_of_sets"	INTEGER NOT NULL DEFAULT 1,
 	PRIMARY KEY("id" AUTOINCREMENT),
 	FOREIGN KEY("exercise_id") REFERENCES "exercises"("id"),
 	FOREIGN KEY("section_id") REFERENCES "sections"("id") ON DELETE CASCADE
@@ -148,22 +149,35 @@ INSERT INTO "metric_types" VALUES (7,'Progression','str','manual_enum','post_set
 INSERT INTO "presets" VALUES (1,'Push Day');
 INSERT INTO "presets" VALUES (2,'Pull Day');
 INSERT INTO "presets" VALUES (3,'Leg Day');
-INSERT INTO "section_exercises" VALUES (1,1,10,1);
-INSERT INTO "section_exercises" VALUES (2,3,11,1);
-INSERT INTO "section_exercises" VALUES (3,5,12,1);
-INSERT INTO "section_exercises" VALUES (4,2,1,1);
-INSERT INTO "section_exercises" VALUES (5,2,2,2);
-INSERT INTO "section_exercises" VALUES (6,2,3,3);
-INSERT INTO "section_exercises" VALUES (7,4,4,1);
-INSERT INTO "section_exercises" VALUES (8,4,5,2);
-INSERT INTO "section_exercises" VALUES (9,4,6,3);
-INSERT INTO "section_exercises" VALUES (10,6,7,1);
-INSERT INTO "section_exercises" VALUES (11,6,8,2);
-INSERT INTO "section_exercises" VALUES (12,6,9,3);
+INSERT INTO "section_exercises" VALUES (1,1,10,1,3);
+INSERT INTO "section_exercises" VALUES (2,3,11,1,3);
+INSERT INTO "section_exercises" VALUES (3,5,12,1,3);
+INSERT INTO "section_exercises" VALUES (4,2,1,1,3);
+INSERT INTO "section_exercises" VALUES (5,2,2,2,3);
+INSERT INTO "section_exercises" VALUES (6,2,3,3,3);
+INSERT INTO "section_exercises" VALUES (7,4,4,1,3);
+INSERT INTO "section_exercises" VALUES (8,4,5,2,3);
+INSERT INTO "section_exercises" VALUES (9,4,6,3,3);
+INSERT INTO "section_exercises" VALUES (10,6,7,1,3);
+INSERT INTO "section_exercises" VALUES (11,6,8,2,3);
+INSERT INTO "section_exercises" VALUES (12,6,9,3,3);
 INSERT INTO "sections" VALUES (1,1,'Warm-up',1);
 INSERT INTO "sections" VALUES (2,1,'Workout',2);
 INSERT INTO "sections" VALUES (3,2,'Warm-up',1);
 INSERT INTO "sections" VALUES (4,2,'Workout',2);
 INSERT INTO "sections" VALUES (5,3,'Warm-up',1);
 INSERT INTO "sections" VALUES (6,3,'Workout',2);
+CREATE VIEW view_exercise_metrics AS
+SELECT 
+    em.id AS exercise_metric_id,
+    em.exercise_id,
+    e.name AS exercise_name,
+    em.metric_type_id,
+    mt.name AS metric_type_name
+FROM 
+    exercise_metrics em
+JOIN 
+    exercises e ON em.exercise_id = e.id
+JOIN 
+    metric_types mt ON em.metric_type_id = mt.id;
 COMMIT;
