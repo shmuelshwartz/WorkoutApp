@@ -10,6 +10,7 @@ from kivymd.uix.screen import MDScreen
 from core import WORKOUT_PRESETS
 
 import time
+import math
 
 
 class WorkoutActiveScreen(MDScreen):
@@ -21,9 +22,9 @@ class WorkoutActiveScreen(MDScreen):
 
     def start_timer(self, *args):
         """Start or resume the stopwatch."""
-        if not self.start_time:
-            self.start_time = time.time()
         self.stop_timer()
+        self.elapsed = 0.0
+        self.start_time = time.time()
         self._event = Clock.schedule_interval(self._update_elapsed, 0.1)
 
     def stop_timer(self, *args):
@@ -44,7 +45,7 @@ class WorkoutActiveScreen(MDScreen):
 
 
 class RestScreen(MDScreen):
-    timer_label = StringProperty("20.0")
+    timer_label = StringProperty("20")
     target_time = NumericProperty(0)
 
     def on_enter(self, *args):
@@ -62,13 +63,13 @@ class RestScreen(MDScreen):
     def update_timer(self, dt):
         remaining = self.target_time - time.time()
         if remaining <= 0:
-            self.timer_label = "0.0"
+            self.timer_label = "0"
             if hasattr(self, "_event") and self._event:
                 self._event.cancel()
             if self.manager:
                 self.manager.current = "workout_active"
         else:
-            self.timer_label = f"{remaining:.1f}"
+            self.timer_label = str(math.ceil(remaining))
 
     def adjust_timer(self, seconds):
         self.target_time += seconds
