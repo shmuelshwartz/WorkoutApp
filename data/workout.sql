@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS "workout_exercise_entries" (
 	"exercise_id"	INTEGER NOT NULL,
 	"position"	INTEGER NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("exercise_id") REFERENCES "exercises_old"("id"),
+	FOREIGN KEY("exercise_id") REFERENCES "exercises"("id"),
 	FOREIGN KEY("session_id") REFERENCES "workout_sessions"("id") ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS "workout_metric_values" (
