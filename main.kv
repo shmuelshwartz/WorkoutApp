@@ -1,4 +1,6 @@
 ScreenManager:
+    WelcomeScreen:
+        name: "welcome"
     HomeScreen:
         name: "home"
     PresetsScreen:
@@ -25,6 +27,10 @@ ScreenManager:
         name: "workout_settings"
     WorkoutSummaryScreen:
         name: "workout_summary"
+    EditPresetScreen:
+        name: "edit_preset"
+    PresetOverviewScreen:
+        name: "preset_overview"
 
 <HomeScreen@MDScreen>:
     BoxLayout:
@@ -40,6 +46,12 @@ ScreenManager:
         MDRaisedButton:
             text: "Go to Progress"
             on_release: app.root.current = "progress"
+        MDRaisedButton:
+            text: "Go to Settings"
+            on_release: app.root.current = "settings"
+        MDRaisedButton:
+            text: "Go to Workout History"
+            on_release: app.root.current = "workout_history"
 
 <PresetsScreen@MDScreen>:
     BoxLayout:
@@ -53,6 +65,9 @@ ScreenManager:
             text: "Go to Preset Detail"
             on_release: app.root.current = "preset_detail"
         MDRaisedButton:
+            text: "Edit Preset"
+            on_release: app.root.current = "edit_preset"
+        MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"
 
@@ -65,8 +80,8 @@ ScreenManager:
             text: "PresetDetailScreen"
             halign: "center"
         MDRaisedButton:
-            text: "Go to Exercise Library"
-            on_release: app.root.current = "exercise_library"
+            text: "Go to Preset Overview"
+            on_release: app.root.current = "preset_overview"
         MDRaisedButton:
             text: "Back to Presets"
             on_release: app.root.current = "presets"
@@ -92,9 +107,6 @@ ScreenManager:
             text: "ProgressScreen"
             halign: "center"
         MDRaisedButton:
-            text: "Go to Workout History"
-            on_release: app.root.current = "workout_history"
-        MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"
 
@@ -106,9 +118,6 @@ ScreenManager:
         MDLabel:
             text: "WorkoutHistoryScreen"
             halign: "center"
-        MDRaisedButton:
-            text: "Go to Settings"
-            on_release: app.root.current = "settings"
         MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"
@@ -124,9 +133,6 @@ ScreenManager:
         MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"
-        MDRaisedButton:
-            text: "Start Workout (Rest Screen)"
-            on_release: app.root.current = "rest"
 
 <RestScreen@MDScreen>:
     BoxLayout:
@@ -139,6 +145,9 @@ ScreenManager:
         MDRaisedButton:
             text: "Start Set"
             on_release: app.root.current = "workout_active"
+        MDRaisedButton:
+            text: "Record Metrics"
+            on_release: app.root.current = "metric_input"
         MDRaisedButton:
             text: "Edit Workout"
             on_release: app.root.current = "workout_edit"
@@ -208,4 +217,46 @@ ScreenManager:
         MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"
+
+<WelcomeScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "WelcomeScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Enter"
+            on_release: app.root.current = "home"
+
+<EditPresetScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "EditPresetScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Open Exercise Library"
+            on_release: app.root.current = "exercise_library"
+        MDRaisedButton:
+            text: "Back to Presets"
+            on_release: app.root.current = "presets"
+
+<PresetOverviewScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "PresetOverviewScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Back to Detail"
+            on_release: app.root.current = "preset_detail"
+        MDRaisedButton:
+            text: "Start Workout"
+            on_release: app.root.current = "rest"
 
