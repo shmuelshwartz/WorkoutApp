@@ -1,50 +1,33 @@
 """Core data structures for workout presets."""
 
-from dataclasses import dataclass, field
-from typing import List, Dict
+# A very simple representation of workout presets. Each preset only
+# includes a name and a list of exercises. Repetition schemes are not
+# defined here so that workouts can be customised later on.
 
-
-@dataclass
-class Exercise:
-    """Represents a single exercise in a workout preset."""
-
-    name: str
-    sets: int
-    reps: int
-
-
-@dataclass
-class WorkoutPreset:
-    """A workout preset consisting of multiple exercises."""
-
-    name: str
-    exercises: List[Exercise] = field(default_factory=list)
-
-
-WORKOUT_PRESETS: Dict[str, WorkoutPreset] = {
-    "Day 1": WorkoutPreset(
-        name="Day 1 - Push",
-        exercises=[
-            Exercise("Bench Press", 3, 10),
-            Exercise("Overhead Press", 3, 10),
-            Exercise("Tricep Dip", 3, 12),
+WORKOUT_PRESETS = [
+    {
+        "name": "Push",
+        "exercises": [
+            "Bench Press",
+            "Overhead Press",
+            "Tricep Dip",
         ],
-    ),
-    "Day 2": WorkoutPreset(
-        name="Day 2 - Pull",
-        exercises=[
-            Exercise("Pull Up", 3, 8),
-            Exercise("Barbell Row", 3, 10),
-            Exercise("Bicep Curl", 3, 12),
+    },
+    {
+        "name": "Pull",
+        "exercises": [
+            "Pull Up",
+            "Barbell Row",
+            "Bicep Curl",
         ],
-    ),
-    "Day 3": WorkoutPreset(
-        name="Day 3 - Legs",
-        exercises=[
-            Exercise("Squat", 3, 10),
-            Exercise("Lunge", 3, 12),
-            Exercise("Calf Raise", 3, 15),
+    },
+    {
+        "name": "Legs",
+        "exercises": [
+            "Squat",
+            "Lunge",
+            "Calf Raise",
         ],
-    ),
-}
+    },
+]
 

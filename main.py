@@ -115,7 +115,7 @@ class PresetsScreen(MDScreen):
             self.selected_item.md_bg_color = (0, 0, 0, 0)
         self.selected_item = item
         self.selected_item.md_bg_color = MDApp.get_running_app().theme_cls.primary_light
-        if name in WORKOUT_PRESETS:
+        if any(p["name"] == name for p in WORKOUT_PRESETS):
             self.selected_preset = name
 
     def confirm_selection(self):
