@@ -35,6 +35,7 @@ class WorkoutActiveScreen(MDScreen):
         return f"{int(minutes):02d}:{seconds:04.1f}"
 
 
+
 class RestScreen(MDScreen):
     timer_label = StringProperty("20.0")
     target_time = NumericProperty(0)
@@ -70,6 +71,17 @@ class RestScreen(MDScreen):
             if self.manager:
                 self.manager.current = "workout_active"
 
+
+
+class PresetsScreen(MDScreen):
+    """Screen to select a workout preset."""
+
+    selected_preset = StringProperty("")
+
+    def select_preset(self, name):
+        """Select a preset from WORKOUT_PRESETS."""
+        if name in WORKOUT_PRESETS:
+            self.selected_preset = name
 
 class WorkoutApp(MDApp):
     def build(self):
