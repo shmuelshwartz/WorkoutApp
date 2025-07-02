@@ -38,8 +38,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "HomeScreen"
+            text: "Home - choose where you want to go"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "Go to Presets"
             on_release: app.root.current = "presets"
@@ -59,8 +61,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "PresetsScreen"
+            text: "Presets - choose a workout template"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         ScrollView:
             MDList:
                 OneLineListItem:
@@ -99,8 +103,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: root.preset_name if root.preset_name else "PresetDetailScreen"
+            text: root.preset_name if root.preset_name else "Preset Detail - view exercises in this preset"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "Go to Preset Overview"
             on_release: app.root.current = "preset_overview"
@@ -114,8 +120,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "ExerciseLibraryScreen"
+            text: "Exercise Library - browse all exercises"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "Back"
             on_release: root.go_back()
@@ -126,8 +134,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "ProgressScreen"
+            text: "Progress - track your performance"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"
@@ -138,8 +148,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "WorkoutHistoryScreen"
+            text: "Workout History - review past workouts"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"
@@ -150,8 +162,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "SettingsScreen"
+            text: "Settings - configure the app"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"
@@ -161,6 +175,11 @@ ScreenManager:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
+        MDLabel:
+            text: "Rest - recover before the next exercise"
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         BoxLayout:
             orientation: "horizontal"
             size_hint_y: None
@@ -209,6 +228,11 @@ ScreenManager:
         MDLabel:
             text: root.exercise_name
             halign: "center"
+        MDLabel:
+            text: "This screen stays open while you perform the exercise"
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "End Set"
             on_release: app.root.current = "metric_input"
@@ -221,8 +245,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "MetricInputScreen"
+            text: "Metric Input - log the weight, reps and other info you just performed"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         ScrollView:
             MDList:
                 id: metric_list
@@ -236,8 +262,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "WorkoutEditScreen"
+            text: "Workout Edit - tweak exercises in this session"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "Back to Rest"
             on_release: app.root.current = "rest"
@@ -248,8 +276,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "WorkoutSettingsScreen"
+            text: "Workout Settings - adjust options for this workout"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "Back to Rest"
             on_release: app.root.current = "rest"
@@ -260,6 +290,11 @@ ScreenManager:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
+        MDLabel:
+            text: "Workout Summary - results from this session"
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         ScrollView:
             MDList:
                 id: summary_list
@@ -273,8 +308,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "WelcomeScreen"
+            text: "Welcome - start your fitness journey"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "Enter"
             on_release: app.root.current = "home"
@@ -285,8 +322,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "EditPresetScreen"
+            text: "Edit Preset - create or modify a workout plan"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "Open Exercise Library"
             on_release:
@@ -302,8 +341,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "PresetOverviewScreen"
+            text: "Preset Overview - summary of the chosen preset"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "Back to Detail"
             on_release: app.root.current = "preset_detail"
