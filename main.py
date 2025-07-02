@@ -14,21 +14,21 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.list import OneLineListItem
 WORKOUT_PRESETS = [
     {
-        "name": "Push",
+        "name": "Day 1: Push",
         "exercises": [
             "Bench Press",
             "Overhead Press",
         ],
     },
     {
-        "name": "Pull",
+        "name": "Day 2: Pull",
         "exercises": [
             "Barbell Row",
             "Bicep Curl",
         ],
     },
     {
-        "name": "Legs",
+        "name": "Day 3: Legs",
         "exercises": [
             "Squat",
             "Lunge",
