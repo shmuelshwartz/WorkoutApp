@@ -176,6 +176,9 @@ ScreenManager:
             MDIconButton:
                 icon: "plus"
                 on_release: root.adjust_timer(10)
+        MDLabel:
+            text: "Next: " + root.next_exercise_name if root.next_exercise_name else ""
+            halign: "center"
         Widget:
             size_hint_y: None
             height: "20dp"
@@ -193,7 +196,6 @@ ScreenManager:
             on_release: app.root.current = "workout_summary"
 
 <WorkoutActiveScreen>:
-    on_pre_enter: root.start_timer()
     on_leave: root.stop_timer()
     BoxLayout:
         orientation: "vertical"
@@ -205,7 +207,7 @@ ScreenManager:
             halign: "center"
             font_style: "H2"
         MDLabel:
-            text: "WorkoutActiveScreen"
+            text: root.exercise_name
             halign: "center"
         MDRaisedButton:
             text: "End Set"
@@ -225,8 +227,8 @@ ScreenManager:
             MDList:
                 id: metric_list
         MDRaisedButton:
-            text: "Back to Rest"
-            on_release: app.root.current = "rest"
+            text: "Save Metrics"
+            on_release: root.save_metrics()
 
 <WorkoutEditScreen@MDScreen>:
     BoxLayout:
@@ -252,14 +254,15 @@ ScreenManager:
             text: "Back to Rest"
             on_release: app.root.current = "rest"
 
-<WorkoutSummaryScreen@MDScreen>:
+<WorkoutSummaryScreen>:
+    summary_list: summary_list
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: "WorkoutSummaryScreen"
-            halign: "center"
+        ScrollView:
+            MDList:
+                id: summary_list
         MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"
@@ -293,7 +296,7 @@ ScreenManager:
             text: "Back to Presets"
             on_release: app.root.current = "presets"
 
-<PresetOverviewScreen@MDScreen>:
+<PresetOverviewScreen>:
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -306,5 +309,5 @@ ScreenManager:
             on_release: app.root.current = "preset_detail"
         MDRaisedButton:
             text: "Start Workout"
-            on_release: app.root.current = "rest"
+            on_release: root.start_workout()
 
