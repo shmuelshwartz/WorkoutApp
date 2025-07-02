@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="workout.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="3023"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="exercise_metrics" custom_title="0" dock_id="1" table="4,16:mainexercise_metrics"/><dock_state state="000000ff00000000fd00000001000000020000000000000000fc0100000001fb000000160064006f0063006b00420072006f00770073006500310100000000ffffffff0000011800ffffff000000000000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1*">-- Table: presets
+CREATE TABLE presets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL
+);
+
+-- Table: sections
+CREATE TABLE sections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    preset_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    FOREIGN KEY (preset_id) REFERENCES presets(id) ON DELETE CASCADE
+);
+
+-- Table: exercises
+CREATE TABLE exercises (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    section_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
+);
+
+-- Table: metric_types (UPDATED)
+CREATE TABLE metric_types (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    input_type TEXT NOT NULL CHECK(input_type IN ('int', 'float', 'str', 'bool')),
+    source_type TEXT NOT NULL CHECK(source_type IN ('manual_text', 'manual_enum', 'manual_slider')),
+    input_timing TEXT NOT NULL CHECK(input_timing IN (
+        'preset',
+        'pre_workout',
+        'post_workout',
+        'pre_set',
+        'post_set'
+    )),
+    is_required BOOLEAN DEFAULT FALSE,
+    scope TEXT NOT NULL CHECK(scope IN ('session', 'section', 'exercise', 'set'))
+);
+
+-- Table: exercise_metrics
+CREATE TABLE exercise_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    exercise_id INTEGER NOT NULL,
+    metric_type_id INTEGER NOT NULL,
+    FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE,
+    FOREIGN KEY (metric_type_id) REFERENCES metric_types(id) ON DELETE CASCADE
+);
+
+-- Table: user_defined_enum_values
+CREATE TABLE user_defined_enum_values (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    metric_type_id INTEGER NOT NULL,
+    value TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    FOREIGN KEY (metric_type_id) REFERENCES metric_types(id) ON DELETE CASCADE
+);
+
+-- Table: workout_sessions
+CREATE TABLE workout_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    preset_id INTEGER,
+    start_time DATETIME,
+    end_time DATETIME,
+    FOREIGN KEY (preset_id) REFERENCES presets(id)
+);
+
+-- Table: workout_exercise_entries
+CREATE TABLE workout_exercise_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,
+    exercise_id INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES workout_sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (exercise_id) REFERENCES exercises(id)
+);
+
+-- Table: workout_metric_values
+CREATE TABLE workout_metric_values (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    exercise_entry_id INTEGER NOT NULL,
+    metric_type_id INTEGER NOT NULL,
+    value TEXT NOT NULL,
+    FOREIGN KEY (exercise_entry_id) REFERENCES workout_exercise_entries(id) ON DELETE CASCADE,
+    FOREIGN KEY (metric_type_id) REFERENCES metric_types(id)
+);
+</sql><current_tab id="0"/></tab_sql></sqlb_project>
