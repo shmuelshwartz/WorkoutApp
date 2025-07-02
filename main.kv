@@ -336,15 +336,21 @@ ScreenManager:
             on_release: app.root.current = "presets"
 
 <PresetOverviewScreen>:
+    overview_list: overview_list
+    preset_label: preset_label
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "Preset Overview - summary of the chosen preset"
+            id: preset_label
+            text: ""
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
+        ScrollView:
+            MDList:
+                id: overview_list
         MDRaisedButton:
             text: "Back to Detail"
             on_release: app.root.current = "preset_detail"
