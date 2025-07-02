@@ -2,6 +2,7 @@ from kivymd.app import MDApp
 from kivy.lang import Builder
 from kivymd.uix.screen import MDScreen
 from kivy.properties import StringProperty, NumericProperty
+from core import WORKOUT_PRESETS
 from kivy.clock import Clock
 import time
 
@@ -39,6 +40,17 @@ class RestScreen(MDScreen):
                 self._event.cancel()
             if self.manager:
                 self.manager.current = "workout_active"
+
+
+class PresetsScreen(MDScreen):
+    """Screen to select a workout preset."""
+
+    selected_preset = StringProperty("")
+
+    def select_preset(self, name):
+        """Select a preset from WORKOUT_PRESETS."""
+        if name in WORKOUT_PRESETS:
+            self.selected_preset = name
 
 
 
