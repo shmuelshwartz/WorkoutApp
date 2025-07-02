@@ -9,9 +9,6 @@ from kivy.properties import (
 from kivymd.uix.screen import MDScreen
 from core import WORKOUT_PRESETS
 
-from kivy.properties import NumericProperty, StringProperty
-from kivymd.uix.screen import MDScreen
-
 import time
 
 
