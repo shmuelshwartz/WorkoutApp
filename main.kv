@@ -144,16 +144,16 @@ ScreenManager:
             size_hint_y: None
             height: self.minimum_height
             MDIconButton:
-                icon: "plus"
-                on_release: root.adjust_timer(10)
+                icon: "minus"
+                on_release: root.adjust_timer(-10)
             MDLabel:
                 id: timer_label
                 text: root.timer_label
                 halign: "center"
                 font_style: "H4"
             MDIconButton:
-                icon: "minus"
-                on_release: root.adjust_timer(-10)
+                icon: "plus"
+                on_release: root.adjust_timer(10)
         Widget:
             size_hint_y: None
             height: "20dp"
