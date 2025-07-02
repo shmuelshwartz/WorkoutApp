@@ -158,11 +158,18 @@ ScreenManager:
             text: "Finish Workout"
             on_release: app.root.current = "workout_summary"
 
-<WorkoutActiveScreen@MDScreen>:
+<WorkoutActiveScreen>:
+    on_pre_enter: root.start_timer()
+    on_leave: root.stop_timer()
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
+        MDLabel:
+            id: stopwatch
+            text: root.format_time()
+            halign: "center"
+            font_style: "H2"
         MDLabel:
             text: "WorkoutActiveScreen"
             halign: "center"
