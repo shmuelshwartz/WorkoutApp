@@ -14,68 +14,21 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import OneLineListItem
+from pathlib import Path
 
-DEFAULT_SETS_PER_EXERCISE = 2
-WORKOUT_PRESETS = [
-    {
-        "name": "Day 1: Push",
-        "exercises": [
-            "Bench Press",
-            "Overhead Press",
-        ],
-    },
-    {
-        "name": "Day 2: Pull",
-        "exercises": [
-            "Barbell Row",
-            "Bicep Curl",
-        ],
-    },
-    {
-        "name": "Day 3: Legs",
-        "exercises": [
-            "Squat",
-            "Lunge",
-        ],
-    },
-]
+# Import core so we can always reference the up-to-date WORKOUT_PRESETS list
+import core
+from core import (
+    DEFAULT_SETS_PER_EXERCISE,
+    WorkoutSession,
+    load_workout_presets,
+)
 
+# Load workout presets from the database at startup
+load_workout_presets(Path(__file__).resolve().parent / "data" / "workout.db")
 import time
 import math
 
-
-class WorkoutSession:
-    """Simple in-memory representation of a workout session."""
-
-    def __init__(self, exercises, sets_per_exercise=1):
-        self.exercises = [
-            {"name": name, "sets": sets_per_exercise, "results": []}
-            for name in exercises
-        ]
-        self.current_exercise = 0
-        self.current_set = 0
-
-    def next_exercise_name(self):
-        if self.current_exercise < len(self.exercises):
-            return self.exercises[self.current_exercise]["name"]
-        return ""
-
-    def next_exercise_display(self):
-        if self.current_exercise < len(self.exercises):
-            ex = self.exercises[self.current_exercise]
-            return f"{ex['name']} set {self.current_set + 1} of {ex['sets']}"
-        return ""
-
-    def record_metrics(self, metrics):
-        if self.current_exercise >= len(self.exercises):
-            return True
-        ex = self.exercises[self.current_exercise]
-        ex["results"].append(metrics)
-        self.current_set += 1
-        if self.current_set >= ex["sets"]:
-            self.current_set = 0
-            self.current_exercise += 1
-        return self.current_exercise >= len(self.exercises)
 
 
 class WorkoutActiveScreen(MDScreen):
@@ -227,8 +180,24 @@ class MetricInputScreen(MDScreen):
 class PresetsScreen(MDScreen):
     """Screen to select a workout preset."""
 
+    preset_list = ObjectProperty(None)
     selected_preset = StringProperty("")
     selected_item = ObjectProperty(None, allownone=True)
+
+    def on_pre_enter(self, *args):
+        self.populate()
+        return super().on_pre_enter(*args)
+
+    def populate(self):
+        if not self.preset_list:
+            return
+        self.preset_list.clear_widgets()
+        # Debug print to inspect loaded presets
+        print("WORKOUT_PRESETS:", core.WORKOUT_PRESETS)
+        for preset in core.WORKOUT_PRESETS:
+            item = OneLineListItem(text=preset["name"])
+            item.bind(on_release=lambda inst, name=preset["name"]: self.select_preset(name, inst))
+            self.preset_list.add_widget(item)
 
     def select_preset(self, name, item):
         """Select a preset from WORKOUT_PRESETS and highlight item."""
@@ -236,7 +205,7 @@ class PresetsScreen(MDScreen):
             self.selected_item.md_bg_color = (0, 0, 0, 0)
         self.selected_item = item
         self.selected_item.md_bg_color = MDApp.get_running_app().theme_cls.primary_light
-        if any(p["name"] == name for p in WORKOUT_PRESETS):
+        if any(p["name"] == name for p in core.WORKOUT_PRESETS):
             self.selected_preset = name
             MDApp.get_running_app().selected_preset = name
 
@@ -276,7 +245,7 @@ class PresetOverviewScreen(MDScreen):
         self.preset_label.text = (
             preset_name if preset_name else "Preset Overview - summary of the chosen preset"
         )
-        for p in WORKOUT_PRESETS:
+        for p in core.WORKOUT_PRESETS:
             if p["name"] == preset_name:
                 for ex in p["exercises"]:
                     self.overview_list.add_widget(
@@ -288,7 +257,7 @@ class PresetOverviewScreen(MDScreen):
         app = MDApp.get_running_app()
         preset_name = app.selected_preset
         exercises = []
-        for p in WORKOUT_PRESETS:
+        for p in core.WORKOUT_PRESETS:
             if p["name"] == preset_name:
                 exercises = p["exercises"]
                 break
