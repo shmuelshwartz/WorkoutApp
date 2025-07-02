@@ -1,0 +1,211 @@
+ScreenManager:
+    HomeScreen:
+        name: "home"
+    PresetsScreen:
+        name: "presets"
+    PresetDetailScreen:
+        name: "preset_detail"
+    ExerciseLibraryScreen:
+        name: "exercise_library"
+    ProgressScreen:
+        name: "progress"
+    WorkoutHistoryScreen:
+        name: "workout_history"
+    SettingsScreen:
+        name: "settings"
+    RestScreen:
+        name: "rest"
+    WorkoutActiveScreen:
+        name: "workout_active"
+    MetricInputScreen:
+        name: "metric_input"
+    WorkoutEditScreen:
+        name: "workout_edit"
+    WorkoutSettingsScreen:
+        name: "workout_settings"
+    WorkoutSummaryScreen:
+        name: "workout_summary"
+
+<HomeScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "HomeScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Go to Presets"
+            on_release: app.root.current = "presets"
+        MDRaisedButton:
+            text: "Go to Progress"
+            on_release: app.root.current = "progress"
+
+<PresetsScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "PresetsScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Go to Preset Detail"
+            on_release: app.root.current = "preset_detail"
+        MDRaisedButton:
+            text: "Back to Home"
+            on_release: app.root.current = "home"
+
+<PresetDetailScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "PresetDetailScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Go to Exercise Library"
+            on_release: app.root.current = "exercise_library"
+        MDRaisedButton:
+            text: "Back to Presets"
+            on_release: app.root.current = "presets"
+
+<ExerciseLibraryScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "ExerciseLibraryScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Back to Home"
+            on_release: app.root.current = "home"
+
+<ProgressScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "ProgressScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Go to Workout History"
+            on_release: app.root.current = "workout_history"
+        MDRaisedButton:
+            text: "Back to Home"
+            on_release: app.root.current = "home"
+
+<WorkoutHistoryScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "WorkoutHistoryScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Go to Settings"
+            on_release: app.root.current = "settings"
+        MDRaisedButton:
+            text: "Back to Home"
+            on_release: app.root.current = "home"
+
+<SettingsScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "SettingsScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Back to Home"
+            on_release: app.root.current = "home"
+        MDRaisedButton:
+            text: "Start Workout (Rest Screen)"
+            on_release: app.root.current = "rest"
+
+<RestScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "RestScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Start Set"
+            on_release: app.root.current = "workout_active"
+        MDRaisedButton:
+            text: "Edit Workout"
+            on_release: app.root.current = "workout_edit"
+        MDRaisedButton:
+            text: "Workout Settings"
+            on_release: app.root.current = "workout_settings"
+        MDRaisedButton:
+            text: "Finish Workout"
+            on_release: app.root.current = "workout_summary"
+
+<WorkoutActiveScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "WorkoutActiveScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "End Set"
+            on_release: app.root.current = "metric_input"
+
+<MetricInputScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "MetricInputScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Back to Rest"
+            on_release: app.root.current = "rest"
+
+<WorkoutEditScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "WorkoutEditScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Back to Rest"
+            on_release: app.root.current = "rest"
+
+<WorkoutSettingsScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "WorkoutSettingsScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Back to Rest"
+            on_release: app.root.current = "rest"
+
+<WorkoutSummaryScreen@MDScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: "WorkoutSummaryScreen"
+            halign: "center"
+        MDRaisedButton:
+            text: "Back to Home"
+            on_release: app.root.current = "home"
+
