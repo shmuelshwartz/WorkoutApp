@@ -293,7 +293,7 @@ class WorkoutApp(MDApp):
     selected_preset = ""
 
     def build(self):
-        return Builder.load_file("main.kv")
+        return Builder.load_file(Path(__file__).with_name("main.kv"))
 
     def start_workout(self, exercises):
         if exercises:
