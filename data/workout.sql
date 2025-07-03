@@ -52,9 +52,12 @@ CREATE TABLE IF NOT EXISTS "sections" (
 CREATE TABLE IF NOT EXISTS "user_defined_enum_values" (
 	"id"	INTEGER,
 	"metric_type_id"	INTEGER NOT NULL,
+	"exercise_id"	INTEGER NOT NULL,
 	"value"	TEXT NOT NULL,
 	"position"	INTEGER NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT),
+	UNIQUE("metric_type_id","exercise_id","value"),
+	FOREIGN KEY("exercise_id") REFERENCES "exercises"("id") ON DELETE CASCADE,
 	FOREIGN KEY("metric_type_id") REFERENCES "metric_types"("id") ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS "workout_exercise_entries" (
@@ -167,6 +170,20 @@ INSERT INTO "sections" VALUES (3,2,'Warm-up',1);
 INSERT INTO "sections" VALUES (4,2,'Workout',2);
 INSERT INTO "sections" VALUES (5,3,'Warm-up',1);
 INSERT INTO "sections" VALUES (6,3,'Workout',2);
+INSERT INTO "user_defined_enum_values" VALUES (1,6,2,'Flat Barbell Bench',1);
+INSERT INTO "user_defined_enum_values" VALUES (2,6,2,'Incline Smith Machine',2);
+INSERT INTO "user_defined_enum_values" VALUES (3,6,2,'Hammer Strength Chest Press',3);
+INSERT INTO "user_defined_enum_values" VALUES (4,6,3,'Smith Machine Overhead Press',1);
+INSERT INTO "user_defined_enum_values" VALUES (5,6,3,'Seated Shoulder Press Machine',2);
+INSERT INTO "user_defined_enum_values" VALUES (6,6,3,'Hammer Strength Overhead Press',3);
+INSERT INTO "user_defined_enum_values" VALUES (7,6,6,'Hammer Strength Row',1);
+INSERT INTO "user_defined_enum_values" VALUES (8,6,6,'T-Bar Row Machine',2);
+INSERT INTO "user_defined_enum_values" VALUES (9,6,6,'Seated Cable Row Machine',3);
+INSERT INTO "user_defined_enum_values" VALUES (10,7,4,'Tuck',1);
+INSERT INTO "user_defined_enum_values" VALUES (11,7,4,'Advanced Tuck',2);
+INSERT INTO "user_defined_enum_values" VALUES (12,7,4,'Half Lay',3);
+INSERT INTO "user_defined_enum_values" VALUES (13,7,4,'Straddle',4);
+INSERT INTO "user_defined_enum_values" VALUES (14,7,4,'Full',5);
 CREATE VIEW view_exercise_metrics AS
 SELECT 
     em.id AS exercise_metric_id,
