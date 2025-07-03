@@ -19,7 +19,6 @@ from pathlib import Path
 # Import core so we can always reference the up-to-date WORKOUT_PRESETS list
 import core
 from core import (
-    DEFAULT_SETS_PER_EXERCISE,
     WorkoutSession,
     load_workout_presets,
 )
@@ -247,7 +246,7 @@ class PresetOverviewScreen(MDScreen):
             if p["name"] == preset_name:
                 for ex in p["exercises"]:
                     self.overview_list.add_widget(
-                        OneLineListItem(text=f"{ex} - sets: {DEFAULT_SETS_PER_EXERCISE}")
+                        OneLineListItem(text=f"{ex['name']} - sets: {ex['sets']}")
                     )
                 break
 
@@ -297,9 +296,7 @@ class WorkoutApp(MDApp):
 
     def start_workout(self, exercises):
         if exercises:
-            self.workout_session = WorkoutSession(
-                exercises, sets_per_exercise=DEFAULT_SETS_PER_EXERCISE
-            )
+            self.workout_session = WorkoutSession(exercises)
         else:
             self.workout_session = None
 
