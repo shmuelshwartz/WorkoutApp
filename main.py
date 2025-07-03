@@ -192,8 +192,6 @@ class PresetsScreen(MDScreen):
         if not self.preset_list:
             return
         self.preset_list.clear_widgets()
-        # Debug print to inspect loaded presets
-        print("WORKOUT_PRESETS:", core.WORKOUT_PRESETS)
         for preset in core.WORKOUT_PRESETS:
             item = OneLineListItem(text=preset["name"])
             item.bind(on_release=lambda inst, name=preset["name"]: self.select_preset(name, inst))
