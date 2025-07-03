@@ -1,4 +1,5 @@
 import sqlite3
+from pathlib import Path
 
 def show_workout_structure(db_path):
     conn = sqlite3.connect(db_path)
@@ -37,5 +38,6 @@ def show_workout_structure(db_path):
 
     conn.close()
 
-# Example usage:
-show_workout_structure("../data/workout.db")
+if __name__ == "__main__":
+    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+    show_workout_structure(str(db_path))
