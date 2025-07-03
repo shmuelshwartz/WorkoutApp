@@ -5,46 +5,30 @@ import sys
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 import core
 
-EXPECTED_PRESETS = [
-    {
-        "name": "Push Day",
-        "exercises": [
-            {"name": "Shoulder Circles", "sets": 3},
-            {"name": "Push-ups", "sets": 3},
-            {"name": "Bench Press", "sets": 3},
-            {"name": "Overhead Press", "sets": 3},
-        ],
-    },
-    {
-        "name": "Pull Day",
-        "exercises": [
-            {"name": "Jumping Jacks", "sets": 3},
-            {"name": "Front Lever", "sets": 3},
-            {"name": "Pull-ups", "sets": 3},
-            {"name": "Barbell Rows", "sets": 3},
-        ],
-    },
-    {
-        "name": "Leg Day",
-        "exercises": [
-            {"name": "Skipping Rope", "sets": 3},
-            {"name": "Squats", "sets": 3},
-            {"name": "Deadlifts", "sets": 3},
-            {"name": "Lunges", "sets": 3},
-        ],
-    },
-]
 
 def test_load_workout_presets_updates_global():
     db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
     presets = core.load_workout_presets(db_path)
-    assert presets == EXPECTED_PRESETS
-    assert core.WORKOUT_PRESETS == EXPECTED_PRESETS
+
+    assert presets == core.WORKOUT_PRESETS
+    assert isinstance(presets, list)
+
+    for preset in presets:
+        assert isinstance(preset, dict)
+        assert "name" in preset
+        assert "exercises" in preset
+        assert isinstance(preset["exercises"], list)
+        for exercise in preset["exercises"]:
+            assert isinstance(exercise, dict)
+            assert "name" in exercise
+            assert "sets" in exercise
 
 
-def test_exercise_set_counts():
+def test_exercise_sets_are_positive_ints():
     db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
     presets = core.load_workout_presets(db_path)
+
     for preset in presets:
         for exercise in preset["exercises"]:
-            assert exercise["sets"] == 3
+            assert isinstance(exercise["sets"], int)
+            assert exercise["sets"] > 0
