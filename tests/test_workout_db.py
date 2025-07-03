@@ -1,7 +1,8 @@
 import sqlite3
+from pathlib import Path
 
 def show_workout_structure(db_path):
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
 
     # Fetch all presets (workouts)
@@ -37,5 +38,9 @@ def show_workout_structure(db_path):
 
     conn.close()
 
-# Example usage:
-show_workout_structure("../data/workout.db")
+
+def test_show_workout_structure(capsys):
+    db_path = Path(__file__).resolve().parent / ".." / "data" / "workout.db"
+    show_workout_structure(db_path)
+    captured = capsys.readouterr()
+    assert "Workout:" in captured.out
