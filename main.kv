@@ -21,6 +21,8 @@ ScreenManager:
         name: "workout_active"
     MetricInputScreen:
         name: "metric_input"
+    ExerciseScreen:
+        name: "exercise_screen"
     WorkoutEditScreen:
         name: "workout_edit"
     WorkoutSettingsScreen:
@@ -311,24 +313,76 @@ ScreenManager:
             text: "Enter"
             on_release: app.root.current = "home"
 
-<EditPresetScreen@MDScreen>:
+<SectionWidget>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: self.minimum_height
+    md_bg_color: root.color
+    padding: "10dp"
+    MDBoxLayout:
+        size_hint_y: None
+        height: "40dp"
+        MDTextField:
+            text: root.section_name
+            multiline: False
+            hint_text: "Section Name"
+            on_text: root.section_name = self.text
+        MDIconButton:
+            icon: "chevron-up" if root.expanded else "chevron-down"
+            on_release: root.toggle()
+    BoxLayout:
+        id: exercises_box
+        orientation: "vertical"
+        size_hint_y: None
+        height: dp(40) if root.expanded else 0
+        opacity: 1 if root.expanded else 0
+        MDRaisedButton:
+            text: "Add Exercise"
+            size_hint_y: None
+            height: "40dp"
+            on_release: app.root.current = "exercise_screen"
+
+<EditPresetScreen>:
+    preset_name: app.selected_preset if app.selected_preset else "Preset"
+    sections_box: sections_box
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "Edit Preset - create or modify a workout plan"
+            text: root.preset_name
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
-        MDRaisedButton:
-            text: "Open Exercise Library"
-            on_release:
-                app.root.get_screen('exercise_library').previous_screen = 'edit_preset'
-                app.root.current = 'exercise_library'
+        ScrollView:
+            MDBoxLayout:
+                id: sections_box
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
         MDRaisedButton:
             text: "Back to Presets"
             on_release: app.root.current = "presets"
+
+<ExerciseScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        BoxLayout:
+            size_hint_y: 0.33
+            MDLabel:
+                text: "Top Section"
+                halign: "center"
+        BoxLayout:
+            size_hint_y: 0.67
+            MDLabel:
+                text: "Bottom Section"
+                halign: "center"
+        MDRaisedButton:
+            text: "Done"
+            size_hint_y: None
+            height: "40dp"
+            pos_hint: {"center_x": 0.5}
+            on_release: app.root.current = "edit_preset"
 
 <PresetOverviewScreen>:
     overview_list: overview_list

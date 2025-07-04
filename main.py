@@ -360,6 +360,53 @@ class WorkoutSummaryScreen(MDScreen):
                 )
 
 
+class SectionWidget(MDBoxLayout):
+    """Single preset section containing exercises."""
+
+    section_name = StringProperty("Section")
+    color = ListProperty([1, 1, 1, 1])
+    expanded = BooleanProperty(True)
+
+    def toggle(self):
+        self.expanded = not self.expanded
+
+
+class EditPresetScreen(MDScreen):
+    """Screen to edit a workout preset."""
+
+    preset_name = StringProperty("Preset")
+    sections_box = ObjectProperty(None)
+
+    _colors = [
+        (1, 0.9, 0.9, 1),
+        (0.9, 1, 0.9, 1),
+        (0.9, 0.9, 1, 1),
+        (1, 1, 0.9, 1),
+        (0.9, 1, 1, 1),
+        (1, 0.9, 1, 1),
+    ]
+
+    def on_pre_enter(self, *args):
+        if self.sections_box and not self.sections_box.children:
+            self.add_section()
+        return super().on_pre_enter(*args)
+
+    def add_section(self, name="Section"):
+        """Add a new section to the preset."""
+        if not self.sections_box:
+            return None
+        color = self._colors[len(self.sections_box.children) % len(self._colors)]
+        section = SectionWidget(section_name=name, color=color)
+        self.sections_box.add_widget(section)
+        return section
+
+
+class ExerciseScreen(MDScreen):
+    """Placeholder screen for choosing an exercise."""
+
+    pass
+
+
 class WorkoutApp(MDApp):
     workout_session = None
     selected_preset = ""
