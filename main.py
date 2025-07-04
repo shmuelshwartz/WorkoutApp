@@ -148,6 +148,17 @@ class MetricInputScreen(MDScreen):
     """Screen for entering workout metrics."""
 
     metric_list = ObjectProperty(None)
+    metrics_scroll = ObjectProperty(None)
+
+    def on_slider_touch_down(self, instance, touch):
+        if instance.collide_point(*touch.pos) and self.metrics_scroll:
+            self.metrics_scroll.do_scroll_y = False
+        return False
+
+    def on_slider_touch_up(self, instance, touch):
+        if self.metrics_scroll:
+            self.metrics_scroll.do_scroll_y = True
+        return False
 
     def populate_metrics(self, metrics=None):
         """Populate the metric list based on the current exercise."""
@@ -182,6 +193,10 @@ class MetricInputScreen(MDScreen):
 
             if source_type == "manual_slider":
                 widget = MDSlider(min=0, max=1, value=0)
+                widget.bind(
+                    on_touch_down=self.on_slider_touch_down,
+                    on_touch_up=self.on_slider_touch_up,
+                )
             elif source_type == "manual_enum":
                 widget = Spinner(text=values[0] if values else "", values=values)
             else:  # manual_text
