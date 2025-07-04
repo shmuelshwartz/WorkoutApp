@@ -340,7 +340,9 @@ ScreenManager:
             text: "Add Exercise"
             size_hint_y: None
             height: "40dp"
-            on_release: app.root.current = "exercise_screen"
+            on_release:
+                app.root.transition.direction = "up"
+                app.root.current = "exercise_screen"
 
 <EditPresetScreen>:
     preset_name: app.selected_preset if app.selected_preset else "Preset"
@@ -382,7 +384,9 @@ ScreenManager:
             size_hint_y: None
             height: "40dp"
             pos_hint: {"center_x": 0.5}
-            on_release: app.root.current = "edit_preset"
+            on_release:
+                app.root.transition.direction = "down"
+                app.root.current = "edit_preset"
 
 <PresetOverviewScreen>:
     overview_list: overview_list
