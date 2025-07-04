@@ -12,6 +12,8 @@ from kivy.properties import (
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
+from kivymd.uix.slider import MDSlider
+from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import OneLineListItem
 from pathlib import Path
@@ -21,6 +23,7 @@ import core
 from core import (
     WorkoutSession,
     load_workout_presets,
+    get_metrics_for_exercise,
 )
 
 # Load workout presets from the database at startup
@@ -148,24 +151,78 @@ class MetricInputScreen(MDScreen):
     default_metrics = ["Weight", "Reps", "RPE"]
 
     def populate_metrics(self, metrics=None):
-        """Populate the metric list with rows of labels and text fields."""
+        """Populate the metric list based on the current exercise."""
+        app = MDApp.get_running_app()
+        if app.workout_session:
+            exercise = app.workout_session.next_exercise_name()
+            metrics = get_metrics_for_exercise(exercise)
         metrics = metrics or self.default_metrics
         if not self.metric_list:
             return
         self.metric_list.clear_widgets()
-        for name in metrics:
+        for m in metrics:
+            if isinstance(m, str):
+                name = m
+                input_type = "str"
+                source_type = "manual_text"
+                values = []
+            else:
+                name = m.get("name")
+                input_type = m.get("input_type", "str")
+                source_type = m.get("source_type", "manual_text")
+                values = m.get("values", [])
+
             row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
+            row.metric_name = name
+            row.input_type = input_type
+            row.source_type = source_type
+
             row.add_widget(MDLabel(text=name, size_hint_x=0.4))
-            row.add_widget(MDTextField(multiline=False))
+
+            if source_type == "manual_slider":
+                widget = MDSlider(min=0, max=1, value=0)
+            elif source_type == "manual_enum":
+                widget = Spinner(text=values[0] if values else "", values=values)
+            else:  # manual_text
+                input_filter = None
+                if input_type == "int":
+                    input_filter = "int"
+                elif input_type == "float":
+                    input_filter = "float"
+                widget = MDTextField(multiline=False, input_filter=input_filter)
+
+            row.input_widget = widget
+            row.add_widget(widget)
             self.metric_list.add_widget(row)
 
     def save_metrics(self):
         metrics = {}
         for row in reversed(self.metric_list.children):
-            if len(row.children) >= 2:
-                text_input = row.children[0]
-                label = row.children[1]
-                metrics[label.text] = text_input.text
+            name = getattr(row, "metric_name", "")
+            widget = getattr(row, "input_widget", None)
+            input_type = getattr(row, "input_type", "str")
+            if widget is None:
+                continue
+            value = None
+            if isinstance(widget, MDTextField):
+                value = widget.text
+            elif isinstance(widget, MDSlider):
+                value = widget.value
+            elif isinstance(widget, Spinner):
+                value = widget.text
+            if value in (None, ""):
+                value = 0 if input_type in ("int", "float") else ""
+            if input_type == "int":
+                try:
+                    value = int(value)
+                except ValueError:
+                    value = 0
+            elif input_type == "float":
+                try:
+                    value = float(value)
+                except ValueError:
+                    value = 0.0
+            metrics[name] = value
         app = MDApp.get_running_app()
         if app.workout_session:
             finished = app.workout_session.record_metrics(metrics)

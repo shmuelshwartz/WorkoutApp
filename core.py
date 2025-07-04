@@ -38,6 +38,65 @@ def load_workout_presets(db_path: Path = Path(__file__).resolve().parent / "data
     return presets
 
 
+def get_metrics_for_exercise(
+    exercise_name: str,
+    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+) -> list:
+    """Return metric definitions for ``exercise_name``.
+
+    Each item in the returned list is a dictionary with ``name``, ``input_type``,
+    ``source_type`` and ``values`` keys. ``values`` will contain any allowed
+    values for ``manual_enum`` metrics.
+    """
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM exercises WHERE name = ?", (exercise_name,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return []
+    exercise_id = row[0]
+
+    cursor.execute(
+        """
+        SELECT mt.id, mt.name, mt.input_type, mt.source_type
+        FROM exercise_metrics em
+        JOIN metric_types mt ON mt.id = em.metric_type_id
+        WHERE em.exercise_id = ?
+        ORDER BY em.id
+        """,
+        (exercise_id,),
+    )
+
+    metrics = []
+    for metric_id, name, input_type, source_type in cursor.fetchall():
+        values = []
+        if source_type == "manual_enum":
+            cursor.execute(
+                """
+                SELECT value
+                FROM user_defined_enum_values
+                WHERE metric_type_id = ? AND exercise_id = ?
+                ORDER BY position
+                """,
+                (metric_id, exercise_id),
+            )
+            values = [v[0] for v in cursor.fetchall()]
+        metrics.append(
+            {
+                "name": name,
+                "input_type": input_type,
+                "source_type": source_type,
+                "values": values,
+            }
+        )
+
+    conn.close()
+    return metrics
+
+
 class WorkoutSession:
     """Simple in-memory representation of a workout session."""
 
