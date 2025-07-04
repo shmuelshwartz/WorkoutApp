@@ -32,3 +32,19 @@ def test_exercise_sets_are_positive_ints():
         for exercise in preset["exercises"]:
             assert isinstance(exercise["sets"], int)
             assert exercise["sets"] > 0
+
+
+def test_get_metrics_for_exercise():
+    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+    metrics = core.get_metrics_for_exercise("Bench Press", db_path)
+
+    assert isinstance(metrics, list)
+    assert metrics
+    for metric in metrics:
+        assert "name" in metric
+        assert "input_type" in metric
+        assert "source_type" in metric
+        assert "values" in metric
+        if metric["source_type"] == "manual_enum":
+            assert isinstance(metric["values"], list)
+            assert metric["values"]
