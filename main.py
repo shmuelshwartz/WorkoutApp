@@ -148,7 +148,6 @@ class MetricInputScreen(MDScreen):
     """Screen for entering workout metrics."""
 
     metric_list = ObjectProperty(None)
-    default_metrics = ["Weight", "Reps", "RPE"]
 
     def populate_metrics(self, metrics=None):
         """Populate the metric list based on the current exercise."""
@@ -156,7 +155,9 @@ class MetricInputScreen(MDScreen):
         if app.workout_session:
             exercise = app.workout_session.next_exercise_name()
             metrics = get_metrics_for_exercise(exercise)
-        metrics = metrics or self.default_metrics
+        # Do not fall back to default metrics if none are defined
+        if metrics is None:
+            metrics = []
         if not self.metric_list:
             return
         self.metric_list.clear_widgets()
