@@ -233,6 +233,7 @@ ScreenManager:
 <MetricInputScreen>:
     on_pre_enter: root.populate_metrics()
     metric_list: metric_list
+    metrics_scroll: metrics_scroll
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -243,6 +244,7 @@ ScreenManager:
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
         ScrollView:
+            id: metrics_scroll
             MDList:
                 id: metric_list
         MDRaisedButton:
