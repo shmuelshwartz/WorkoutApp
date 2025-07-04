@@ -328,7 +328,7 @@ ScreenManager:
             hint_text: "Section Name"
             on_text: root.section_name = self.text
         MDIconButton:
-            icon: "chevron-up" if root.expanded else "chevron-down"
+            icon: "chevron-down" if root.expanded else "chevron-right"
             on_release: root.toggle()
     BoxLayout:
         id: exercises_box
