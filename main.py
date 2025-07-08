@@ -16,6 +16,7 @@ from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import OneLineListItem
+from kivymd.uix.button import MDIconButton
 from pathlib import Path
 
 # Import core so we can always reference the up-to-date WORKOUT_PRESETS list
@@ -401,6 +402,35 @@ class EditPresetScreen(MDScreen):
         return section
 
 
+class SelectedExerciseItem(MDBoxLayout):
+    """Widget representing a selected exercise with reorder controls."""
+
+    text = StringProperty("")
+
+    def move_up(self):
+        parent = self.parent
+        if not parent:
+            return
+        idx = parent.children.index(self)
+        if idx < len(parent.children) - 1:
+            parent.remove_widget(self)
+            parent.add_widget(self, index=idx + 1)
+
+    def move_down(self):
+        parent = self.parent
+        if not parent:
+            return
+        idx = parent.children.index(self)
+        if idx > 0:
+            parent.remove_widget(self)
+            parent.add_widget(self, index=idx - 1)
+
+    def remove_self(self):
+        parent = self.parent
+        if parent:
+            parent.remove_widget(self)
+
+
 class ExerciseSelectionScreen(MDScreen):
     """Screen for selecting exercises to add to a preset section."""
 
@@ -423,7 +453,8 @@ class ExerciseSelectionScreen(MDScreen):
     def add_selected(self, name):
         if not self.selected_list:
             return
-        self.selected_list.add_widget(OneLineListItem(text=name))
+        item = SelectedExerciseItem(text=name)
+        self.selected_list.add_widget(item)
 
 
 class WorkoutApp(MDApp):
