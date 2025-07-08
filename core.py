@@ -38,6 +38,16 @@ def load_workout_presets(db_path: Path = Path(__file__).resolve().parent / "data
     return presets
 
 
+def get_all_exercises(db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db") -> list:
+    """Return a list of all exercise names in the database."""
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM exercises ORDER BY name")
+    exercises = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return exercises
+
+
 def get_metrics_for_exercise(
     exercise_name: str,
     db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",

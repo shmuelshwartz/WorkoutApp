@@ -48,3 +48,13 @@ def test_get_metrics_for_exercise():
         if metric["source_type"] == "manual_enum":
             assert isinstance(metric["values"], list)
             assert metric["values"]
+
+
+def test_get_all_exercises():
+    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+    exercises = core.get_all_exercises(db_path)
+
+    assert isinstance(exercises, list)
+    assert exercises
+    for name in exercises:
+        assert isinstance(name, str)
