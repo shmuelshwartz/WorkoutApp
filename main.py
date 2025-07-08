@@ -327,12 +327,7 @@ class PresetOverviewScreen(MDScreen):
     def start_workout(self):
         app = MDApp.get_running_app()
         preset_name = app.selected_preset
-        exercises = []
-        for p in core.WORKOUT_PRESETS:
-            if p["name"] == preset_name:
-                exercises = p["exercises"]
-                break
-        app.start_workout(exercises)
+        app.start_workout(preset_name)
         if self.manager:
             self.manager.current = "rest"
 
@@ -464,9 +459,9 @@ class WorkoutApp(MDApp):
     def build(self):
         return Builder.load_file(str(Path(__file__).with_name("main.kv")))
 
-    def start_workout(self, exercises):
-        if exercises:
-            self.workout_session = WorkoutSession(exercises)
+    def start_workout(self, preset_name):
+        if preset_name:
+            self.workout_session = WorkoutSession(preset_name)
         else:
             self.workout_session = None
 

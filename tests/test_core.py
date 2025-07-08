@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+import sqlite3
 
 # Ensure the project root is on the import path so `core` can be imported
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -58,3 +59,23 @@ def test_get_all_exercises():
     assert exercises
     for name in exercises:
         assert isinstance(name, str)
+
+
+def test_workout_session_loads_preset_and_records(monkeypatch):
+    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+
+    session = core.WorkoutSession("Push Day", db_path=db_path)
+
+    assert session.exercises
+    assert session.exercises[0]["name"] == "Shoulder Circles"
+
+    def fail_connect(*args, **kwargs):
+        raise AssertionError("database accessed during workout")
+
+    monkeypatch.setattr(sqlite3, "connect", fail_connect)
+
+    total_sets = sum(ex["sets"] for ex in session.exercises)
+    finished = False
+    for i in range(total_sets):
+        finished = session.record_metrics({"Reps": i})
+    assert finished
