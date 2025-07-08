@@ -14,6 +14,7 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
+from kivy.uix.scrollview import ScrollView
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import OneLineListItem, MDList
 from kivymd.uix.selectioncontrol import MDCheckbox
@@ -598,18 +599,26 @@ class AddMetricPopup(MDDialog):
         self.desc_input = MDTextField(hint_text="Description")
         self.required_check = MDCheckbox()
 
-        layout = MDBoxLayout(
+        form = MDBoxLayout(
             orientation="vertical",
             spacing="8dp",
-            adaptive_height=True,
+            size_hint_y=None,
         )
-        layout.add_widget(self.name_input)
-        layout.add_widget(self.input_type)
-        layout.add_widget(self.source_type)
-        layout.add_widget(self.input_timing)
-        layout.add_widget(self.scope)
-        layout.add_widget(self.desc_input)
-        layout.add_widget(MDBoxLayout(size_hint_y=None, height="40dp", children=[self.required_check, MDLabel(text="Required")]))
+        form.bind(minimum_height=form.setter("height"))
+        form.add_widget(self.name_input)
+        form.add_widget(self.input_type)
+        form.add_widget(self.source_type)
+        form.add_widget(self.input_timing)
+        form.add_widget(self.scope)
+        form.add_widget(self.desc_input)
+
+        req_row = MDBoxLayout(size_hint_y=None, height="40dp")
+        req_row.add_widget(self.required_check)
+        req_row.add_widget(MDLabel(text="Required"))
+        form.add_widget(req_row)
+
+        layout = ScrollView(do_scroll_y=True)
+        layout.add_widget(form)
 
         save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)
         back_btn = MDRaisedButton(text="Back", on_release=self.show_metric_list)
