@@ -16,6 +16,7 @@ from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import OneLineListItem
+from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton
 from pathlib import Path
 
@@ -551,8 +552,41 @@ class EditExerciseScreen(MDScreen):
             return
         self.metrics_list.clear_widgets()
         metrics = core.get_metrics_for_exercise(self.exercise_name)
+        timing_options = [
+            "preset",
+            "pre_workout",
+            "post_workout",
+            "pre_set",
+            "post_set",
+        ]
+
         for m in metrics:
-            self.metrics_list.add_widget(OneLineListItem(text=m.get("name", "")))
+            box = MDBoxLayout(orientation="vertical", padding="8dp", spacing="4dp", size_hint_y=None)
+            box.bind(minimum_height=box.setter("height"))
+
+            box.add_widget(MDLabel(text=f"Metric: {m.get('name','')}", bold=True))
+
+            box.add_widget(MDLabel(text=f"Input type: {m.get('input_type','')}"))
+            box.add_widget(MDLabel(text=f"Source type: {m.get('source_type','')}"))
+
+            timing_row = MDBoxLayout(size_hint_y=None, height="40dp")
+            timing_row.add_widget(MDLabel(text="Input timing:", size_hint_x=0.5))
+            spinner = Spinner(text=m.get('input_timing','preset'), values=timing_options, size_hint_x=0.5)
+            timing_row.add_widget(spinner)
+            box.add_widget(timing_row)
+
+            req_row = MDBoxLayout(size_hint_y=None, height="40dp")
+            req_row.add_widget(MDLabel(text="Required:", size_hint_x=0.5))
+            req_checkbox = MDCheckbox(active=bool(m.get('is_required')), size_hint_x=None)
+            req_row.add_widget(req_checkbox)
+            box.add_widget(req_row)
+
+            box.add_widget(MDLabel(text=f"Scope: {m.get('scope','')}"))
+            desc = m.get('description') or ""
+            if desc:
+                box.add_widget(MDLabel(text=f"Description: {desc}", halign="left"))
+
+            self.metrics_list.add_widget(box)
 
 
 class WorkoutApp(MDApp):

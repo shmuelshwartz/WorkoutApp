@@ -72,7 +72,8 @@ def get_metrics_for_exercise(
 
     cursor.execute(
         """
-        SELECT mt.id, mt.name, mt.input_type, mt.source_type
+        SELECT mt.id, mt.name, mt.input_type, mt.source_type,
+               mt.input_timing, mt.is_required, mt.scope, mt.description
         FROM exercise_metrics em
         JOIN metric_types mt ON mt.id = em.metric_type_id
         WHERE em.exercise_id = ?
@@ -82,7 +83,16 @@ def get_metrics_for_exercise(
     )
 
     metrics = []
-    for metric_id, name, input_type, source_type in cursor.fetchall():
+    for (
+        metric_id,
+        name,
+        input_type,
+        source_type,
+        input_timing,
+        is_required,
+        scope,
+        description,
+    ) in cursor.fetchall():
         values = []
         if source_type == "manual_enum":
             cursor.execute(
@@ -100,6 +110,10 @@ def get_metrics_for_exercise(
                 "name": name,
                 "input_type": input_type,
                 "source_type": source_type,
+                "input_timing": input_timing,
+                "is_required": bool(is_required),
+                "scope": scope,
+                "description": description,
                 "values": values,
             }
         )
