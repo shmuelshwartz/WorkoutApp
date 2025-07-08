@@ -597,7 +597,7 @@ class ExerciseSelectionPanel(MDBoxLayout):
 
 
 class AddMetricPopup(MDDialog):
-    """Popup dialog for selecting metrics or creating a new one."""
+    """Popup dialog for choosing an action, selecting metrics or creating a new one."""
 
     def __init__(self, screen: 'EditExerciseScreen', mode: str = "select", **kwargs):
         self.screen = screen
@@ -605,8 +605,10 @@ class AddMetricPopup(MDDialog):
 
         if mode == "select":
             content, buttons, title = self._build_select_widgets()
-        else:
+        elif mode == "new":
             content, buttons, title = self._build_new_metric_widgets()
+        else:  # initial choice
+            content, buttons, title = self._build_choice_widgets()
 
         super().__init__(title=title, type="custom", content_cls=content, buttons=buttons, **kwargs)
 
@@ -620,8 +622,8 @@ class AddMetricPopup(MDDialog):
             item = OneLineListItem(text=m["name"])
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             content.add_widget(item)
-        new_btn = MDRaisedButton(text="New Metric", on_release=self.show_new_metric_form)
-        buttons = [new_btn, MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())]
+        cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
+        buttons = [cancel_btn]
         return content, buttons, "Select Metric"
 
     def _build_new_metric_widgets(self):
@@ -675,6 +677,16 @@ class AddMetricPopup(MDDialog):
         buttons = [save_btn, back_btn]
         return layout, buttons, "New Metric"
 
+    def _build_choice_widgets(self):
+        label = MDLabel(text="Choose an option", halign="center")
+        add_btn = MDRaisedButton(text="Add Metric", on_release=self.show_metric_list)
+        new_btn = MDRaisedButton(text="New Metric", on_release=self.show_new_metric_form)
+        cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
+        content = MDBoxLayout(orientation="vertical", spacing="8dp")
+        content.add_widget(label)
+        buttons = [add_btn, new_btn, cancel_btn]
+        return content, buttons, "Metric Options"
+
     # ------------------------------------------------------------------
     # Mode switching helpers
     # ------------------------------------------------------------------
@@ -685,7 +697,8 @@ class AddMetricPopup(MDDialog):
 
     def show_metric_list(self, *args):
         self.dismiss()
-        self.screen.open_add_metric_popup()
+        popup = AddMetricPopup(self.screen, mode="select")
+        popup.open()
 
     def add_metric(self, name, *args):
         db_path = Path(__file__).resolve().parent / "data" / "workout.db"
@@ -808,7 +821,7 @@ class EditExerciseScreen(MDScreen):
         self.populate()
 
     def open_add_metric_popup(self):
-        popup = AddMetricPopup(self)
+        popup = AddMetricPopup(self, mode="choose")
         popup.open()
 
     def open_new_metric_popup(self):
