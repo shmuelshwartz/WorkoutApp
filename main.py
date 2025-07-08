@@ -559,42 +559,34 @@ class ExerciseSelectionPanel(MDBoxLayout):
 
 
 class AddMetricPopup(MDDialog):
-    """Popup dialog for selecting or creating metrics."""
+    """Popup dialog for selecting metrics or creating a new one."""
 
-    def __init__(self, screen: 'EditExerciseScreen', **kwargs):
+    def __init__(self, screen: 'EditExerciseScreen', mode: str = "select", **kwargs):
         self.screen = screen
+        self.mode = mode
+
+        if mode == "select":
+            content, buttons, title = self._build_select_widgets()
+        else:
+            content, buttons, title = self._build_new_metric_widgets()
+
+        super().__init__(title=title, type="custom", content_cls=content, buttons=buttons, **kwargs)
+
+    # ------------------------------------------------------------------
+    # Building widgets for both modes
+    # ------------------------------------------------------------------
+    def _build_select_widgets(self):
         metrics = core.get_all_metric_types()
-        items = [OneLineListItem(text=m["name"]) for m in metrics]
-        for item in items:
-            item.bind(on_release=lambda inst, name=item.text: self.add_metric(name))
         content = MDList()
-        for item in items:
+        for m in metrics:
+            item = OneLineListItem(text=m["name"])
+            item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             content.add_widget(item)
-        new_btn = MDRaisedButton(text="New Metric", on_release=self.create_new_metric)
-        super().__init__(
-            title="Select Metric",
-            type="custom",
-            content_cls=content,
-            buttons=[new_btn, MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())],
-            **kwargs,
-        )
+        new_btn = MDRaisedButton(text="New Metric", on_release=self.show_new_metric_form)
+        buttons = [new_btn, MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())]
+        return content, buttons, "Select Metric"
 
-    def add_metric(self, name, *args):
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
-        core.add_metric_to_exercise(self.screen.exercise_name, name, db_path)
-        self.dismiss()
-        self.screen.populate()
-
-    def create_new_metric(self, *args):
-        self.dismiss()
-        self.screen.open_new_metric_popup()
-
-
-class NewMetricPopup(MDDialog):
-    """Popup dialog for creating a new metric type."""
-
-    def __init__(self, screen: 'EditExerciseScreen', **kwargs):
-        self.screen = screen
+    def _build_new_metric_widgets(self):
         self.name_input = MDTextField(hint_text="Name")
         self.input_type = Spinner(text="int", values=["int", "float", "str", "bool"])
         self.source_type = Spinner(text="manual_text", values=["manual_text", "manual_enum", "manual_slider"])
@@ -615,16 +607,28 @@ class NewMetricPopup(MDDialog):
         layout.add_widget(self.desc_input)
         layout.add_widget(MDBoxLayout(size_hint_y=None, height="40dp", children=[self.required_check, MDLabel(text="Required")]))
 
-        super().__init__(
-            title="New Metric",
-            type="custom",
-            content_cls=layout,
-            buttons=[
-                MDRaisedButton(text="Save", on_release=self.save_metric),
-                MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss()),
-            ],
-            **kwargs,
-        )
+        save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)
+        back_btn = MDRaisedButton(text="Back", on_release=self.show_metric_list)
+        buttons = [save_btn, back_btn]
+        return layout, buttons, "New Metric"
+
+    # ------------------------------------------------------------------
+    # Mode switching helpers
+    # ------------------------------------------------------------------
+    def show_new_metric_form(self, *args):
+        self.dismiss()
+        popup = AddMetricPopup(self.screen, mode="new")
+        popup.open()
+
+    def show_metric_list(self, *args):
+        self.dismiss()
+        self.screen.open_add_metric_popup()
+
+    def add_metric(self, name, *args):
+        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        core.add_metric_to_exercise(self.screen.exercise_name, name, db_path)
+        self.dismiss()
+        self.screen.populate()
 
     def save_metric(self, *args):
         db_path = Path(__file__).resolve().parent / "data" / "workout.db"
@@ -638,8 +642,9 @@ class NewMetricPopup(MDDialog):
             is_required=self.required_check.active,
             db_path=db_path,
         )
-        self.dismiss()
-        self.screen.open_add_metric_popup()
+        self.show_metric_list()
+
+
 
 
 class EditExerciseScreen(MDScreen):
@@ -744,7 +749,7 @@ class EditExerciseScreen(MDScreen):
         popup.open()
 
     def open_new_metric_popup(self):
-        popup = NewMetricPopup(self)
+        popup = AddMetricPopup(self, mode="new")
         popup.open()
 
 
