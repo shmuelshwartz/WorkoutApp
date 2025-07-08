@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS "presets" (
 	"name"	TEXT NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
+CREATE TABLE IF NOT EXISTS "section_exercise_metrics" (
+	"id"	INTEGER,
+	"section_exercise_id"	INTEGER NOT NULL,
+	"metric_type_id"	INTEGER NOT NULL,
+	"input_timing"	TEXT NOT NULL CHECK("input_timing" IN ('preset', 'pre_workout', 'post_workout', 'pre_set', 'post_set')),
+	PRIMARY KEY("id" AUTOINCREMENT),
+	FOREIGN KEY("metric_type_id") REFERENCES "metric_types"("id") ON DELETE CASCADE,
+	FOREIGN KEY("section_exercise_id") REFERENCES "section_exercises"("id") ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS "section_exercises" (
 	"id"	INTEGER,
 	"section_id"	INTEGER NOT NULL,
@@ -149,6 +158,7 @@ INSERT INTO "metric_types" VALUES (4,'Tempo','str','manual_text','preset',0,'exe
 INSERT INTO "metric_types" VALUES (5,'Notes','str','manual_text','post_set',0,'set','Free-text notes about the set or exercise',0);
 INSERT INTO "metric_types" VALUES (6,'Machine','str','manual_enum','preset',0,'exercise','Equipment or machine used',0);
 INSERT INTO "metric_types" VALUES (7,'Progression','str','manual_enum','post_set',1,'set','Exercise progression status or variation',1);
+INSERT INTO "metric_types" VALUES (8,'Test','float','manual_text','post_workout',0,'set','This is just a test to see if i can create a new metric',1);
 INSERT INTO "presets" VALUES (1,'Push Day');
 INSERT INTO "presets" VALUES (2,'Pull Day');
 INSERT INTO "presets" VALUES (3,'Leg Day');
