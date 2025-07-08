@@ -27,6 +27,8 @@ ScreenManager:
         name: "workout_settings"
     WorkoutSummaryScreen:
         name: "workout_summary"
+    EditExerciseScreen:
+        name: "edit_exercise"
     EditPresetScreen:
         name: "edit_preset"
     PresetOverviewScreen:
@@ -394,6 +396,9 @@ ScreenManager:
         text: root.text
         halign: "center"
     MDIconButton:
+        icon: "pencil"
+        on_release: root.edit()
+    MDIconButton:
         icon: "close"
         theme_text_color: "Custom"
         text_color: 1, 0, 0, 1
@@ -441,4 +446,22 @@ ScreenManager:
         MDRaisedButton:
             text: "Start Workout"
             on_release: root.start_workout()
+
+<EditExerciseScreen>:
+    metrics_list: metrics_list
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDLabel:
+            text: root.exercise_name if root.exercise_name else "Edit Exercise"
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
+        ScrollView:
+            MDList:
+                id: metrics_list
+        MDRaisedButton:
+            text: "Back"
+            on_release: app.root.current = "edit_preset"
 
