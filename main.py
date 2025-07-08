@@ -373,8 +373,8 @@ class SectionWidget(MDBoxLayout):
         app = MDApp.get_running_app()
         app.editing_section_index = self.section_index
         if app.root:
-            app.root.transition.direction = "up"
-            app.root.current = "exercise_selection"
+            screen = app.root.get_screen("edit_preset")
+            screen.show_exercise_panel()
 
     def refresh_exercises(self):
         app = MDApp.get_running_app()
@@ -393,6 +393,8 @@ class EditPresetScreen(MDScreen):
 
     preset_name = StringProperty("Preset")
     sections_box = ObjectProperty(None)
+    exercise_panel = ObjectProperty(None)
+    exercise_list_panel = ObjectProperty(None)
 
     _colors = [
         (1, 0.9, 0.9, 1),
@@ -430,6 +432,37 @@ class EditPresetScreen(MDScreen):
         section.refresh_exercises()
         return section
 
+    def show_exercise_panel(self):
+        """Display the exercise selection panel."""
+        if not self.exercise_panel:
+            return
+        self.populate_exercise_panel()
+        self.exercise_panel.height = self.height * 0.66
+
+    def hide_exercise_panel(self):
+        """Hide the exercise selection panel."""
+        if self.exercise_panel:
+            self.exercise_panel.height = 0
+
+    def populate_exercise_panel(self):
+        if not self.exercise_list_panel:
+            return
+        self.exercise_list_panel.clear_widgets()
+        for name in core.get_all_exercises():
+            item = OneLineListItem(text=name)
+            item.bind(on_release=lambda inst, n=name: self.add_exercise_to_section(n))
+            self.exercise_list_panel.add_widget(item)
+
+    def add_exercise_to_section(self, name):
+        app = MDApp.get_running_app()
+        idx = app.editing_section_index
+        if app.preset_editor and 0 <= idx < len(app.preset_editor.sections):
+            app.preset_editor.add_exercise(idx, name)
+            for widget in self.sections_box.children:
+                if isinstance(widget, SectionWidget) and widget.section_index == idx:
+                    widget.refresh_exercises()
+                    break
+
 
 class SelectedExerciseItem(MDBoxLayout):
     """Widget representing a selected exercise with reorder controls."""
@@ -460,60 +493,6 @@ class SelectedExerciseItem(MDBoxLayout):
             parent.remove_widget(self)
 
 
-class ExerciseSelectionScreen(MDScreen):
-    """Screen for selecting exercises to add to a preset section."""
-
-    selected_list = ObjectProperty(None)
-    exercise_list = ObjectProperty(None)
-
-    def on_pre_enter(self, *args):
-        self.populate_exercises()
-        self.populate_selected()
-        return super().on_pre_enter(*args)
-
-    def populate_exercises(self):
-        if not self.exercise_list:
-            return
-        self.exercise_list.clear_widgets()
-        for name in core.get_all_exercises():
-            item = OneLineListItem(text=name)
-            item.bind(on_release=lambda inst, n=name: self.add_selected(n))
-            self.exercise_list.add_widget(item)
-
-    def populate_selected(self):
-        if not self.selected_list:
-            return
-        self.selected_list.clear_widgets()
-        app = MDApp.get_running_app()
-        idx = app.editing_section_index
-        if app.preset_editor and 0 <= idx < len(app.preset_editor.sections):
-            for ex in app.preset_editor.sections[idx]["exercises"]:
-                self.selected_list.add_widget(SelectedExerciseItem(text=ex["name"]))
-
-    def add_selected(self, name):
-        if not self.selected_list:
-            return
-        item = SelectedExerciseItem(text=name)
-        self.selected_list.add_widget(item)
-
-    def save_selection(self):
-        app = MDApp.get_running_app()
-        idx = app.editing_section_index
-        if app.preset_editor and self.selected_list and 0 <= idx < len(app.preset_editor.sections):
-            names = [child.text for child in reversed(self.selected_list.children)]
-            exercises = [
-                {"name": n, "sets": DEFAULT_SETS_PER_EXERCISE} for n in names
-            ]
-            app.preset_editor.sections[idx]["exercises"] = exercises
-            if self.manager:
-                edit = self.manager.get_screen("edit_preset")
-                for widget in edit.sections_box.children:
-                    if isinstance(widget, SectionWidget) and widget.section_index == idx:
-                        widget.refresh_exercises()
-                        break
-        if self.manager:
-            self.manager.transition.direction = "down"
-            self.manager.current = "edit_preset"
 
 
 class WorkoutApp(MDApp):
