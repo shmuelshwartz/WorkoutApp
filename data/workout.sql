@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS "section_exercise_metrics" (
 	"section_exercise_id"	INTEGER NOT NULL,
 	"metric_type_id"	INTEGER NOT NULL,
 	"input_timing"	TEXT NOT NULL CHECK("input_timing" IN ('preset', 'pre_workout', 'post_workout', 'pre_set', 'post_set')),
+	"is_required"	BOOLEAN NOT NULL DEFAULT 0,
+	"scope"	TEXT NOT NULL DEFAULT 'set' CHECK("scope" IN ('session', 'section', 'exercise', 'set')),
 	PRIMARY KEY("id" AUTOINCREMENT),
 	FOREIGN KEY("metric_type_id") REFERENCES "metric_types"("id") ON DELETE CASCADE,
 	FOREIGN KEY("section_exercise_id") REFERENCES "section_exercises"("id") ON DELETE CASCADE
