@@ -401,10 +401,29 @@ class EditPresetScreen(MDScreen):
         return section
 
 
-class ExerciseScreen(MDScreen):
-    """Placeholder screen for choosing an exercise."""
+class ExerciseSelectionScreen(MDScreen):
+    """Screen for selecting exercises to add to a preset section."""
 
-    pass
+    selected_list = ObjectProperty(None)
+    exercise_list = ObjectProperty(None)
+
+    def on_pre_enter(self, *args):
+        self.populate_exercises()
+        return super().on_pre_enter(*args)
+
+    def populate_exercises(self):
+        if not self.exercise_list:
+            return
+        self.exercise_list.clear_widgets()
+        for name in core.get_all_exercises():
+            item = OneLineListItem(text=name)
+            item.bind(on_release=lambda inst, n=name: self.add_selected(n))
+            self.exercise_list.add_widget(item)
+
+    def add_selected(self, name):
+        if not self.selected_list:
+            return
+        self.selected_list.add_widget(OneLineListItem(text=name))
 
 
 class WorkoutApp(MDApp):
