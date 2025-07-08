@@ -56,6 +56,7 @@ def get_all_exercises(db_path: Path = Path(__file__).resolve().parent / "data" /
 def get_metrics_for_exercise(
     exercise_name: str,
     db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    preset_name: str | None = None,
 ) -> list:
     """Return metric definitions for ``exercise_name``.
 
@@ -121,6 +122,33 @@ def get_metrics_for_exercise(
                 "values": values,
             }
         )
+
+    # Apply overrides for a specific preset if requested
+    if preset_name:
+        cursor.execute(
+            """
+            SELECT mt.name, sem.input_timing, sem.is_required, sem.scope
+            FROM section_exercise_metrics sem
+            JOIN section_exercises se ON sem.section_exercise_id = se.id
+            JOIN sections s ON se.section_id = s.id
+            JOIN presets p ON s.preset_id = p.id
+            JOIN exercises e ON se.exercise_id = e.id
+            JOIN metric_types mt ON sem.metric_type_id = mt.id
+            WHERE p.name = ? AND e.id = ?
+            """,
+            (preset_name, exercise_id),
+        )
+        overrides = {
+            name: {
+                "input_timing": input_timing,
+                "is_required": bool(is_required),
+                "scope": scope,
+            }
+            for name, input_timing, is_required, scope in cursor.fetchall()
+        }
+        for m in metrics:
+            if m["name"] in overrides:
+                m.update(overrides[m["name"]])
 
     conn.close()
     return metrics
@@ -316,6 +344,130 @@ def remove_metric_from_exercise(
         "DELETE FROM exercise_metrics WHERE exercise_id = ? AND metric_type_id = ?",
         (exercise_id, metric_id),
     )
+    conn.commit()
+    conn.close()
+
+
+def update_metric_type(
+    metric_type_name: str,
+    *,
+    input_type: str | None = None,
+    source_type: str | None = None,
+    input_timing: str | None = None,
+    scope: str | None = None,
+    description: str | None = None,
+    is_required: bool | None = None,
+    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+) -> None:
+    """Update fields of a metric type identified by ``metric_type_name``."""
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM metric_types WHERE name = ?", (metric_type_name,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError(f"Metric type '{metric_type_name}' not found")
+    updates = []
+    params: list = []
+    if input_type is not None:
+        updates.append("input_type = ?")
+        params.append(input_type)
+    if source_type is not None:
+        updates.append("source_type = ?")
+        params.append(source_type)
+    if input_timing is not None:
+        updates.append("input_timing = ?")
+        params.append(input_timing)
+    if is_required is not None:
+        updates.append("is_required = ?")
+        params.append(int(is_required))
+    if scope is not None:
+        updates.append("scope = ?")
+        params.append(scope)
+    if description is not None:
+        updates.append("description = ?")
+        params.append(description)
+    if updates:
+        params.append(metric_type_name)
+        cursor.execute(f"UPDATE metric_types SET {', '.join(updates)} WHERE name = ?", params)
+        conn.commit()
+    conn.close()
+
+
+def set_section_exercise_metric_override(
+    preset_name: str,
+    section_index: int,
+    exercise_name: str,
+    metric_type_name: str,
+    *,
+    input_timing: str,
+    is_required: bool = False,
+    scope: str = "set",
+    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+) -> None:
+    """Apply an override for ``metric_type_name`` for a specific exercise in a preset."""
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM presets WHERE name = ?", (preset_name,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError(f"Preset '{preset_name}' not found")
+    preset_id = row[0]
+
+    cursor.execute(
+        "SELECT id FROM sections WHERE preset_id = ? ORDER BY position", (preset_id,)
+    )
+    sections = cursor.fetchall()
+    if section_index < 0 or section_index >= len(sections):
+        conn.close()
+        raise IndexError("Section index out of range")
+    section_id = sections[section_index][0]
+
+    cursor.execute("SELECT id FROM exercises WHERE name = ?", (exercise_name,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError(f"Exercise '{exercise_name}' not found")
+    exercise_id = row[0]
+
+    cursor.execute(
+        "SELECT id FROM metric_types WHERE name = ?", (metric_type_name,)
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError(f"Metric '{metric_type_name}' not found")
+    metric_type_id = row[0]
+
+    cursor.execute(
+        """SELECT id FROM section_exercises WHERE section_id = ? AND exercise_id = ? ORDER BY position LIMIT 1""",
+        (section_id, exercise_id),
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError("Exercise not part of section")
+    se_id = row[0]
+
+    cursor.execute(
+        "SELECT id FROM section_exercise_metrics WHERE section_exercise_id = ? AND metric_type_id = ?",
+        (se_id, metric_type_id),
+    )
+    row = cursor.fetchone()
+    if row:
+        cursor.execute(
+            "UPDATE section_exercise_metrics SET input_timing = ?, is_required = ?, scope = ? WHERE id = ?",
+            (input_timing, int(is_required), scope, row[0]),
+        )
+    else:
+        cursor.execute(
+            "INSERT INTO section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, ?, ?, ?)",
+            (se_id, metric_type_id, input_timing, int(is_required), scope),
+        )
     conn.commit()
     conn.close()
 
