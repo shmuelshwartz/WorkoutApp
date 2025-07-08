@@ -77,6 +77,7 @@ def test_workout_session_loads_preset_and_records(monkeypatch):
     total_sets = sum(ex["sets"] for ex in session.exercises)
     finished = False
     for i in range(total_sets):
+        session.mark_set_completed()
         finished = session.record_metrics({"Reps": i})
     assert finished
 
@@ -113,6 +114,7 @@ def test_workout_session_summary_contains_details():
 
     total_sets = sum(ex["sets"] for ex in session.exercises)
     for i in range(total_sets):
+        session.mark_set_completed()
         session.record_metrics({"Reps": i + 1})
 
     summary = session.summary()
@@ -139,6 +141,7 @@ def test_rest_timer_updates_on_record(monkeypatch):
     assert session.rest_target_time == fake_time[0] + core.DEFAULT_REST_DURATION
 
     fake_time[0] += 30
+    session.mark_set_completed()
     session.record_metrics({"Reps": 1})
     assert session.last_set_time == 1030.0
     assert session.rest_target_time == 1030.0 + core.DEFAULT_REST_DURATION
