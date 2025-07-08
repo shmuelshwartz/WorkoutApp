@@ -5,6 +5,9 @@ import time
 # Number of sets each exercise defaults to when starting a workout
 DEFAULT_SETS_PER_EXERCISE = 2
 
+# Default rest duration between sets in seconds
+DEFAULT_REST_DURATION = 20
+
 # Will hold preset data loaded from the database. Each item is a dict with
 #   {'name': <preset name>,
 #    'exercises': [{'name': <exercise name>, 'sets': <number_of_sets>}, ...]}
@@ -274,8 +277,12 @@ class WorkoutSession:
     or moved while the workout is in progress.
     """
 
-    def __init__(self, preset_name: str,
-                 db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db"):
+    def __init__(
+        self,
+        preset_name: str,
+        db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+        rest_duration: int = DEFAULT_REST_DURATION,
+    ):
         """Load ``preset_name`` from ``db_path`` and prepare the session."""
 
         self.preset_name = preset_name
@@ -293,6 +300,10 @@ class WorkoutSession:
         self.current_set = 0
         self.start_time = time.time()
         self.end_time = None
+
+        self.rest_duration = rest_duration
+        self.last_set_time = self.start_time
+        self.rest_target_time = self.last_set_time + self.rest_duration
 
     def next_exercise_name(self):
         if self.current_exercise < len(self.exercises):
@@ -342,6 +353,9 @@ class WorkoutSession:
         ex["results"].append(metrics)
         self.current_set += 1
 
+        self.last_set_time = time.time()
+        self.rest_target_time = self.last_set_time + self.rest_duration
+
         if self.current_set >= ex["sets"]:
             self.current_set = 0
             self.current_exercise += 1
@@ -352,6 +366,19 @@ class WorkoutSession:
             return True
 
         return False
+
+    def adjust_rest_timer(self, seconds: int) -> None:
+        """Adjust the target time for the current rest period."""
+        now = time.time()
+        if self.rest_target_time <= now:
+            self.rest_target_time = now
+        self.rest_target_time += seconds
+        if self.rest_target_time <= now:
+            self.rest_target_time = now
+
+    def rest_remaining(self) -> float:
+        """Return seconds remaining in the current rest period."""
+        return max(0.0, self.rest_target_time - time.time())
 
     def summary(self) -> str:
         """Return a formatted text summary of the session."""
