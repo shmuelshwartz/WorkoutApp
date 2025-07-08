@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+import time
 
 # Number of sets each exercise defaults to when starting a workout
 DEFAULT_SETS_PER_EXERCISE = 2
@@ -108,16 +109,33 @@ def get_metrics_for_exercise(
 
 
 class WorkoutSession:
-    """Simple in-memory representation of a workout session."""
+    """In-memory representation of a workout session.
 
-    def __init__(self, exercises):
-        """Initialize with a list of ``{'name', 'sets'}`` dictionaries."""
+    The session loads the selected preset from the database when it is
+    created and then works entirely with the in-memory data structure.  No
+    database access occurs after initialisation, so the database can be closed
+    or moved while the workout is in progress.
+    """
+
+    def __init__(self, preset_name: str,
+                 db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db"):
+        """Load ``preset_name`` from ``db_path`` and prepare the session."""
+
+        self.preset_name = preset_name
+        presets = load_workout_presets(db_path)
+        preset = next((p for p in presets if p["name"] == preset_name), None)
+        if not preset:
+            raise ValueError(f"Preset '{preset_name}' not found")
+
         self.exercises = [
-            {"name": ex["name"], "sets": ex["sets"], "results": []}
-            for ex in exercises
+            {"name": ex["name"], "sets": ex.get("sets", DEFAULT_SETS_PER_EXERCISE), "results": []}
+            for ex in preset["exercises"]
         ]
+
         self.current_exercise = 0
         self.current_set = 0
+        self.start_time = time.time()
+        self.end_time = None
 
     def next_exercise_name(self):
         if self.current_exercise < len(self.exercises):
@@ -132,11 +150,20 @@ class WorkoutSession:
 
     def record_metrics(self, metrics):
         if self.current_exercise >= len(self.exercises):
+            if self.end_time is None:
+                self.end_time = time.time()
             return True
+
         ex = self.exercises[self.current_exercise]
         ex["results"].append(metrics)
         self.current_set += 1
+
         if self.current_set >= ex["sets"]:
             self.current_set = 0
             self.current_exercise += 1
-        return self.current_exercise >= len(self.exercises)
+
+        if self.current_exercise >= len(self.exercises):
+            self.end_time = time.time()
+            return True
+
+        return False
