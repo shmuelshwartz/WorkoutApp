@@ -361,6 +361,7 @@ ScreenManager:
                     orientation: "vertical"
                     size_hint_y: None
                     height: self.minimum_height
+                    padding: 0, 0, 0, root.exercise_panel.height if root.panel_visible else 0
             MDRaisedButton:
                 text: "Add Section"
                 on_release: root.add_section()
