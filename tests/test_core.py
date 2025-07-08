@@ -123,3 +123,25 @@ def test_workout_session_summary_contains_details():
     assert "Set 1" in summary
     assert "Reps" in summary
     assert "Duration:" in summary
+
+
+def test_rest_timer_updates_on_record(monkeypatch):
+    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+
+    fake_time = [1000.0]
+
+    def _time():
+        return fake_time[0]
+
+    monkeypatch.setattr(core.time, "time", _time)
+
+    session = core.WorkoutSession("Push Day", db_path=db_path)
+    assert session.rest_target_time == fake_time[0] + core.DEFAULT_REST_DURATION
+
+    fake_time[0] += 30
+    session.record_metrics({"Reps": 1})
+    assert session.last_set_time == 1030.0
+    assert session.rest_target_time == 1030.0 + core.DEFAULT_REST_DURATION
+
+    session.adjust_rest_timer(10)
+    assert session.rest_target_time == 1040.0 + core.DEFAULT_REST_DURATION

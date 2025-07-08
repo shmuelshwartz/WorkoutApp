@@ -32,6 +32,7 @@ from core import (
     get_metrics_for_exercise,
     PresetEditor,
     DEFAULT_SETS_PER_EXERCISE,
+    DEFAULT_REST_DURATION,
 )
 
 # Load workout presets from the database at startup
@@ -90,8 +91,9 @@ class RestScreen(MDScreen):
         session = MDApp.get_running_app().workout_session
         if session:
             self.next_exercise_name = session.next_exercise_display()
-        if not self.target_time or self.target_time <= time.time():
-            self.target_time = time.time() + 20
+            self.target_time = session.rest_target_time
+        else:
+            self.target_time = time.time() + DEFAULT_REST_DURATION
         self.is_ready = False
         self.timer_color = (1, 0, 0, 1)
         self.update_timer(0)
@@ -134,12 +136,18 @@ class RestScreen(MDScreen):
             self.timer_label = f"{minutes:02d}:{seconds:02d}"
 
     def adjust_timer(self, seconds):
-        now = time.time()
-        if self.target_time <= now:
-            self.target_time = now
-        self.target_time += seconds
-        if self.target_time <= now:
-            self.target_time = now
+        session = MDApp.get_running_app().workout_session
+        if session:
+            session.adjust_rest_timer(seconds)
+            self.target_time = session.rest_target_time
+        else:
+            now = time.time()
+            if self.target_time <= now:
+                self.target_time = now
+            self.target_time += seconds
+            if self.target_time <= now:
+                self.target_time = now
+        if self.target_time <= time.time():
             if hasattr(self, "_event") and self._event:
                 self._event.cancel()
                 self._event = None
