@@ -329,12 +329,7 @@ class PresetOverviewScreen(MDScreen):
     def start_workout(self):
         app = MDApp.get_running_app()
         preset_name = app.selected_preset
-        exercises = []
-        for p in core.WORKOUT_PRESETS:
-            if p["name"] == preset_name:
-                exercises = p["exercises"]
-                break
-        app.start_workout(exercises)
+        app.start_workout(preset_name)
         if self.manager:
             self.manager.current = "rest"
 
@@ -530,6 +525,7 @@ class WorkoutApp(MDApp):
     def build(self):
         return Builder.load_file(str(Path(__file__).with_name("main.kv")))
 
+
     def init_preset_editor(self):
         """Create or reload the ``PresetEditor`` for the selected preset."""
         db_path = Path(__file__).resolve().parent / "data" / "workout.db"
@@ -546,6 +542,7 @@ class WorkoutApp(MDApp):
     def start_workout(self, exercises):
         if exercises:
             self.workout_session = WorkoutSession(exercises)
+
         else:
             self.workout_session = None
 
