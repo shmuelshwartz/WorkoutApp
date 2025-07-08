@@ -189,6 +189,13 @@ class MetricInputScreen(MDScreen):
         self.update_header()
         return super().on_pre_enter(*args)
 
+    def on_leave(self, *args):
+        # Reset flag so leaving without saving doesn't advance sets later
+        app = MDApp.get_running_app()
+        if hasattr(app, "record_new_set"):
+            app.record_new_set = False
+        return super().on_leave(*args)
+
     def update_header(self):
         app = MDApp.get_running_app()
         session = app.workout_session if app else None
@@ -310,8 +317,9 @@ class MetricInputScreen(MDScreen):
                     value = 0.0
             metrics[name] = value
         app = MDApp.get_running_app()
-        if app.workout_session:
+        if app.workout_session and getattr(app, "record_new_set", False):
             finished = app.workout_session.record_metrics(metrics)
+            app.record_new_set = False
             if finished and self.manager:
                 self.manager.current = "workout_summary"
             elif self.manager:
@@ -831,6 +839,8 @@ class WorkoutApp(MDApp):
     selected_preset = ""
     preset_editor: PresetEditor | None = None
     editing_section_index: int = -1
+    # True when metrics being entered correspond to a newly completed set
+    record_new_set = False
 
     def build(self):
         return Builder.load_file(str(Path(__file__).with_name("main.kv")))
@@ -852,9 +862,11 @@ class WorkoutApp(MDApp):
     def start_workout(self, exercises):
         if exercises:
             self.workout_session = WorkoutSession(exercises)
-
         else:
             self.workout_session = None
+
+        # ensure metric input doesn't accidentally advance sets
+        self.record_new_set = False
 
     def mark_set_complete(self):
         if self.workout_session:
