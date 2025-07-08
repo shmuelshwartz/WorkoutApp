@@ -105,3 +105,21 @@ def test_metric_type_crud(tmp_path):
     core.remove_metric_from_exercise("Push-ups", name, db_path)
     metrics = core.get_metrics_for_exercise("Push-ups", db_path)
     assert not any(m["name"] == name for m in metrics)
+
+
+def test_workout_session_summary_contains_details():
+    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+    session = core.WorkoutSession("Push Day", db_path=db_path)
+
+    total_sets = sum(ex["sets"] for ex in session.exercises)
+    for i in range(total_sets):
+        session.record_metrics({"Reps": i + 1})
+
+    summary = session.summary()
+
+    assert "Workout: Push Day" in summary
+    for ex in session.exercises:
+        assert ex["name"] in summary
+    assert "Set 1" in summary
+    assert "Reps" in summary
+    assert "Duration:" in summary
