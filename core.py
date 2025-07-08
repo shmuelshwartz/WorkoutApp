@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 import time
+import re
 
 # Number of sets each exercise defaults to when starting a workout
 DEFAULT_SETS_PER_EXERCISE = 2
@@ -162,6 +163,57 @@ def get_all_metric_types(
     ]
     conn.close()
     return metric_types
+
+
+def get_metric_type_schema(
+    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+) -> list:
+    """Return column definitions for the ``metric_types`` table.
+
+    Each item is a dictionary with ``name`` and optional ``options`` keys. The
+    ``options`` list will contain allowed values if the column has a CHECK
+    constraint enumerating them.
+    """
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='metric_types'"
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return []
+
+    create_sql = row[0]
+    fields = []
+    for line in create_sql.splitlines():
+        line = line.strip().lstrip(",").rstrip(",").strip()
+        if (
+            not line
+            or line.startswith("CREATE TABLE")
+            or line.startswith("PRIMARY KEY")
+            or line.startswith("'")
+        ):
+            continue
+        m = re.match(r'"?(\w+)"?', line)
+        if not m:
+            continue
+        name = m.group(1)
+        if name in {"id", "is_user_created"}:
+            continue
+        fields.append({"name": name})
+
+    for field in fields:
+        chk = re.search(
+            rf'{field["name"]}[^,]*CHECK\(.*?{field["name"]}.*?IN \(([^)]*)\)\)',
+            create_sql,
+            re.DOTALL,
+        )
+        if chk:
+            opts = [opt.strip().strip("'\"") for opt in chk.group(1).split(',')]
+            field["options"] = opts
+    return fields
 
 
 def add_metric_type(
