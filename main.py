@@ -639,6 +639,31 @@ class AddMetricPopup(MDDialog):
         self.input_widgets = {}
 
         schema = core.get_metric_type_schema()
+        if not schema:
+            schema = [
+                {"name": "name"},
+                {"name": "input_type", "options": ["int", "float", "str", "bool"]},
+                {
+                    "name": "source_type",
+                    "options": ["manual_text", "manual_enum", "manual_slider"],
+                },
+                {
+                    "name": "input_timing",
+                    "options": [
+                        "preset",
+                        "pre_workout",
+                        "post_workout",
+                        "pre_set",
+                        "post_set",
+                    ],
+                },
+                {"name": "is_required"},
+                {
+                    "name": "scope",
+                    "options": ["session", "section", "exercise", "set"],
+                },
+                {"name": "description"},
+            ]
 
         form = MDBoxLayout(
             orientation="vertical",
@@ -665,7 +690,7 @@ class AddMetricPopup(MDDialog):
 
             self.input_widgets[name] = widget
 
-        layout = ScrollView(do_scroll_y=True)
+        layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
         layout.add_widget(form)
 
         save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)
