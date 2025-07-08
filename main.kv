@@ -200,7 +200,9 @@ ScreenManager:
             height: "20dp"
         MDRaisedButton:
             text: "Record Metrics"
-            on_release: app.root.current = "metric_input"
+            on_release:
+                app.record_new_set = False
+                app.root.current = "metric_input"
         MDRaisedButton:
             text: "Edit Workout"
             on_release: app.root.current = "workout_edit"
@@ -236,6 +238,7 @@ ScreenManager:
         MDRaisedButton:
             text: "End Set"
             on_release:
+                app.record_new_set = True
                 app.mark_set_complete();
                 app.root.current = "metric_input"
 
