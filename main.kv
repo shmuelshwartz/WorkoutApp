@@ -430,7 +430,15 @@ ScreenManager:
         text: "Select Exercises"
         halign: "center"
         size_hint_y: None
-        height: "30dp"
+        height: "40dp"
+        MDLabel:
+            text: "Select Exercises"
+            halign: "center"
+        MDIconButton:
+            icon: "close"
+            theme_text_color: "Custom"
+            text_color: 1, 0, 0, 1
+            on_release: app.root.get_screen("edit_preset").close_exercise_panel()
     ScrollView:
         MDList:
             id: exercise_list
