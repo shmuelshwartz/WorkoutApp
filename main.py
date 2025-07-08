@@ -469,6 +469,15 @@ class SelectedExerciseItem(MDBoxLayout):
 
     text = StringProperty("")
 
+    def edit(self):
+        """Open the EditExerciseScreen for this exercise."""
+        app = MDApp.get_running_app()
+        if not app.root:
+            return
+        screen = app.root.get_screen("edit_exercise")
+        screen.exercise_name = self.text
+        app.root.current = "edit_exercise"
+
     def move_up(self):
         parent = self.parent
         if not parent:
@@ -525,6 +534,25 @@ class ExerciseSelectionPanel(MDBoxLayout):
     def save_selection(self):
         """No-op kept for API compatibility."""
         pass
+
+
+class EditExerciseScreen(MDScreen):
+    """Screen for editing an individual exercise within a preset."""
+
+    exercise_name = StringProperty("")
+    metrics_list = ObjectProperty(None)
+
+    def on_pre_enter(self, *args):
+        self.populate()
+        return super().on_pre_enter(*args)
+
+    def populate(self):
+        if not self.metrics_list or not self.exercise_name:
+            return
+        self.metrics_list.clear_widgets()
+        metrics = core.get_metrics_for_exercise(self.exercise_name)
+        for m in metrics:
+            self.metrics_list.add_widget(OneLineListItem(text=m.get("name", "")))
 
 
 class WorkoutApp(MDApp):
