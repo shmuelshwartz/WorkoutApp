@@ -355,7 +355,11 @@ ScreenManager:
             spacing: "10dp"
             padding: "20dp"
             size_hint: 1, 1
-
+            MDLabel:
+                text: root.preset_name
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: 0.2, 0.6, 0.86, 1
             ScrollView:
                 MDBoxLayout:
                     id: sections_box
@@ -398,8 +402,30 @@ ScreenManager:
         on_release: root.remove_self()
 
 <ExerciseSelectionPanel@MDBoxLayout>:
+    selected_list: selected_list
+    exercise_list: exercise_list
     orientation: "vertical"
     md_bg_color: 1, 1, 1, 1
+    MDBoxLayout:
+        size_hint_y: None
+        height: "40dp"
+        MDLabel:
+            text: "Select Exercises"
+            halign: "center"
+        MDIconButton:
+            icon: "close"
+            theme_text_color: "Custom"
+            text_color: 1, 0, 0, 1
+            on_release: app.root.get_screen("edit_preset").close_exercise_panel()
+    MDLabel:
+        text: "Selected Exercises"
+        halign: "center"
+        size_hint_y: None
+        height: "30dp"
+    ScrollView:
+        size_hint_y: 0.4
+        MDList:
+            id: selected_list
     MDLabel:
         text: "Select Exercises"
         halign: "center"
