@@ -353,6 +353,25 @@ class WorkoutSession:
 
         return False
 
+    def summary(self) -> str:
+        """Return a formatted text summary of the session."""
+
+        end_time = self.end_time or time.time()
+        lines = [f"Workout: {self.preset_name}"]
+        start = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.start_time))
+        end = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(end_time))
+        dur = int(end_time - self.start_time)
+        m, s = divmod(dur, 60)
+        lines.append(f"Start: {start}")
+        lines.append(f"End:   {end}")
+        lines.append(f"Duration: {m}m {s}s")
+        for ex in self.exercises:
+            lines.append(f"\n{ex['name']}")
+            for idx, metrics in enumerate(ex['results'], 1):
+                metrics_text = ", ".join(f"{k}: {v}" for k, v in metrics.items())
+                lines.append(f"  Set {idx}: {metrics_text}")
+        return "\n".join(lines)
+
 
 
 class PresetEditor:

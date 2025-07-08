@@ -371,6 +371,7 @@ class WorkoutSummaryScreen(MDScreen):
         session = app.workout_session
         if not session:
             return
+        print(session.summary())
         for exercise in session.exercises:
             self.summary_list.add_widget(OneLineListItem(text=exercise["name"]))
             for idx, metrics in enumerate(exercise["results"], 1):
