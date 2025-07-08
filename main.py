@@ -173,71 +173,66 @@ class MetricInputScreen(MDScreen):
             self.current_tab = tab
 
     def populate_metrics(self, metrics=None):
-        """Populate the metric list based on the current exercise."""
+        """Populate metric lists for previous and next sets."""
         app = MDApp.get_running_app()
+        prev_metrics = []
+        next_metrics = []
         if app.workout_session:
-            exercise = app.workout_session.next_exercise_name()
-            metrics = get_metrics_for_exercise(exercise)
-        # Do not fall back to default metrics if none are defined
-        if metrics is None:
-            metrics = []
+            curr_ex = app.workout_session.next_exercise_name()
+            all_metrics = get_metrics_for_exercise(curr_ex)
+            prev_metrics = [m for m in all_metrics if m.get("input_timing") == "post_set"]
+
+            upcoming_ex = app.workout_session.upcoming_exercise_name()
+            next_all = get_metrics_for_exercise(upcoming_ex) if upcoming_ex else []
+            next_metrics = [m for m in next_all if m.get("input_timing") == "pre_set"]
+        elif metrics is not None:
+            prev_metrics = metrics
+            next_metrics = metrics
+
         if not self.prev_metric_list or not self.next_metric_list:
             return
         self.prev_metric_list.clear_widgets()
         self.next_metric_list.clear_widgets()
-        for m in metrics:
-            if isinstance(m, str):
-                name = m
+
+        def _create_row(metric):
+            if isinstance(metric, str):
+                name = metric
                 input_type = "str"
                 source_type = "manual_text"
                 values = []
             else:
-                name = m.get("name")
-                input_type = m.get("input_type", "str")
-                source_type = m.get("source_type", "manual_text")
-                values = m.get("values", [])
+                name = metric.get("name")
+                input_type = metric.get("input_type", "str")
+                source_type = metric.get("source_type", "manual_text")
+                values = metric.get("values", [])
 
-            row_prev = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
-            row_prev.metric_name = name
-            row_prev.input_type = input_type
-            row_prev.source_type = source_type
-
-            row_prev.add_widget(MDLabel(text=name, size_hint_x=0.4))
+            row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
+            row.metric_name = name
+            row.input_type = input_type
+            row.source_type = source_type
+            row.add_widget(MDLabel(text=name, size_hint_x=0.4))
 
             if source_type == "manual_slider":
-                widget_prev = MDSlider(min=0, max=1, value=0)
-                widget_prev.bind(
-                    on_touch_down=self.on_slider_touch_down,
-                    on_touch_up=self.on_slider_touch_up,
-                )
-                widget_next = MDSlider(min=0, max=1, value=0)
-                widget_next.bind(
-                    on_touch_down=self.on_slider_touch_down,
-                    on_touch_up=self.on_slider_touch_up,
-                )
+                widget = MDSlider(min=0, max=1, value=0)
+                widget.bind(on_touch_down=self.on_slider_touch_down, on_touch_up=self.on_slider_touch_up)
             elif source_type == "manual_enum":
-                widget_prev = Spinner(text=values[0] if values else "", values=values)
-                widget_next = Spinner(text=values[0] if values else "", values=values)
+                widget = Spinner(text=values[0] if values else "", values=values)
             else:  # manual_text
                 input_filter = None
                 if input_type == "int":
                     input_filter = "int"
                 elif input_type == "float":
                     input_filter = "float"
-                widget_prev = MDTextField(multiline=False, input_filter=input_filter)
-                widget_next = MDTextField(multiline=False, input_filter=input_filter)
+                widget = MDTextField(multiline=False, input_filter=input_filter)
 
-            row_prev.input_widget = widget_prev
-            row_prev.add_widget(widget_prev)
-            row_next = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
-            row_next.metric_name = name
-            row_next.input_type = input_type
-            row_next.source_type = source_type
-            row_next.add_widget(MDLabel(text=name, size_hint_x=0.4))
-            row_next.input_widget = widget_next
-            row_next.add_widget(widget_next)
-            self.prev_metric_list.add_widget(row_prev)
-            self.next_metric_list.add_widget(row_next)
+            row.input_widget = widget
+            row.add_widget(widget)
+            return row
+
+        for m in prev_metrics:
+            self.prev_metric_list.add_widget(_create_row(m))
+        for m in next_metrics:
+            self.next_metric_list.add_widget(_create_row(m))
 
     def save_metrics(self):
         metrics = {}

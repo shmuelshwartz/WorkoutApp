@@ -162,6 +162,33 @@ class WorkoutSession:
             return f"{ex['name']} set {self.current_set + 1} of {ex['sets']}"
         return ""
 
+    def upcoming_exercise_name(self):
+        """Return the exercise name for the next set to be performed."""
+        if self.current_exercise >= len(self.exercises):
+            return ""
+        ex_idx = self.current_exercise
+        set_idx = self.current_set + 1
+        if set_idx >= self.exercises[ex_idx]["sets"]:
+            ex_idx += 1
+            set_idx = 0
+        if ex_idx < len(self.exercises):
+            return self.exercises[ex_idx]["name"]
+        return ""
+
+    def upcoming_exercise_display(self):
+        """Return display string for the next set to be performed."""
+        if self.current_exercise >= len(self.exercises):
+            return ""
+        ex_idx = self.current_exercise
+        set_idx = self.current_set + 1
+        if set_idx >= self.exercises[ex_idx]["sets"]:
+            ex_idx += 1
+            set_idx = 0
+        if ex_idx < len(self.exercises):
+            ex = self.exercises[ex_idx]
+            return f"{ex['name']} set {set_idx + 1} of {ex['sets']}"
+        return ""
+
     def record_metrics(self, metrics):
         if self.current_exercise >= len(self.exercises):
             if self.end_time is None:
