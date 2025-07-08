@@ -122,6 +122,149 @@ def get_metrics_for_exercise(
     return metrics
 
 
+def get_all_metric_types(
+    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+) -> list:
+    """Return all metric type definitions from the database."""
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT name, input_type, source_type, input_timing,
+               is_required, scope, description
+        FROM metric_types
+        ORDER BY id
+        """
+    )
+    metric_types = [
+        {
+            "name": name,
+            "input_type": input_type,
+            "source_type": source_type,
+            "input_timing": input_timing,
+            "is_required": bool(is_required),
+            "scope": scope,
+            "description": description,
+        }
+        for (
+            name,
+            input_type,
+            source_type,
+            input_timing,
+            is_required,
+            scope,
+            description,
+        ) in cursor.fetchall()
+    ]
+    conn.close()
+    return metric_types
+
+
+def add_metric_type(
+    name: str,
+    input_type: str,
+    source_type: str,
+    input_timing: str,
+    scope: str,
+    description: str = "",
+    is_required: bool = False,
+    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+) -> int:
+    """Insert a new metric type and return its ID."""
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO metric_types
+            (name, input_type, source_type, input_timing,
+             is_required, scope, description, is_user_created)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        """,
+        (
+            name,
+            input_type,
+            source_type,
+            input_timing,
+            int(is_required),
+            scope,
+            description,
+        ),
+    )
+    metric_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return metric_id
+
+
+def add_metric_to_exercise(
+    exercise_name: str,
+    metric_type_name: str,
+    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+) -> None:
+    """Associate an existing metric type with an exercise."""
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM exercises WHERE name = ?", (exercise_name,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError(f"Exercise '{exercise_name}' not found")
+    exercise_id = row[0]
+
+    cursor.execute("SELECT id FROM metric_types WHERE name = ?", (metric_type_name,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError(f"Metric type '{metric_type_name}' not found")
+    metric_id = row[0]
+
+    cursor.execute(
+        "SELECT 1 FROM exercise_metrics WHERE exercise_id = ? AND metric_type_id = ?",
+        (exercise_id, metric_id),
+    )
+    if cursor.fetchone() is None:
+        cursor.execute(
+            "INSERT INTO exercise_metrics (exercise_id, metric_type_id) VALUES (?, ?)",
+            (exercise_id, metric_id),
+        )
+        conn.commit()
+    conn.close()
+
+
+def remove_metric_from_exercise(
+    exercise_name: str,
+    metric_type_name: str,
+    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+) -> None:
+    """Remove a metric association from an exercise."""
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM exercises WHERE name = ?", (exercise_name,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError(f"Exercise '{exercise_name}' not found")
+    exercise_id = row[0]
+
+    cursor.execute("SELECT id FROM metric_types WHERE name = ?", (metric_type_name,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError(f"Metric type '{metric_type_name}' not found")
+    metric_id = row[0]
+
+    cursor.execute(
+        "DELETE FROM exercise_metrics WHERE exercise_id = ? AND metric_type_id = ?",
+        (exercise_id, metric_id),
+    )
+    conn.commit()
+    conn.close()
+
+
 class WorkoutSession:
     """In-memory representation of a workout session.
 
