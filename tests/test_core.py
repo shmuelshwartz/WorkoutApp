@@ -79,3 +79,29 @@ def test_workout_session_loads_preset_and_records(monkeypatch):
     for i in range(total_sets):
         finished = session.record_metrics({"Reps": i})
     assert finished
+
+
+def test_metric_type_crud(tmp_path):
+    db_src = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+    db_path = tmp_path / "workout.db"
+    db_path.write_bytes(db_src.read_bytes())
+
+    name = "TestMetric"
+    core.add_metric_type(
+        name,
+        "int",
+        "manual_text",
+        "post_set",
+        "set",
+        db_path=db_path,
+    )
+    types = core.get_all_metric_types(db_path)
+    assert any(mt["name"] == name for mt in types)
+
+    core.add_metric_to_exercise("Push-ups", name, db_path)
+    metrics = core.get_metrics_for_exercise("Push-ups", db_path)
+    assert any(m["name"] == name for m in metrics)
+
+    core.remove_metric_from_exercise("Push-ups", name, db_path)
+    metrics = core.get_metrics_for_exercise("Push-ups", db_path)
+    assert not any(m["name"] == name for m in metrics)

@@ -15,10 +15,12 @@ from kivymd.uix.textfield import MDTextField
 from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
-from kivymd.uix.list import OneLineListItem
+from kivymd.uix.list import OneLineListItem, MDList
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.card import MDSeparator
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.button import MDRaisedButton
 from pathlib import Path
 
 # Import core so we can always reference the up-to-date WORKOUT_PRESETS list
@@ -561,6 +563,90 @@ class ExerciseSelectionPanel(MDBoxLayout):
         pass
 
 
+class AddMetricPopup(MDDialog):
+    """Popup dialog for selecting or creating metrics."""
+
+    def __init__(self, screen: 'EditExerciseScreen', **kwargs):
+        self.screen = screen
+        metrics = core.get_all_metric_types()
+        items = [OneLineListItem(text=m["name"]) for m in metrics]
+        for item in items:
+            item.bind(on_release=lambda inst, name=item.text: self.add_metric(name))
+        content = MDList()
+        for item in items:
+            content.add_widget(item)
+        new_btn = MDRaisedButton(text="New Metric", on_release=self.create_new_metric)
+        super().__init__(
+            title="Select Metric",
+            type="custom",
+            content_cls=content,
+            buttons=[new_btn, MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())],
+            **kwargs,
+        )
+
+    def add_metric(self, name, *args):
+        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        core.add_metric_to_exercise(self.screen.exercise_name, name, db_path)
+        self.dismiss()
+        self.screen.populate()
+
+    def create_new_metric(self, *args):
+        self.dismiss()
+        self.screen.open_new_metric_popup()
+
+
+class NewMetricPopup(MDDialog):
+    """Popup dialog for creating a new metric type."""
+
+    def __init__(self, screen: 'EditExerciseScreen', **kwargs):
+        self.screen = screen
+        self.name_input = MDTextField(hint_text="Name")
+        self.input_type = Spinner(text="int", values=["int", "float", "str", "bool"])
+        self.source_type = Spinner(text="manual_text", values=["manual_text", "manual_enum", "manual_slider"])
+        self.input_timing = Spinner(
+            text="post_set",
+            values=["preset", "pre_workout", "post_workout", "pre_set", "post_set"],
+        )
+        self.scope = Spinner(text="set", values=["session", "section", "exercise", "set"])
+        self.desc_input = MDTextField(hint_text="Description")
+        self.required_check = MDCheckbox()
+
+        layout = MDBoxLayout(orientation="vertical", spacing="8dp")
+        layout.add_widget(self.name_input)
+        layout.add_widget(self.input_type)
+        layout.add_widget(self.source_type)
+        layout.add_widget(self.input_timing)
+        layout.add_widget(self.scope)
+        layout.add_widget(self.desc_input)
+        layout.add_widget(MDBoxLayout(size_hint_y=None, height="40dp", children=[self.required_check, MDLabel(text="Required")]))
+
+        super().__init__(
+            title="New Metric",
+            type="custom",
+            content_cls=layout,
+            buttons=[
+                MDRaisedButton(text="Save", on_release=self.save_metric),
+                MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss()),
+            ],
+            **kwargs,
+        )
+
+    def save_metric(self, *args):
+        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        core.add_metric_type(
+            self.name_input.text,
+            self.input_type.text,
+            self.source_type.text,
+            self.input_timing.text,
+            self.scope.text,
+            description=self.desc_input.text,
+            is_required=self.required_check.active,
+            db_path=db_path,
+        )
+        self.dismiss()
+        self.screen.open_add_metric_popup()
+
+
 class EditExerciseScreen(MDScreen):
     """Screen for editing an individual exercise within a preset."""
 
@@ -599,7 +685,20 @@ class EditExerciseScreen(MDScreen):
                 lbl.height = lbl.texture_size[1]
                 return lbl
 
-            box.add_widget(_make_label(f"Metric: {m.get('name','')}", bold=True))
+            header = MDBoxLayout(size_hint_y=None, height="40dp")
+            header.add_widget(
+                _make_label(f"Metric: {m.get('name','')}", bold=True, size_hint_x=0.9)
+            )
+            remove_btn = MDIconButton(
+                icon="delete",
+                theme_text_color="Custom",
+                text_color=(1, 0, 0, 1),
+            )
+            remove_btn.bind(
+                on_release=lambda inst, name=m.get("name", ""): self.remove_metric(name)
+            )
+            header.add_widget(remove_btn)
+            box.add_widget(header)
 
             box.add_widget(_make_label(f"Input type: {m.get('input_type','')}"))
             box.add_widget(_make_label(f"Source type: {m.get('source_type','')}"))
@@ -637,6 +736,21 @@ class EditExerciseScreen(MDScreen):
 
             self.metrics_list.add_widget(box)
             self.metrics_list.add_widget(MDSeparator())
+
+    def remove_metric(self, metric_name):
+        if not self.exercise_name:
+            return
+        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        core.remove_metric_from_exercise(self.exercise_name, metric_name, db_path)
+        self.populate()
+
+    def open_add_metric_popup(self):
+        popup = AddMetricPopup(self)
+        popup.open()
+
+    def open_new_metric_popup(self):
+        popup = NewMetricPopup(self)
+        popup.open()
 
 
 class WorkoutApp(MDApp):
