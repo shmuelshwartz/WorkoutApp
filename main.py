@@ -589,16 +589,29 @@ class AddMetricPopup(MDDialog):
         return content, buttons, "Select Metric"
 
     def _build_new_metric_widgets(self):
-        self.name_input = MDTextField(hint_text="Name")
-        self.input_type = Spinner(text="int", values=["int", "float", "str", "bool"])
-        self.source_type = Spinner(text="manual_text", values=["manual_text", "manual_enum", "manual_slider"])
+        default_height = "48dp"
+        self.name_input = MDTextField(hint_text="Name", size_hint_y=None, height=default_height)
+        self.input_type = Spinner(text="int", values=["int", "float", "str", "bool"], size_hint_y=None, height=default_height)
+        self.source_type = Spinner(
+            text="manual_text",
+            values=["manual_text", "manual_enum", "manual_slider"],
+            size_hint_y=None,
+            height=default_height,
+        )
         self.input_timing = Spinner(
             text="post_set",
             values=["preset", "pre_workout", "post_workout", "pre_set", "post_set"],
+            size_hint_y=None,
+            height=default_height,
         )
-        self.scope = Spinner(text="set", values=["session", "section", "exercise", "set"])
-        self.desc_input = MDTextField(hint_text="Description")
-        self.required_check = MDCheckbox()
+        self.scope = Spinner(
+            text="set",
+            values=["session", "section", "exercise", "set"],
+            size_hint_y=None,
+            height=default_height,
+        )
+        self.desc_input = MDTextField(hint_text="Description", size_hint_y=None, height=default_height)
+        self.required_check = MDCheckbox(size_hint_y=None, height=default_height)
 
         form = MDBoxLayout(
             orientation="vertical",
@@ -613,7 +626,7 @@ class AddMetricPopup(MDDialog):
         form.add_widget(self.scope)
         form.add_widget(self.desc_input)
 
-        req_row = MDBoxLayout(size_hint_y=None, height="40dp")
+        req_row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
         req_row.add_widget(self.required_check)
         req_row.add_widget(MDLabel(text="Required"))
         form.add_widget(req_row)
