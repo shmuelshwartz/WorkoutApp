@@ -260,7 +260,7 @@ ScreenManager:
                 on_release: root.switch_tab("next")
         MDLabel:
             id: tab_header
-            text: "Previous Set Metrics" if root.current_tab == "previous" else "Next Set Metrics"
+            text: root.header_text
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1

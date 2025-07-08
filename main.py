@@ -159,6 +159,7 @@ class MetricInputScreen(MDScreen):
     next_metric_list = ObjectProperty(None)
     metrics_scroll = ObjectProperty(None)
     current_tab = StringProperty("previous")
+    header_text = StringProperty("")
 
     def on_slider_touch_down(self, instance, touch):
         if instance.collide_point(*touch.pos) and self.metrics_scroll:
@@ -174,6 +175,39 @@ class MetricInputScreen(MDScreen):
         """Switch between previous and next metric input views."""
         if tab in ("previous", "next"):
             self.current_tab = tab
+            self.update_header()
+
+    def on_pre_enter(self, *args):
+        self.update_header()
+        return super().on_pre_enter(*args)
+
+    def update_header(self):
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
+        if not session:
+            self.header_text = ""
+            return
+
+        if self.current_tab == "previous":
+            if session.current_exercise >= len(session.exercises):
+                self.header_text = "Previous Set Metrics"
+                return
+            ex = session.exercises[session.current_exercise]
+            set_number = session.current_set + 1
+            self.header_text = f"Previous Set Metrics {ex['name']} Set {set_number}"
+        else:
+            # upcoming set info
+            ex_idx = session.current_exercise
+            set_idx = session.current_set + 1
+            if ex_idx < len(session.exercises):
+                if set_idx >= session.exercises[ex_idx]["sets"]:
+                    ex_idx += 1
+                    set_idx = 0
+            if ex_idx < len(session.exercises):
+                ex = session.exercises[ex_idx]
+                self.header_text = f"Next Set Metrics {ex['name']} Set {set_idx + 1}"
+            else:
+                self.header_text = "Next Set Metrics"
 
     def populate_metrics(self, metrics=None):
         """Populate metric lists for previous and next sets."""
@@ -236,6 +270,8 @@ class MetricInputScreen(MDScreen):
             self.prev_metric_list.add_widget(_create_row(m))
         for m in next_metrics:
             self.next_metric_list.add_widget(_create_row(m))
+
+        self.update_header()
 
     def save_metrics(self):
         metrics = {}
