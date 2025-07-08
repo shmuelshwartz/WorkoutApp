@@ -363,6 +363,9 @@ ScreenManager:
                 size_hint_y: None
                 height: self.minimum_height
         MDRaisedButton:
+            text: "Add Section"
+            on_release: root.add_section()
+        MDRaisedButton:
             text: "Back to Presets"
             on_release: app.root.current = "presets"
 
