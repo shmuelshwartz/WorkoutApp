@@ -345,7 +345,6 @@ ScreenManager:
             on_release: root.open_exercise_selection()
 
 <EditPresetScreen>:
-    preset_name: app.selected_preset if app.selected_preset else "Preset"
     sections_box: sections_box
     exercise_panel: exercise_panel
     panel_visible: False
@@ -402,7 +401,7 @@ ScreenManager:
     orientation: "vertical"
     md_bg_color: 1, 1, 1, 1
     MDLabel:
-        text: "Available Exercises"
+        text: "Select Exercises"
         halign: "center"
         size_hint_y: None
         height: "30dp"
