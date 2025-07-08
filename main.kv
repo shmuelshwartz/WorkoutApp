@@ -239,21 +239,47 @@ ScreenManager:
 
 <MetricInputScreen>:
     on_pre_enter: root.populate_metrics()
-    metric_list: metric_list
+    prev_metric_list: prev_metric_list
+    next_metric_list: next_metric_list
     metrics_scroll: metrics_scroll
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
+        MDBoxLayout:
+            size_hint_y: None
+            height: "40dp"
+            spacing: "10dp"
+            MDRaisedButton:
+                text: "Previous Set"
+                md_bg_color: app.theme_cls.primary_color if root.current_tab == "previous" else (.5, .5, .5, 1)
+                on_release: root.switch_tab("previous")
+            MDRaisedButton:
+                text: "Next Set"
+                md_bg_color: app.theme_cls.primary_color if root.current_tab == "next" else (.5, .5, .5, 1)
+                on_release: root.switch_tab("next")
         MDLabel:
-            text: "Metric Input - log the metrics for the exercise you just performed"
+            id: tab_header
+            text: "Previous Set Metrics" if root.current_tab == "previous" else "Next Set Metrics"
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
         ScrollView:
             id: metrics_scroll
-            MDList:
-                id: metric_list
+            MDBoxLayout:
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                MDList:
+                    id: prev_metric_list
+                    size_hint_y: None
+                    height: self.minimum_height if root.current_tab == "previous" else 0
+                    opacity: 1 if root.current_tab == "previous" else 0
+                MDList:
+                    id: next_metric_list
+                    size_hint_y: None
+                    height: self.minimum_height if root.current_tab == "next" else 0
+                    opacity: 1 if root.current_tab == "next" else 0
         MDRaisedButton:
             text: "Save Metrics"
             on_release: root.save_metrics()
