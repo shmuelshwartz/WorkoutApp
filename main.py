@@ -231,11 +231,17 @@ class MetricInputScreen(MDScreen):
         next_metrics = []
         if app.workout_session:
             curr_ex = app.workout_session.next_exercise_name()
-            all_metrics = get_metrics_for_exercise(curr_ex)
+            all_metrics = get_metrics_for_exercise(
+                curr_ex, preset_name=app.workout_session.preset_name
+            )
             prev_metrics = [m for m in all_metrics if m.get("input_timing") == "post_set"]
 
             upcoming_ex = app.workout_session.upcoming_exercise_name()
-            next_all = get_metrics_for_exercise(upcoming_ex) if upcoming_ex else []
+            next_all = (
+                get_metrics_for_exercise(upcoming_ex, preset_name=app.workout_session.preset_name)
+                if upcoming_ex
+                else []
+            )
             next_metrics = [m for m in next_all if m.get("input_timing") == "pre_set"]
         elif metrics is not None:
             prev_metrics = metrics
@@ -461,8 +467,14 @@ class SectionWidget(MDBoxLayout):
             return
         box = self.ids.exercise_list
         box.clear_widgets()
-        for ex in app.preset_editor.sections[self.section_index]["exercises"]:
-            box.add_widget(SelectedExerciseItem(text=ex["name"]))
+        for idx, ex in enumerate(app.preset_editor.sections[self.section_index]["exercises"]):
+            box.add_widget(
+                SelectedExerciseItem(
+                    text=ex["name"],
+                    section_index=self.section_index,
+                    exercise_index=idx,
+                )
+            )
 
 
 class EditPresetScreen(MDScreen):
@@ -544,6 +556,8 @@ class SelectedExerciseItem(MDBoxLayout):
     """Widget representing a selected exercise with reorder controls."""
 
     text = StringProperty("")
+    section_index = NumericProperty(0)
+    exercise_index = NumericProperty(0)
 
     def edit(self):
         """Open the EditExerciseScreen for this exercise."""
@@ -552,6 +566,10 @@ class SelectedExerciseItem(MDBoxLayout):
             return
         screen = app.root.get_screen("edit_exercise")
         screen.exercise_name = self.text
+        screen.section_index = self.section_index
+        screen.exercise_index = self.exercise_index
+        app.editing_section_index = self.section_index
+        app.editing_exercise_index = self.exercise_index
         app.root.current = "edit_exercise"
 
     def move_up(self):
@@ -751,12 +769,139 @@ class AddMetricPopup(MDDialog):
         self.show_metric_list()
 
 
+class EditMetricPopup(MDDialog):
+    """Popup for editing an existing metric."""
+
+    def __init__(self, screen: 'EditExerciseScreen', metric: dict, **kwargs):
+        self.screen = screen
+        self.metric = metric
+        content, buttons, title = self._build_widgets()
+        super().__init__(title=title, type="custom", content_cls=content, buttons=buttons, **kwargs)
+
+    def _build_widgets(self):
+        default_height = "48dp"
+        self.input_widgets = {}
+
+        schema = core.get_metric_type_schema()
+        if not schema:
+            schema = [
+                {"name": "name"},
+                {"name": "input_type", "options": ["int", "float", "str", "bool"]},
+                {
+                    "name": "source_type",
+                    "options": ["manual_text", "manual_enum", "manual_slider"],
+                },
+                {
+                    "name": "input_timing",
+                    "options": [
+                        "preset",
+                        "pre_workout",
+                        "post_workout",
+                        "pre_set",
+                        "post_set",
+                    ],
+                },
+                {"name": "is_required"},
+                {
+                    "name": "scope",
+                    "options": ["session", "section", "exercise", "set"],
+                },
+                {"name": "description"},
+            ]
+
+        form = MDBoxLayout(
+            orientation="vertical",
+            spacing="8dp",
+            size_hint_y=None,
+        )
+        form.bind(minimum_height=form.setter("height"))
+
+        for field in schema:
+            name = field["name"]
+            options = field.get("options")
+            if name == "is_required":
+                row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
+                widget = MDCheckbox(size_hint_y=None, height=default_height)
+                row.add_widget(widget)
+                row.add_widget(MDLabel(text="Required"))
+                form.add_widget(row)
+            elif options:
+                widget = Spinner(text=options[0], values=options, size_hint_y=None, height=default_height)
+                form.add_widget(widget)
+            else:
+                widget = MDTextField(hint_text=name.replace("_", " ").title(), size_hint_y=None, height=default_height)
+                form.add_widget(widget)
+
+            self.input_widgets[name] = widget
+
+        # populate values
+        for key, widget in self.input_widgets.items():
+            if key not in self.metric:
+                continue
+            value = self.metric[key]
+            if isinstance(widget, MDCheckbox):
+                widget.active = bool(value)
+            elif isinstance(widget, Spinner):
+                if value in widget.values:
+                    widget.text = value
+            elif isinstance(widget, MDTextField):
+                widget.text = str(value)
+
+        row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
+        self.make_default = MDCheckbox(active=True)
+        row.add_widget(self.make_default)
+        row.add_widget(MDLabel(text="Make default"))
+        form.add_widget(row)
+
+        layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        layout.add_widget(form)
+
+        save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)
+        cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
+        buttons = [save_btn, cancel_btn]
+        return layout, buttons, "Edit Metric"
+
+    def save_metric(self, *args):
+        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        values = {name: widget for name, widget in self.input_widgets.items()}
+
+        make_default = self.make_default.active
+        kwargs = {
+            "input_type": values.get("input_type").text if "input_type" in values else None,
+            "source_type": values.get("source_type").text if "source_type" in values else None,
+            "input_timing": values.get("input_timing").text if "input_timing" in values else None,
+            "scope": values.get("scope").text if "scope" in values else None,
+            "description": values.get("description").text if "description" in values else None,
+            "is_required": values.get("is_required").active if "is_required" in values else None,
+        }
+
+        if make_default:
+            core.update_metric_type(self.metric["name"], db_path=db_path, **kwargs)
+        else:
+            app = MDApp.get_running_app()
+            preset_name = app.preset_editor.preset_name if app and app.preset_editor else ""
+            core.set_section_exercise_metric_override(
+                preset_name,
+                app.editing_section_index,
+                self.screen.exercise_name,
+                self.metric["name"],
+                input_timing=kwargs.get("input_timing", self.metric.get("input_timing", "post_set")),
+                is_required=kwargs.get("is_required", self.metric.get("is_required", False)),
+                scope=kwargs.get("scope", self.metric.get("scope", "set")),
+                db_path=db_path,
+            )
+
+        self.dismiss()
+        self.screen.populate()
+
 
 
 class EditExerciseScreen(MDScreen):
     """Screen for editing an individual exercise within a preset."""
 
     exercise_name = StringProperty("")
+    section_index = NumericProperty(-1)
+    exercise_index = NumericProperty(-1)
     metrics_list = ObjectProperty(None)
 
     def on_pre_enter(self, *args):
@@ -767,7 +912,13 @@ class EditExerciseScreen(MDScreen):
         if not self.metrics_list or not self.exercise_name:
             return
         self.metrics_list.clear_widgets()
-        metrics = core.get_metrics_for_exercise(self.exercise_name)
+        preset_name = ""
+        app = MDApp.get_running_app()
+        if app and app.preset_editor:
+            preset_name = app.preset_editor.preset_name
+        metrics = core.get_metrics_for_exercise(
+            self.exercise_name, preset_name=preset_name
+        )
         timing_options = [
             "preset",
             "pre_workout",
@@ -793,8 +944,11 @@ class EditExerciseScreen(MDScreen):
 
             header = MDBoxLayout(size_hint_y=None, height="40dp")
             header.add_widget(
-                _make_label(f"Metric: {m.get('name','')}", bold=True, size_hint_x=0.9)
+                _make_label(f"Metric: {m.get('name','')}", bold=True, size_hint_x=0.7)
             )
+            edit_btn = MDIconButton(icon="pencil")
+            edit_btn.bind(on_release=lambda inst, metric=m: self.open_edit_metric_popup(metric))
+            header.add_widget(edit_btn)
             remove_btn = MDIconButton(
                 icon="delete",
                 theme_text_color="Custom",
@@ -858,12 +1012,17 @@ class EditExerciseScreen(MDScreen):
         popup = AddMetricPopup(self, mode="new")
         popup.open()
 
+    def open_edit_metric_popup(self, metric):
+        popup = EditMetricPopup(self, metric)
+        popup.open()
+
 
 class WorkoutApp(MDApp):
     workout_session = None
     selected_preset = ""
     preset_editor: PresetEditor | None = None
     editing_section_index: int = -1
+    editing_exercise_index: int = -1
     # True when metrics being entered correspond to a newly completed set
     record_new_set = False
 
