@@ -636,28 +636,9 @@ class AddMetricPopup(MDDialog):
 
     def _build_new_metric_widgets(self):
         default_height = "48dp"
-        self.name_input = MDTextField(hint_text="Name", size_hint_y=None, height=default_height)
-        self.input_type = Spinner(text="int", values=["int", "float", "str", "bool"], size_hint_y=None, height=default_height)
-        self.source_type = Spinner(
-            text="manual_text",
-            values=["manual_text", "manual_enum", "manual_slider"],
-            size_hint_y=None,
-            height=default_height,
-        )
-        self.input_timing = Spinner(
-            text="post_set",
-            values=["preset", "pre_workout", "post_workout", "pre_set", "post_set"],
-            size_hint_y=None,
-            height=default_height,
-        )
-        self.scope = Spinner(
-            text="set",
-            values=["session", "section", "exercise", "set"],
-            size_hint_y=None,
-            height=default_height,
-        )
-        self.desc_input = MDTextField(hint_text="Description", size_hint_y=None, height=default_height)
-        self.required_check = MDCheckbox(size_hint_y=None, height=default_height)
+        self.input_widgets = {}
+
+        schema = core.get_metric_type_schema()
 
         form = MDBoxLayout(
             orientation="vertical",
@@ -665,17 +646,24 @@ class AddMetricPopup(MDDialog):
             size_hint_y=None,
         )
         form.bind(minimum_height=form.setter("height"))
-        form.add_widget(self.name_input)
-        form.add_widget(self.input_type)
-        form.add_widget(self.source_type)
-        form.add_widget(self.input_timing)
-        form.add_widget(self.scope)
-        form.add_widget(self.desc_input)
 
-        req_row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
-        req_row.add_widget(self.required_check)
-        req_row.add_widget(MDLabel(text="Required"))
-        form.add_widget(req_row)
+        for field in schema:
+            name = field["name"]
+            options = field.get("options")
+            if name == "is_required":
+                row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
+                widget = MDCheckbox(size_hint_y=None, height=default_height)
+                row.add_widget(widget)
+                row.add_widget(MDLabel(text="Required"))
+                form.add_widget(row)
+            elif options:
+                widget = Spinner(text=options[0], values=options, size_hint_y=None, height=default_height)
+                form.add_widget(widget)
+            else:
+                widget = MDTextField(hint_text=name.replace("_", " ").title(), size_hint_y=None, height=default_height)
+                form.add_widget(widget)
+
+            self.input_widgets[name] = widget
 
         layout = ScrollView(do_scroll_y=True)
         layout.add_widget(form)
@@ -716,14 +704,15 @@ class AddMetricPopup(MDDialog):
 
     def save_metric(self, *args):
         db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        values = {name: widget for name, widget in self.input_widgets.items()}
         core.add_metric_type(
-            self.name_input.text,
-            self.input_type.text,
-            self.source_type.text,
-            self.input_timing.text,
-            self.scope.text,
-            description=self.desc_input.text,
-            is_required=self.required_check.active,
+            values.get("name").text if "name" in values else "",
+            values.get("input_type").text if "input_type" in values else "",
+            values.get("source_type").text if "source_type" in values else "",
+            values.get("input_timing").text if "input_timing" in values else "",
+            values.get("scope").text if "scope" in values else "",
+            description=values.get("description").text if "description" in values else "",
+            is_required=values.get("is_required").active if "is_required" in values else False,
             db_path=db_path,
         )
         self.show_metric_list()

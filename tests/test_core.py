@@ -61,6 +61,23 @@ def test_get_all_exercises():
         assert isinstance(name, str)
 
 
+def test_metric_type_schema():
+    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+    schema = core.get_metric_type_schema(db_path)
+
+    names = [f["name"] for f in schema]
+    assert "name" in names
+    assert "input_type" in names
+    assert "source_type" in names
+    assert "input_timing" in names
+    assert "is_required" in names
+    assert "scope" in names
+    assert "description" in names
+    for field in schema:
+        if field["name"] in {"input_type", "source_type", "input_timing", "scope"}:
+            assert field.get("options")
+
+
 def test_workout_session_loads_preset_and_records(monkeypatch):
     db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
 
