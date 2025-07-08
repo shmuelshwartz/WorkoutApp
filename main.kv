@@ -1,3 +1,5 @@
+#:import RiseInTransition kivy.uix.screenmanager.RiseInTransition
+#:import FallOutTransition kivy.uix.screenmanager.FallOutTransition
 ScreenManager:
     WelcomeScreen:
         name: "welcome"
@@ -341,7 +343,7 @@ ScreenManager:
             size_hint_y: None
             height: "40dp"
             on_release:
-                app.root.transition.direction = "up"
+                app.root.transition = RiseInTransition()
                 app.root.current = "exercise_selection"
 
 <EditPresetScreen>:
@@ -397,7 +399,7 @@ ScreenManager:
             height: "40dp"
             pos_hint: {"center_x": 0.5}
             on_release:
-                app.root.transition.direction = "down"
+                app.root.transition = FallOutTransition()
                 app.root.current = "edit_preset"
 
 <PresetOverviewScreen>:
