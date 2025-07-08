@@ -475,12 +475,10 @@ class SelectedExerciseItem(MDBoxLayout):
 class ExerciseSelectionPanel(MDBoxLayout):
     """Panel for selecting exercises to add to a preset section."""
 
-    selected_list = ObjectProperty(None)
     exercise_list = ObjectProperty(None)
 
     def on_open(self):
         self.populate_exercises()
-        self.populate_selected()
 
     def populate_exercises(self):
         if not self.exercise_list:
@@ -488,39 +486,24 @@ class ExerciseSelectionPanel(MDBoxLayout):
         self.exercise_list.clear_widgets()
         for name in core.get_all_exercises():
             item = OneLineListItem(text=name)
-            item.bind(on_release=lambda inst, n=name: self.add_selected(n))
+            item.bind(on_release=lambda inst, n=name: self.select_exercise(n))
             self.exercise_list.add_widget(item)
 
-    def populate_selected(self):
-        if not self.selected_list:
-            return
-        self.selected_list.clear_widgets()
+    def select_exercise(self, name):
+        """Add ``name`` to the current section."""
         app = MDApp.get_running_app()
         idx = app.editing_section_index
         if app.preset_editor and 0 <= idx < len(app.preset_editor.sections):
-            for ex in app.preset_editor.sections[idx]["exercises"]:
-                self.selected_list.add_widget(SelectedExerciseItem(text=ex["name"]))
-
-    def add_selected(self, name):
-        if not self.selected_list:
-            return
-        item = SelectedExerciseItem(text=name)
-        self.selected_list.add_widget(item)
-
-    def save_selection(self):
-        app = MDApp.get_running_app()
-        idx = app.editing_section_index
-        if app.preset_editor and self.selected_list and 0 <= idx < len(app.preset_editor.sections):
-            names = [child.text for child in reversed(self.selected_list.children)]
-            exercises = [
-                {"name": n, "sets": DEFAULT_SETS_PER_EXERCISE} for n in names
-            ]
-            app.preset_editor.sections[idx]["exercises"] = exercises
+            app.preset_editor.add_exercise(idx, name)
             edit = app.root.get_screen("edit_preset")
             for widget in edit.sections_box.children:
                 if isinstance(widget, SectionWidget) and widget.section_index == idx:
                     widget.refresh_exercises()
                     break
+
+    def save_selection(self):
+        """No-op kept for API compatibility."""
+        pass
 
 
 class WorkoutApp(MDApp):

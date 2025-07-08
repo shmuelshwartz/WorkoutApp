@@ -345,7 +345,6 @@ ScreenManager:
             on_release: root.open_exercise_selection()
 
 <EditPresetScreen>:
-    preset_name: app.selected_preset if app.selected_preset else "Preset"
     sections_box: sections_box
     exercise_panel: exercise_panel
     panel_visible: False
@@ -401,11 +400,17 @@ ScreenManager:
 <ExerciseSelectionPanel@MDBoxLayout>:
     orientation: "vertical"
     md_bg_color: 1, 1, 1, 1
-    MDLabel:
-        text: "Available Exercises"
-        halign: "center"
+    MDBoxLayout:
         size_hint_y: None
-        height: "30dp"
+        height: "40dp"
+        MDLabel:
+            text: "Select Exercises"
+            halign: "center"
+        MDIconButton:
+            icon: "close"
+            theme_text_color: "Custom"
+            text_color: 1, 0, 0, 1
+            on_release: app.root.get_screen("edit_preset").close_exercise_panel()
     ScrollView:
         MDList:
             id: exercise_list
