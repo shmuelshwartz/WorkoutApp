@@ -561,30 +561,41 @@ class EditExerciseScreen(MDScreen):
         ]
 
         for m in metrics:
-            box = MDBoxLayout(orientation="vertical", padding="8dp", spacing="4dp", size_hint_y=None)
+            box = MDBoxLayout(
+                orientation="vertical",
+                padding="8dp",
+                spacing="4dp",
+                size_hint_y=None,
+            )
             box.bind(minimum_height=box.setter("height"))
 
-            box.add_widget(MDLabel(text=f"Metric: {m.get('name','')}", bold=True))
+            def _make_label(text, **kwargs):
+                lbl = MDLabel(text=text, size_hint_y=None, **kwargs)
+                lbl.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
+                lbl.height = lbl.texture_size[1]
+                return lbl
 
-            box.add_widget(MDLabel(text=f"Input type: {m.get('input_type','')}"))
-            box.add_widget(MDLabel(text=f"Source type: {m.get('source_type','')}"))
+            box.add_widget(_make_label(f"Metric: {m.get('name','')}", bold=True))
+
+            box.add_widget(_make_label(f"Input type: {m.get('input_type','')}"))
+            box.add_widget(_make_label(f"Source type: {m.get('source_type','')}"))
 
             timing_row = MDBoxLayout(size_hint_y=None, height="40dp")
-            timing_row.add_widget(MDLabel(text="Input timing:", size_hint_x=0.5))
+            timing_row.add_widget(_make_label("Input timing:", size_hint_x=0.5))
             spinner = Spinner(text=m.get('input_timing','preset'), values=timing_options, size_hint_x=0.5)
             timing_row.add_widget(spinner)
             box.add_widget(timing_row)
 
             req_row = MDBoxLayout(size_hint_y=None, height="40dp")
-            req_row.add_widget(MDLabel(text="Required:", size_hint_x=0.5))
+            req_row.add_widget(_make_label("Required:", size_hint_x=0.5))
             req_checkbox = MDCheckbox(active=bool(m.get('is_required')), size_hint_x=None)
             req_row.add_widget(req_checkbox)
             box.add_widget(req_row)
 
-            box.add_widget(MDLabel(text=f"Scope: {m.get('scope','')}"))
+            box.add_widget(_make_label(f"Scope: {m.get('scope','')}"))
             desc = m.get('description') or ""
             if desc:
-                box.add_widget(MDLabel(text=f"Description: {desc}", halign="left"))
+                box.add_widget(_make_label(f"Description: {desc}", halign="left"))
 
             self.metrics_list.add_widget(box)
 
