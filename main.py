@@ -816,7 +816,7 @@ class EditExerciseScreen(MDScreen):
             box.add_widget(timing_row)
 
             preset_row = MDBoxLayout(size_hint_y=None, height="40dp")
-            preset_row.add_widget(_make_label("Preset value:", size_hint_x=0.5))
+            preset_row.add_widget(_make_label("Metric value:", size_hint_x=0.5))
             preset_input = MDTextField(size_hint_x=0.5)
             preset_row.add_widget(preset_input)
             preset_row.opacity = 1 if spinner.text == "preset" else 0
