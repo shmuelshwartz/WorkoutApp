@@ -21,8 +21,6 @@ ScreenManager:
         name: "workout_active"
     MetricInputScreen:
         name: "metric_input"
-    ExerciseSelectionScreen:
-        name: "exercise_selection"
     WorkoutEditScreen:
         name: "workout_edit"
     WorkoutSettingsScreen:
@@ -349,27 +347,39 @@ ScreenManager:
 <EditPresetScreen>:
     preset_name: app.selected_preset if app.selected_preset else "Preset"
     sections_box: sections_box
-    BoxLayout:
-        orientation: "vertical"
-        spacing: "10dp"
-        padding: "20dp"
-        MDLabel:
-            text: root.preset_name
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-        ScrollView:
-            MDBoxLayout:
-                id: sections_box
-                orientation: "vertical"
-                size_hint_y: None
-                height: self.minimum_height
-        MDRaisedButton:
-            text: "Add Section"
-            on_release: root.add_section()
-        MDRaisedButton:
-            text: "Back to Presets"
-            on_release: app.root.current = "presets"
+    exercise_panel: exercise_panel
+    panel_visible: False
+    FloatLayout:
+        MDBoxLayout:
+            id: main_content
+            orientation: "vertical"
+            spacing: "10dp"
+            padding: "20dp"
+            size_hint: 1, 1
+            MDLabel:
+                text: root.preset_name
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: 0.2, 0.6, 0.86, 1
+            ScrollView:
+                MDBoxLayout:
+                    id: sections_box
+                    orientation: "vertical"
+                    size_hint_y: None
+                    height: self.minimum_height
+            MDRaisedButton:
+                text: "Add Section"
+                on_release: root.add_section()
+            MDRaisedButton:
+                text: "Back to Presets"
+                on_release: app.root.current = "presets"
+        ExerciseSelectionPanel:
+            id: exercise_panel
+            size_hint_x: 1
+            size_hint_y: None
+            height: root.height * 0.66 if root.panel_visible else 0
+            y: 0
+            opacity: 1 if root.panel_visible else 0
 
 <SelectedExerciseItem>:
     orientation: "horizontal"
@@ -392,34 +402,40 @@ ScreenManager:
         icon: "close"
         on_release: root.remove_self()
 
-<ExerciseSelectionScreen>:
+<ExerciseSelectionPanel@MDBoxLayout>:
     selected_list: selected_list
     exercise_list: exercise_list
-    BoxLayout:
-        orientation: "vertical"
+    orientation: "vertical"
+    md_bg_color: 1, 1, 1, 1
+    MDBoxLayout:
+        size_hint_y: None
+        height: "40dp"
         MDLabel:
-            text: "Selected Exercises"
+            text: "Select Exercises"
             halign: "center"
-            size_hint_y: None
-            height: "30dp"
-        ScrollView:
-            size_hint_y: 0.4
-            MDList:
-                id: selected_list
-        MDLabel:
-            text: "Available Exercises"
-            halign: "center"
-            size_hint_y: None
-            height: "30dp"
-        ScrollView:
-            MDList:
-                id: exercise_list
-        MDRaisedButton:
-            text: "Done"
-            size_hint_y: None
-            height: "40dp"
-            pos_hint: {"center_x": 0.5}
-            on_release: root.save_selection()
+        MDIconButton:
+            icon: "close"
+            theme_text_color: "Custom"
+            text_color: 1, 0, 0, 1
+            on_release: app.root.get_screen("edit_preset").close_exercise_panel()
+    MDLabel:
+        text: "Selected Exercises"
+        halign: "center"
+        size_hint_y: None
+        height: "30dp"
+    ScrollView:
+        size_hint_y: 0.4
+        MDList:
+            id: selected_list
+    MDLabel:
+        text: "Available Exercises"
+        halign: "center"
+        size_hint_y: None
+        height: "30dp"
+    ScrollView:
+        MDList:
+            id: exercise_list
+
 
 <PresetOverviewScreen>:
     overview_list: overview_list
