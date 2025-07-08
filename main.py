@@ -598,7 +598,11 @@ class AddMetricPopup(MDDialog):
         self.desc_input = MDTextField(hint_text="Description")
         self.required_check = MDCheckbox()
 
-        layout = MDBoxLayout(orientation="vertical", spacing="8dp")
+        layout = MDBoxLayout(
+            orientation="vertical",
+            spacing="8dp",
+            adaptive_height=True,
+        )
         layout.add_widget(self.name_input)
         layout.add_widget(self.input_type)
         layout.add_widget(self.source_type)
