@@ -856,6 +856,10 @@ class WorkoutApp(MDApp):
         else:
             self.workout_session = None
 
+    def mark_set_complete(self):
+        if self.workout_session:
+            self.workout_session.mark_set_completed()
+
 
 if __name__ == "__main__":
     WorkoutApp().run()

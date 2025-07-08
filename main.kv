@@ -235,7 +235,9 @@ ScreenManager:
             text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
             text: "End Set"
-            on_release: app.root.current = "metric_input"
+            on_release:
+                app.mark_set_complete();
+                app.root.current = "metric_input"
 
 <MetricInputScreen>:
     on_pre_enter: root.populate_metrics()

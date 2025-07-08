@@ -357,6 +357,11 @@ class WorkoutSession:
         self.last_set_time = self.start_time
         self.rest_target_time = self.last_set_time + self.rest_duration
 
+    def mark_set_completed(self) -> None:
+        """Record the completion time for the current set."""
+        self.last_set_time = time.time()
+        self.rest_target_time = self.last_set_time + self.rest_duration
+
     def next_exercise_name(self):
         if self.current_exercise < len(self.exercises):
             return self.exercises[self.current_exercise]["name"]
@@ -405,8 +410,6 @@ class WorkoutSession:
         ex["results"].append(metrics)
         self.current_set += 1
 
-        self.last_set_time = time.time()
-        self.rest_target_time = self.last_set_time + self.rest_duration
 
         if self.current_set >= ex["sets"]:
             self.current_set = 0
