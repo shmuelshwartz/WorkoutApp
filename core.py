@@ -162,8 +162,98 @@ class WorkoutSession:
             self.current_set = 0
             self.current_exercise += 1
 
+
         if self.current_exercise >= len(self.exercises):
             self.end_time = time.time()
             return True
 
         return False
+
+
+
+class PresetEditor:
+    """Helper for creating or editing workout presets in memory."""
+
+    def __init__(
+        self,
+        preset_name: str | None = None,
+        db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    ):
+        """Create the editor and optionally load an existing preset."""
+
+        self.db_path = Path(db_path)
+        self.conn = sqlite3.connect(str(self.db_path))
+
+        self.preset_name: str = preset_name or ""
+        self.sections: list[dict] = []
+
+        if preset_name:
+            self.load(preset_name)
+
+    def load(self, preset_name: str) -> None:
+        """Load ``preset_name`` from the database into memory."""
+
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT id FROM presets WHERE name = ?", (preset_name,))
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Preset '{preset_name}' not found")
+
+        preset_id = row[0]
+        cursor.execute(
+            "SELECT id, name FROM sections WHERE preset_id = ? ORDER BY position",
+            (preset_id,),
+        )
+
+        self.preset_name = preset_name
+        self.sections.clear()
+
+        for section_id, name in cursor.fetchall():
+            cursor.execute(
+                """
+                SELECT e.name, se.number_of_sets
+                FROM section_exercises se
+                JOIN exercises e ON se.exercise_id = e.id
+                WHERE se.section_id = ?
+                ORDER BY se.position
+                """,
+                (section_id,),
+            )
+            exercises = [
+                {"name": ex_name, "sets": sets} for ex_name, sets in cursor.fetchall()
+            ]
+            self.sections.append({"name": name, "exercises": exercises})
+
+    def add_section(self, name: str = "Section") -> int:
+        """Add a new section and return its index."""
+
+        self.sections.append({"name": name, "exercises": []})
+        return len(self.sections) - 1
+
+    def add_exercise(
+        self,
+        section_index: int,
+        exercise_name: str,
+        sets: int = DEFAULT_SETS_PER_EXERCISE,
+    ) -> dict:
+        """Add an exercise to the specified section."""
+
+        if section_index < 0 or section_index >= len(self.sections):
+            raise IndexError("Section index out of range")
+
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT 1 FROM exercises WHERE name = ?", (exercise_name,))
+        if cursor.fetchone() is None:
+            raise ValueError(f"Exercise '{exercise_name}' does not exist")
+
+        ex = {"name": exercise_name, "sets": sets}
+        self.sections[section_index]["exercises"].append(ex)
+        return ex
+
+    def to_dict(self) -> dict:
+        """Return the preset data as a dictionary."""
+
+        return {"name": self.preset_name, "sections": self.sections}
+
+    def close(self) -> None:
+        self.conn.close()
