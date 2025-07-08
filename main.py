@@ -374,6 +374,7 @@ class SectionWidget(MDBoxLayout):
         app.editing_section_index = self.section_index
         if app.root:
             edit = app.root.get_screen("edit_preset")
+            edit.show_only_section(self.section_index)
             edit.open_exercise_panel()
 
     def refresh_exercises(self):
@@ -417,6 +418,17 @@ class EditPresetScreen(MDScreen):
                 self.add_section()
         return super().on_pre_enter(*args)
 
+    def refresh_sections(self):
+        """Repopulate the section widgets from the preset editor."""
+        app = MDApp.get_running_app()
+        if not self.sections_box:
+            return
+        self.sections_box.clear_widgets()
+        for idx, sec in enumerate(app.preset_editor.sections):
+            self.add_section(sec["name"], index=idx)
+        if not app.preset_editor.sections:
+            self.add_section()
+
     def open_exercise_panel(self):
         if self.exercise_panel:
             self.exercise_panel.on_open()
@@ -426,6 +438,15 @@ class EditPresetScreen(MDScreen):
         if self.exercise_panel:
             self.exercise_panel.save_selection()
         self.panel_visible = False
+        self.refresh_sections()
+
+    def show_only_section(self, index: int):
+        """Hide all sections except the one with ``index``."""
+        if not self.sections_box:
+            return
+        for child in list(self.sections_box.children):
+            if isinstance(child, SectionWidget) and child.section_index != index:
+                self.sections_box.remove_widget(child)
 
     def add_section(self, name: str | None = None, index: int | None = None):
         """Add a new section to the preset and return the widget."""
