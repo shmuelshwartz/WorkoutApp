@@ -18,6 +18,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.list import OneLineListItem
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton
+from kivymd.uix.card import MDSeparator
 from pathlib import Path
 
 # Import core so we can always reference the up-to-date WORKOUT_PRESETS list
@@ -586,6 +587,20 @@ class EditExerciseScreen(MDScreen):
             timing_row.add_widget(spinner)
             box.add_widget(timing_row)
 
+            preset_row = MDBoxLayout(size_hint_y=None, height="40dp")
+            preset_row.add_widget(_make_label("Preset value:", size_hint_x=0.5))
+            preset_input = MDTextField(size_hint_x=0.5)
+            preset_row.add_widget(preset_input)
+            preset_row.opacity = 1 if spinner.text == "preset" else 0
+            preset_row.disabled = spinner.text != "preset"
+
+            def _update_preset_row(inst, val, row=preset_row):
+                row.opacity = 1 if val == "preset" else 0
+                row.disabled = val != "preset"
+
+            spinner.bind(text=_update_preset_row)
+            box.add_widget(preset_row)
+
             req_row = MDBoxLayout(size_hint_y=None, height="40dp")
             req_row.add_widget(_make_label("Required:", size_hint_x=0.5))
             req_checkbox = MDCheckbox(active=bool(m.get('is_required')), size_hint_x=None)
@@ -598,6 +613,7 @@ class EditExerciseScreen(MDScreen):
                 box.add_widget(_make_label(f"Description: {desc}", halign="left"))
 
             self.metrics_list.add_widget(box)
+            self.metrics_list.add_widget(MDSeparator())
 
 
 class WorkoutApp(MDApp):
