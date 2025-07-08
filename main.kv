@@ -371,6 +371,27 @@ ScreenManager:
             text: "Back to Presets"
             on_release: app.root.current = "presets"
 
+<SelectedExerciseItem>:
+    orientation: "horizontal"
+    size_hint_y: None
+    height: "40dp"
+    MDBoxLayout:
+        size_hint_x: None
+        width: "60dp"
+        orientation: "vertical"
+        MDIconButton:
+            icon: "arrow-up"
+            on_release: root.move_up()
+        MDIconButton:
+            icon: "arrow-down"
+            on_release: root.move_down()
+    MDLabel:
+        text: root.text
+        halign: "center"
+    MDIconButton:
+        icon: "close"
+        on_release: root.remove_self()
+
 <ExerciseSelectionScreen>:
     selected_list: selected_list
     exercise_list: exercise_list
