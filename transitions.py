@@ -8,8 +8,12 @@ class OverlaySlideTransition(SlideTransition):
     def start(self, manager):
         # Keep references to screens involved in the transition
         self.manager = manager
-        self.screen_in = manager.next_screen
-        self.screen_out = manager.current_screen
+        # ``current_screen`` is the screen being switched to when this
+        # method is called. ``previous_screen`` holds the screen we are
+        # transitioning from. "next_screen" does not exist on the
+        # ``ScreenManager`` so referencing it caused an AttributeError.
+        self.screen_in = manager.current_screen
+        self.screen_out = getattr(manager, "previous_screen", None)
         width, height = manager.size
 
         if self.direction == "up":
@@ -18,7 +22,7 @@ class OverlaySlideTransition(SlideTransition):
             anim = Animation(y=0, duration=self.duration, t=self.t)
             anim.bind(on_complete=lambda *a: self.dispatch("on_complete"))
             anim.start(self.screen_in)
-        elif self.direction == "down":
+        elif self.direction == "down" and self.screen_out:
             # Current screen slides down revealing the screen below
             anim = Animation(y=-height, duration=self.duration, t=self.t)
             anim.bind(on_complete=lambda *a: self.dispatch("on_complete"))
