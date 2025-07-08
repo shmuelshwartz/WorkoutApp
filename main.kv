@@ -492,9 +492,15 @@ ScreenManager:
         ScrollView:
             MDList:
                 id: metrics_list
-        MDRaisedButton:
-            text: "Add Metric"
-            on_release: root.open_add_metric_popup()
+        MDBoxLayout:
+            orientation: "horizontal"
+            spacing: "10dp"
+            MDRaisedButton:
+                text: "Add Metric"
+                on_release: root.open_add_metric_popup()
+            MDRaisedButton:
+                text: "New Metric"
+                on_release: root.open_new_metric_popup()
         MDRaisedButton:
             text: "Back"
             on_release: app.root.current = "edit_preset"

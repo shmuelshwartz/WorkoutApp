@@ -821,7 +821,7 @@ class EditExerciseScreen(MDScreen):
         self.populate()
 
     def open_add_metric_popup(self):
-        popup = AddMetricPopup(self, mode="choose")
+        popup = AddMetricPopup(self, mode="select")
         popup.open()
 
     def open_new_metric_popup(self):
