@@ -594,9 +594,24 @@ class SelectedExerciseItem(MDBoxLayout):
             parent.add_widget(self, index=idx - 1)
 
     def remove_self(self):
-        parent = self.parent
-        if parent:
-            parent.remove_widget(self)
+        dialog = None
+
+        def do_delete(*args):
+            parent = self.parent
+            if parent:
+                parent.remove_widget(self)
+            if dialog:
+                dialog.dismiss()
+
+        dialog = MDDialog(
+            title="Remove Exercise?",
+            text=f"Delete {self.text} from this workout?",
+            buttons=[
+                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                MDRaisedButton(text="Delete", on_release=do_delete),
+            ],
+        )
+        dialog.open()
 
 
 class ExerciseSelectionPanel(MDBoxLayout):
