@@ -653,14 +653,18 @@ class AddMetricPopup(MDDialog):
     # ------------------------------------------------------------------
     def _build_select_widgets(self):
         metrics = core.get_all_metric_types()
-        content = MDList()
+        list_view = MDList()
         for m in metrics:
             item = OneLineListItem(text=m["name"])
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
-            content.add_widget(item)
+            list_view.add_widget(item)
+
+        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        scroll.add_widget(list_view)
+
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
         buttons = [cancel_btn]
-        return content, buttons, "Select Metric"
+        return scroll, buttons, "Select Metric"
 
     def _build_new_metric_widgets(self):
         default_height = "48dp"
@@ -722,7 +726,7 @@ class AddMetricPopup(MDDialog):
         layout.add_widget(form)
 
         save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)
-        back_btn = MDRaisedButton(text="Back", on_release=self.show_metric_list)
+        back_btn = MDRaisedButton(text="Back", on_release=lambda *a: self.dismiss())
         buttons = [save_btn, back_btn]
         return layout, buttons, "New Metric"
 
