@@ -392,6 +392,7 @@ ScreenManager:
     sections_box: sections_box
     exercise_panel: exercise_panel
     panel_visible: False
+    on_current_tab: edit_tabs.current = self.current_tab
     FloatLayout:
         MDBoxLayout:
             id: main_content
@@ -415,7 +416,6 @@ ScreenManager:
                 id: edit_tabs
                 size_hint_y: 1
                 on_kv_post: self.current = root.current_tab
-                on_current_tab: self.current = root.current_tab
                 Screen:
                     name: "sections"
                     BoxLayout:
