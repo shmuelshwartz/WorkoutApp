@@ -391,7 +391,7 @@ ScreenManager:
             id: main_content
             orientation: "vertical"
             spacing: "10dp"
-            padding: "20dp"
+            padding: "5dp"
             size_hint: 1, 1
             ScrollView:
                 MDBoxLayout:
@@ -420,25 +420,35 @@ ScreenManager:
     height: "40dp"
     MDBoxLayout:
         size_hint_x: None
-        width: "60dp"
+        width: "40dp"
         orientation: "horizontal"
+        spacing: "2dp"
         MDIconButton:
             icon: "arrow-up"
+            user_font_size: "20sp"
             on_release: root.move_up()
         MDIconButton:
             icon: "arrow-down"
+            user_font_size: "20sp"
             on_release: root.move_down()
     MDLabel:
         text: root.text
         halign: "center"
-    MDIconButton:
-        icon: "pencil"
-        on_release: root.edit()
-    MDIconButton:
-        icon: "close"
-        theme_text_color: "Custom"
-        text_color: 1, 0, 0, 1
-        on_release: root.remove_self()
+    MDBoxLayout:
+        size_hint_x: None
+        width: "40dp"
+        orientation: "horizontal"
+        spacing: "2dp"
+        MDIconButton:
+            icon: "pencil"
+            user_font_size: "20sp"
+            on_release: root.edit()
+        MDIconButton:
+            icon: "close"
+            user_font_size: "20sp"
+            theme_text_color: "Custom"
+            text_color: 1, 0, 0, 1
+            on_release: root.remove_self()
 
 <ExerciseSelectionPanel@MDBoxLayout>:
     exercise_list: exercise_list
