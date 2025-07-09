@@ -414,7 +414,8 @@ ScreenManager:
             ScreenManager:
                 id: edit_tabs
                 size_hint_y: 1
-                current: root.current_tab
+                on_kv_post: self.current = root.current_tab
+                on_current_tab: self.current = root.current_tab
                 Screen:
                     name: "sections"
                     BoxLayout:
