@@ -411,34 +411,34 @@ ScreenManager:
                     text: "Details"
                     md_bg_color: app.theme_cls.primary_color if root.current_tab == "details" else (.5, .5, .5, 1)
                     on_release: root.switch_tab("details")
-            MDBoxLayout:
-                id: sections_tab
-                orientation: "vertical"
-                size_hint_y: None
-                height: self.minimum_height if root.current_tab == "sections" else 0
-                opacity: 1 if root.current_tab == "sections" else 0
-                ScrollView:
-                    MDBoxLayout:
-                        id: sections_box
+            ScreenManager:
+                id: edit_tabs
+                size_hint_y: 1
+                current: root.current_tab
+                Screen:
+                    name: "sections"
+                    BoxLayout:
                         orientation: "vertical"
-                        size_hint_y: None
-                        height: self.minimum_height
-                        padding: 0, 0, 0, root.exercise_panel.height if root.panel_visible else 0
-                MDRaisedButton:
-                    text: "Add Section"
-                    on_release: root.add_section()
-            MDBoxLayout:
-                id: details_tab
-                orientation: "vertical"
-                size_hint_y: None
-                height: self.minimum_height if root.current_tab == "details" else 0
-                opacity: 1 if root.current_tab == "details" else 0
-                MDTextField:
-                    text: root.preset_name
-                    hint_text: "Preset Name"
-                    on_text: root.update_preset_name(self.text)
-                    size_hint_y: None
-                    height: "40dp"
+                        ScrollView:
+                            MDBoxLayout:
+                                id: sections_box
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                padding: 0, 0, 0, root.exercise_panel.height if root.panel_visible else 0
+                        MDRaisedButton:
+                            text: "Add Section"
+                            on_release: root.add_section()
+                Screen:
+                    name: "details"
+                    BoxLayout:
+                        orientation: "vertical"
+                        MDTextField:
+                            text: root.preset_name
+                            hint_text: "Preset Name"
+                            on_text: root.update_preset_name(self.text)
+                            size_hint_y: None
+                            height: "40dp"
             MDRaisedButton:
                 text: "Back to Presets"
                 on_release: app.root.current = "presets"
