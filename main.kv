@@ -490,16 +490,19 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
+            size_hint_y:0.1
             text: root.exercise_name if root.exercise_name else "Edit Exercise"
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
         ScrollView:
+            size_hint_y:0.75
             MDList:
                 id: metrics_list
         MDBoxLayout:
             orientation: "horizontal"
             spacing: "10dp"
+            size_hint_y:0.15
             MDRaisedButton:
                 text: "Add Metric"
                 on_release: root.open_add_metric_popup()
