@@ -39,9 +39,7 @@ from core import (
 load_workout_presets(Path(__file__).resolve().parent / "data" / "workout.db")
 import time
 import math
-from kivy.core.window import Window
 
-Window.size = (280, 280 * (20 / 9))
 
 
 class WorkoutActiveScreen(MDScreen):
@@ -552,6 +550,7 @@ class EditPresetScreen(MDScreen):
         self.sections_box.add_widget(section)
         section.refresh_exercises()
         return section
+
 
 
 class SelectedExerciseItem(MDBoxLayout):
