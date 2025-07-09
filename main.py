@@ -40,7 +40,9 @@ load_workout_presets(Path(__file__).resolve().parent / "data" / "workout.db")
 import time
 import math
 
+from kivy.core.window import Window
 
+Window.size = (280, 280 * (20 / 9))
 
 class WorkoutActiveScreen(MDScreen):
     """Screen that shows an active workout with a stopwatch."""
