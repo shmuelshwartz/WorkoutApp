@@ -22,6 +22,7 @@ from kivymd.uix.button import MDIconButton
 from kivymd.uix.card import MDSeparator
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDRaisedButton
+from kivy.uix.screenmanager import NoTransition
 from pathlib import Path
 
 # Import core so we can always reference the up-to-date WORKOUT_PRESETS list

@@ -415,6 +415,7 @@ ScreenManager:
             ScreenManager:
                 id: edit_tabs
                 size_hint_y: 1
+                transition: NoTransition()
                 on_kv_post: self.current = root.current_tab
                 Screen:
                     name: "sections"
@@ -434,12 +435,17 @@ ScreenManager:
                     name: "details"
                     BoxLayout:
                         orientation: "vertical"
-                        MDTextField:
-                            text: root.preset_name
-                            hint_text: "Preset Name"
-                            on_text: root.update_preset_name(self.text)
-                            size_hint_y: None
-                            height: "40dp"
+                        ScrollView:
+                            MDBoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                MDTextField:
+                                    text: root.preset_name
+                                    hint_text: "Preset Name"
+                                    on_text: root.update_preset_name(self.text)
+                                    size_hint_y: None
+                                    height: "40dp"
             MDRaisedButton:
                 text: "Back to Presets"
                 on_release: app.root.current = "presets"
