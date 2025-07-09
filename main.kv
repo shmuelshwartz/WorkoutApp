@@ -420,36 +420,46 @@ ScreenManager:
     height: "48dp"
     MDBoxLayout:
         size_hint_x: None
-        width: "72dp"
+        width: "36dp"
         orientation: "horizontal"
-        spacing: "0dp"
-        MDIconButton:
+        spacing: "5dp"
+        valign: "center"
+
+        MDIcon:
             icon: "arrow-up"
-            user_font_size: "14sp"
-            on_release: root.move_up()
-        MDIconButton:
+            font_size: "20sp"
+            on_touch_down: if self.collide_point(*args[1].pos): root.move_up()
+            pos_hint: {"center_y": 0.5}
+
+        MDIcon:
             icon: "arrow-down"
-            user_font_size: "14sp"
-            on_release: root.move_down()
+            font_size: "20sp"
+            on_touch_down: if self.collide_point(*args[1].pos): root.move_down()
+            pos_hint: {"center_y": 0.5}
     MDLabel:
         size_hint_x: 1
         text: root.text
         halign: "center"
     MDBoxLayout:
         size_hint_x: None
-        width: "72dp"
+        width: "36dp"  # smaller container width (half of original 72dp)
         orientation: "horizontal"
-        spacing: "0dp"
-        MDIconButton:
+        spacing: "5dp"
+        valign: "center"  # center all children vertically
+
+        MDIcon:
             icon: "pencil"
-            user_font_size: "14sp"
-            on_release: root.edit()
-        MDIconButton:
-            icon: "close"
-            user_font_size: "14sp"
+            font_size: "20sp"  # smaller icon size
+            pos_hint: {"center_y": 0.5}  # center vertically
+            on_touch_down: if self.collide_point(*args[1].pos): root.edit()
+
+        MDIcon:
+            icon: "delete"
+            font_size: "20sp"
             theme_text_color: "Custom"
             text_color: 1, 0, 0, 1
-            on_release: root.remove_self()
+            pos_hint: {"center_y": 0.5}  # center vertically
+            on_touch_down: if self.collide_point(*args[1].pos): root.remove_self()
 
 <ExerciseSelectionPanel@MDBoxLayout>:
     exercise_list: exercise_list
