@@ -420,32 +420,33 @@ ScreenManager:
     height: "48dp"
     MDBoxLayout:
         size_hint_x: None
-        width: "96dp"
+        width: "72dp"
         orientation: "horizontal"
-        spacing: "1dp"
+        spacing: "0dp"
         MDIconButton:
             icon: "arrow-up"
-            user_font_size: "16sp"
+            user_font_size: "14sp"
             on_release: root.move_up()
         MDIconButton:
             icon: "arrow-down"
-            user_font_size: "16sp"
+            user_font_size: "14sp"
             on_release: root.move_down()
     MDLabel:
+        size_hint_x: 1
         text: root.text
         halign: "center"
     MDBoxLayout:
         size_hint_x: None
-        width: "96dp"
+        width: "72dp"
         orientation: "horizontal"
-        spacing: "1dp"
+        spacing: "0dp"
         MDIconButton:
             icon: "pencil"
-            user_font_size: "16sp"
+            user_font_size: "14sp"
             on_release: root.edit()
         MDIconButton:
             icon: "close"
-            user_font_size: "16sp"
+            user_font_size: "14sp"
             theme_text_color: "Custom"
             text_color: 1, 0, 0, 1
             on_release: root.remove_self()
