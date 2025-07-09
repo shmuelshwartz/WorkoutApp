@@ -417,35 +417,35 @@ ScreenManager:
 <SelectedExerciseItem>:
     orientation: "horizontal"
     size_hint_y: None
-    height: "40dp"
+    height: "48dp"
     MDBoxLayout:
         size_hint_x: None
-        width: "40dp"
+        width: "96dp"
         orientation: "horizontal"
-        spacing: "2dp"
+        spacing: "1dp"
         MDIconButton:
             icon: "arrow-up"
-            user_font_size: "20sp"
+            user_font_size: "16sp"
             on_release: root.move_up()
         MDIconButton:
             icon: "arrow-down"
-            user_font_size: "20sp"
+            user_font_size: "16sp"
             on_release: root.move_down()
     MDLabel:
         text: root.text
         halign: "center"
     MDBoxLayout:
         size_hint_x: None
-        width: "40dp"
+        width: "96dp"
         orientation: "horizontal"
-        spacing: "2dp"
+        spacing: "1dp"
         MDIconButton:
             icon: "pencil"
-            user_font_size: "20sp"
+            user_font_size: "16sp"
             on_release: root.edit()
         MDIconButton:
             icon: "close"
-            user_font_size: "20sp"
+            user_font_size: "16sp"
             theme_text_color: "Custom"
             text_color: 1, 0, 0, 1
             on_release: root.remove_self()
