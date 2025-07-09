@@ -478,6 +478,29 @@ class SectionWidget(MDBoxLayout):
                 )
             )
 
+    def confirm_delete(self):
+        dialog = None
+
+        def do_delete(*args):
+            app = MDApp.get_running_app()
+            if app.preset_editor:
+                app.preset_editor.remove_section(self.section_index)
+            if app.root:
+                edit = app.root.get_screen("edit_preset")
+                edit.refresh_sections()
+            if dialog:
+                dialog.dismiss()
+
+        dialog = MDDialog(
+            title="Remove Section?",
+            text=f"Delete {self.section_name}?",
+            buttons=[
+                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                MDRaisedButton(text="Delete", on_release=do_delete),
+            ],
+        )
+        dialog.open()
+
 
 class EditPresetScreen(MDScreen):
     """Screen to edit a workout preset."""
@@ -486,6 +509,7 @@ class EditPresetScreen(MDScreen):
     sections_box = ObjectProperty(None)
     panel_visible = BooleanProperty(False)
     exercise_panel = ObjectProperty(None)
+    current_tab = StringProperty("sections")
 
     _colors = [
         (1, 0.9, 0.9, 1),
@@ -500,6 +524,7 @@ class EditPresetScreen(MDScreen):
         app = MDApp.get_running_app()
         app.init_preset_editor()
         self.preset_name = app.preset_editor.preset_name or "Preset"
+        self.current_tab = "sections"
         if self.sections_box:
             self.sections_box.clear_widgets()
             for idx, sec in enumerate(app.preset_editor.sections):
@@ -552,6 +577,18 @@ class EditPresetScreen(MDScreen):
         self.sections_box.add_widget(section)
         section.refresh_exercises()
         return section
+
+    def switch_tab(self, tab: str):
+        """Switch between the sections and details tabs."""
+        if tab in ("sections", "details"):
+            self.current_tab = tab
+
+    def update_preset_name(self, name: str):
+        """Update the preset name in the editor."""
+        self.preset_name = name
+        app = MDApp.get_running_app()
+        if app.preset_editor:
+            app.preset_editor.preset_name = name
 
 
 

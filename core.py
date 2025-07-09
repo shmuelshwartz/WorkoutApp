@@ -667,6 +667,12 @@ class PresetEditor:
         self.sections.append({"name": name, "exercises": []})
         return len(self.sections) - 1
 
+    def remove_section(self, index: int) -> None:
+        """Remove the section at ``index`` if it exists."""
+
+        if 0 <= index < len(self.sections):
+            self.sections.pop(index)
+
     def add_exercise(
         self,
         section_index: int,
