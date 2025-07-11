@@ -1,3 +1,4 @@
+#:import NoTransition kivy.uix.screenmanager.NoTransition
 ScreenManager:
     WelcomeScreen:
         name: "welcome"
@@ -400,6 +401,7 @@ ScreenManager:
             spacing: "10dp"
             padding: "5dp"
             size_hint: 1, 1
+
             MDBoxLayout:
                 size_hint_y: None
                 height: "40dp"
@@ -412,11 +414,13 @@ ScreenManager:
                     text: "Details"
                     md_bg_color: app.theme_cls.primary_color if root.current_tab == "details" else (.5, .5, .5, 1)
                     on_release: root.switch_tab("details")
+
             ScreenManager:
                 id: edit_tabs
                 size_hint_y: 1
                 transition: NoTransition()
                 on_kv_post: self.current = root.current_tab
+
                 Screen:
                     name: "sections"
                     BoxLayout:
@@ -431,24 +435,31 @@ ScreenManager:
                         MDRaisedButton:
                             text: "Add Section"
                             on_release: root.add_section()
+
                 Screen:
                     name: "details"
                     BoxLayout:
                         orientation: "vertical"
                         ScrollView:
+                            do_scroll_x: False
                             MDBoxLayout:
                                 orientation: "vertical"
                                 size_hint_y: None
                                 height: self.minimum_height
+                                spacing: dp(10)
                                 MDTextField:
-                                    text: root.preset_name
+                                    id: preset_name
                                     hint_text: "Preset Name"
+                                    multiline: False
                                     on_text: root.update_preset_name(self.text)
+                                    size_hint_x: 1
                                     size_hint_y: None
-                                    height: "40dp"
-            MDRaisedButton:
-                text: "Back to Presets"
-                on_release: app.root.current = "presets"
+                                    height: "48dp"  # Give it space to render properly
+
+                        MDRaisedButton:
+                            text: "Back to Presets"
+                            on_release: app.root.current = "presets"
+
         ExerciseSelectionPanel:
             id: exercise_panel
             size_hint_x: 1
@@ -456,7 +467,6 @@ ScreenManager:
             height: root.height * 0.66 if root.panel_visible else 0
             y: 0
             opacity: 1 if root.panel_visible else 0
-
 <SelectedExerciseItem>:
     orientation: "horizontal"
     size_hint_y: None
