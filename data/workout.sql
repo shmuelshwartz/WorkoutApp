@@ -26,6 +26,15 @@ CREATE TABLE IF NOT EXISTS "metric_types" (
 	"is_user_created"	BOOLEAN NOT NULL DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
+CREATE TABLE IF NOT EXISTS "preset_metadata" (
+	"id"	INTEGER,
+	"preset_id"	INTEGER NOT NULL,
+	"metric_type_id"	INTEGER NOT NULL,
+	"value"	TEXT NOT NULL,
+	PRIMARY KEY("id" AUTOINCREMENT),
+	FOREIGN KEY("metric_type_id") REFERENCES "metric_types"("id") ON DELETE CASCADE,
+	FOREIGN KEY("preset_id") REFERENCES "presets"("id") ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS "presets" (
 	"id"	INTEGER,
 	"name"	TEXT NOT NULL,
@@ -33,11 +42,12 @@ CREATE TABLE IF NOT EXISTS "presets" (
 );
 CREATE TABLE IF NOT EXISTS "section_exercise_metrics" (
 	"id"	INTEGER,
-	"section_exercise_id"	INTEGER NOT NULL,
-	"metric_type_id"	INTEGER NOT NULL,
-	"input_timing"	TEXT NOT NULL CHECK("input_timing" IN ('preset', 'pre_workout', 'post_workout', 'pre_set', 'post_set')),
-	"is_required"	BOOLEAN NOT NULL DEFAULT 0,
-	"scope"	TEXT NOT NULL DEFAULT 'set' CHECK("scope" IN ('session', 'section', 'exercise', 'set')),
+	"section_exercise_id"	INT NOT NULL,
+	"metric_type_id"	INT NOT NULL,
+	"input_timing"	TEXT NOT NULL,
+	"is_required"	NUM NOT NULL DEFAULT 0,
+	"scope"	TEXT NOT NULL,
+	"default_exercise_metric_id"	INT,
 	PRIMARY KEY("id" AUTOINCREMENT),
 	FOREIGN KEY("metric_type_id") REFERENCES "metric_types"("id") ON DELETE CASCADE,
 	FOREIGN KEY("section_exercise_id") REFERENCES "section_exercises"("id") ON DELETE CASCADE
@@ -48,6 +58,8 @@ CREATE TABLE IF NOT EXISTS "section_exercises" (
 	"exercise_id"	INTEGER NOT NULL,
 	"position"	INTEGER NOT NULL,
 	"number_of_sets"	INTEGER NOT NULL DEFAULT 1,
+	"exercise_name"	TEXT,
+	"exercise_description"	TEXT,
 	PRIMARY KEY("id" AUTOINCREMENT),
 	FOREIGN KEY("exercise_id") REFERENCES "exercises"("id"),
 	FOREIGN KEY("section_id") REFERENCES "sections"("id") ON DELETE CASCADE
@@ -70,32 +82,6 @@ CREATE TABLE IF NOT EXISTS "user_defined_enum_values" (
 	UNIQUE("metric_type_id","exercise_id","value"),
 	FOREIGN KEY("exercise_id") REFERENCES "exercises"("id") ON DELETE CASCADE,
 	FOREIGN KEY("metric_type_id") REFERENCES "metric_types"("id") ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS "workout_exercise_entries" (
-	"id"	INTEGER,
-	"session_id"	INTEGER NOT NULL,
-	"exercise_id"	INTEGER NOT NULL,
-	"position"	INTEGER NOT NULL,
-	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("exercise_id") REFERENCES "exercises"("id"),
-	FOREIGN KEY("session_id") REFERENCES "workout_sessions"("id") ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS "workout_metric_values" (
-	"id"	INTEGER,
-	"exercise_entry_id"	INTEGER NOT NULL,
-	"metric_type_id"	INTEGER NOT NULL,
-	"value"	TEXT NOT NULL,
-	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("exercise_entry_id") REFERENCES "workout_exercise_entries"("id") ON DELETE CASCADE,
-	FOREIGN KEY("metric_type_id") REFERENCES "metric_types"("id")
-);
-CREATE TABLE IF NOT EXISTS "workout_sessions" (
-	"id"	INTEGER,
-	"preset_id"	INTEGER,
-	"start_time"	DATETIME,
-	"end_time"	DATETIME,
-	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("preset_id") REFERENCES "presets"("id")
 );
 INSERT INTO "exercise_metrics" VALUES (1,1,5);
 INSERT INTO "exercise_metrics" VALUES (2,2,5);
@@ -164,18 +150,62 @@ INSERT INTO "metric_types" VALUES (8,'Test','float','manual_text','post_workout'
 INSERT INTO "presets" VALUES (1,'Push Day');
 INSERT INTO "presets" VALUES (2,'Pull Day');
 INSERT INTO "presets" VALUES (3,'Leg Day');
-INSERT INTO "section_exercises" VALUES (1,1,10,1,3);
-INSERT INTO "section_exercises" VALUES (2,3,11,1,3);
-INSERT INTO "section_exercises" VALUES (3,5,12,1,3);
-INSERT INTO "section_exercises" VALUES (4,2,1,1,3);
-INSERT INTO "section_exercises" VALUES (5,2,2,2,3);
-INSERT INTO "section_exercises" VALUES (6,2,3,3,3);
-INSERT INTO "section_exercises" VALUES (7,4,4,1,3);
-INSERT INTO "section_exercises" VALUES (8,4,5,2,3);
-INSERT INTO "section_exercises" VALUES (9,4,6,3,3);
-INSERT INTO "section_exercises" VALUES (10,6,7,1,3);
-INSERT INTO "section_exercises" VALUES (11,6,8,2,3);
-INSERT INTO "section_exercises" VALUES (12,6,9,3,3);
+INSERT INTO "section_exercise_metrics" VALUES (1,4,5,'post_set',0,'set',1);
+INSERT INTO "section_exercise_metrics" VALUES (2,5,5,'post_set',0,'set',2);
+INSERT INTO "section_exercise_metrics" VALUES (3,6,5,'post_set',0,'set',3);
+INSERT INTO "section_exercise_metrics" VALUES (4,7,5,'post_set',0,'set',4);
+INSERT INTO "section_exercise_metrics" VALUES (5,8,5,'post_set',0,'set',5);
+INSERT INTO "section_exercise_metrics" VALUES (6,9,5,'post_set',0,'set',6);
+INSERT INTO "section_exercise_metrics" VALUES (7,10,5,'post_set',0,'set',7);
+INSERT INTO "section_exercise_metrics" VALUES (8,11,5,'post_set',0,'set',8);
+INSERT INTO "section_exercise_metrics" VALUES (9,12,5,'post_set',0,'set',9);
+INSERT INTO "section_exercise_metrics" VALUES (10,4,3,'post_set',0,'set',10);
+INSERT INTO "section_exercise_metrics" VALUES (11,5,3,'post_set',0,'set',11);
+INSERT INTO "section_exercise_metrics" VALUES (12,6,3,'post_set',0,'set',12);
+INSERT INTO "section_exercise_metrics" VALUES (13,7,3,'post_set',0,'set',13);
+INSERT INTO "section_exercise_metrics" VALUES (14,8,3,'post_set',0,'set',14);
+INSERT INTO "section_exercise_metrics" VALUES (15,9,3,'post_set',0,'set',15);
+INSERT INTO "section_exercise_metrics" VALUES (16,10,3,'post_set',0,'set',16);
+INSERT INTO "section_exercise_metrics" VALUES (17,11,3,'post_set',0,'set',17);
+INSERT INTO "section_exercise_metrics" VALUES (18,12,3,'post_set',0,'set',18);
+INSERT INTO "section_exercise_metrics" VALUES (19,4,1,'post_set',1,'set',19);
+INSERT INTO "section_exercise_metrics" VALUES (20,4,4,'preset',0,'exercise',20);
+INSERT INTO "section_exercise_metrics" VALUES (21,5,6,'preset',0,'exercise',21);
+INSERT INTO "section_exercise_metrics" VALUES (22,5,1,'post_set',1,'set',22);
+INSERT INTO "section_exercise_metrics" VALUES (23,5,4,'preset',0,'exercise',23);
+INSERT INTO "section_exercise_metrics" VALUES (24,5,2,'pre_set',1,'set',24);
+INSERT INTO "section_exercise_metrics" VALUES (25,6,6,'preset',0,'exercise',25);
+INSERT INTO "section_exercise_metrics" VALUES (26,6,1,'post_set',1,'set',26);
+INSERT INTO "section_exercise_metrics" VALUES (27,6,4,'preset',0,'exercise',27);
+INSERT INTO "section_exercise_metrics" VALUES (28,6,2,'pre_set',1,'set',28);
+INSERT INTO "section_exercise_metrics" VALUES (29,7,7,'post_set',1,'set',29);
+INSERT INTO "section_exercise_metrics" VALUES (30,8,1,'post_set',1,'set',30);
+INSERT INTO "section_exercise_metrics" VALUES (31,8,4,'preset',0,'exercise',31);
+INSERT INTO "section_exercise_metrics" VALUES (32,9,6,'preset',0,'exercise',32);
+INSERT INTO "section_exercise_metrics" VALUES (33,9,1,'post_set',1,'set',33);
+INSERT INTO "section_exercise_metrics" VALUES (34,9,4,'preset',0,'exercise',34);
+INSERT INTO "section_exercise_metrics" VALUES (35,9,2,'pre_set',1,'set',35);
+INSERT INTO "section_exercise_metrics" VALUES (36,10,1,'post_set',1,'set',36);
+INSERT INTO "section_exercise_metrics" VALUES (37,10,4,'preset',0,'exercise',37);
+INSERT INTO "section_exercise_metrics" VALUES (38,10,2,'pre_set',1,'set',38);
+INSERT INTO "section_exercise_metrics" VALUES (39,11,1,'post_set',1,'set',39);
+INSERT INTO "section_exercise_metrics" VALUES (40,11,4,'preset',0,'exercise',40);
+INSERT INTO "section_exercise_metrics" VALUES (41,11,2,'pre_set',1,'set',41);
+INSERT INTO "section_exercise_metrics" VALUES (42,12,1,'post_set',1,'set',42);
+INSERT INTO "section_exercise_metrics" VALUES (43,12,4,'preset',0,'exercise',43);
+INSERT INTO "section_exercise_metrics" VALUES (44,12,2,'pre_set',1,'set',44);
+INSERT INTO "section_exercises" VALUES (1,1,10,1,3,'Shoulder Circles','Simple dynamic warm-up for shoulder mobility');
+INSERT INTO "section_exercises" VALUES (2,3,11,1,3,'Jumping Jacks','Cardio warm-up exercise');
+INSERT INTO "section_exercises" VALUES (3,5,12,1,3,'Skipping Rope','Jump rope warm-up exercise');
+INSERT INTO "section_exercises" VALUES (4,2,1,1,3,'Push-ups','Bodyweight pressing exercise');
+INSERT INTO "section_exercises" VALUES (5,2,2,2,3,'Bench Press','Barbell pressing exercise');
+INSERT INTO "section_exercises" VALUES (6,2,3,3,3,'Overhead Press','Barbell overhead pressing');
+INSERT INTO "section_exercises" VALUES (7,4,4,1,3,'Front Lever','Advanced static hold pulling exercise');
+INSERT INTO "section_exercises" VALUES (8,4,5,2,3,'Pull-ups','Bodyweight pulling exercise');
+INSERT INTO "section_exercises" VALUES (9,4,6,3,3,'Barbell Rows','Barbell pulling exercise');
+INSERT INTO "section_exercises" VALUES (10,6,7,1,3,'Squats','Barbell lower body compound lift');
+INSERT INTO "section_exercises" VALUES (11,6,8,2,3,'Deadlifts','Barbell hip hinge and pulling lift');
+INSERT INTO "section_exercises" VALUES (12,6,9,3,3,'Lunges','Unilateral leg exercise');
 INSERT INTO "sections" VALUES (1,1,'Warm-up',1);
 INSERT INTO "sections" VALUES (2,1,'Workout',2);
 INSERT INTO "sections" VALUES (3,2,'Warm-up',1);
