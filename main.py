@@ -176,6 +176,7 @@ class MetricInputScreen(MDScreen):
     metrics_scroll = ObjectProperty(None)
     current_tab = StringProperty("previous")
     header_text = StringProperty("")
+    exercise_name = StringProperty("")
 
     def on_slider_touch_down(self, instance, touch):
         if instance.collide_point(*touch.pos) and self.metrics_scroll:
@@ -194,6 +195,11 @@ class MetricInputScreen(MDScreen):
             self.update_header()
 
     def on_pre_enter(self, *args):
+        app = MDApp.get_running_app()
+        if app and app.workout_session:
+            self.exercise_name = app.workout_session.next_exercise_name()
+        else:
+            self.exercise_name = ""
         self.update_header()
         return super().on_pre_enter(*args)
 
@@ -239,6 +245,7 @@ class MetricInputScreen(MDScreen):
         next_metrics = []
         if app.workout_session:
             curr_ex = app.workout_session.next_exercise_name()
+            self.exercise_name = curr_ex
             all_metrics = get_metrics_for_exercise(
                 curr_ex, preset_name=app.workout_session.preset_name
             )
@@ -254,6 +261,7 @@ class MetricInputScreen(MDScreen):
         elif metrics is not None:
             prev_metrics = metrics
             next_metrics = metrics
+            self.exercise_name = ""
 
         if not self.prev_metric_list or not self.next_metric_list:
             return
