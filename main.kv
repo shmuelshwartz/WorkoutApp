@@ -51,6 +51,9 @@ ScreenManager:
             text: "Go to Presets"
             on_release: app.root.current = "presets"
         MDRaisedButton:
+            text: "Go to Exercises"
+            on_release: app.root.current = "exercise_library"
+        MDRaisedButton:
             text: "Go to Progress"
             on_release: app.root.current = "progress"
         MDRaisedButton:
@@ -111,6 +114,8 @@ ScreenManager:
             on_release: app.root.current = "presets"
 
 <ExerciseLibraryScreen@MDScreen>:
+    on_pre_enter: root.populate()
+    exercise_list: exercise_list
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -120,6 +125,9 @@ ScreenManager:
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
+        ScrollView:
+            MDList:
+                id: exercise_list
         MDRaisedButton:
             text: "Back"
             on_release: root.go_back()
