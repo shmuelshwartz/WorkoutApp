@@ -607,6 +607,24 @@ class WorkoutSession:
         return "\n".join(lines)
 
 
+class Exercise:
+    """Placeholder class for editing exercises.
+
+    Editing or creating an exercise will be performed using an instance
+    of this class. The database will only be queried when retrieving an
+    existing exercise and when saving it after editing.
+    """
+
+    def __init__(self, name: str = "", description: str = "") -> None:
+        self.name = name
+        self.description = description
+
+    def to_dict(self) -> dict:
+        """Return the exercise data in dictionary form."""
+
+        return {"name": self.name, "description": self.description}
+
+
 
 class PresetEditor:
     """Helper for creating or editing workout presets in memory."""

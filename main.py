@@ -16,7 +16,12 @@ from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.label import MDLabel
-from kivymd.uix.list import OneLineListItem, MDList
+from kivymd.uix.list import (
+    OneLineListItem,
+    OneLineRightIconListItem,
+    IconRightWidget,
+    MDList,
+)
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.card import MDSeparator
@@ -379,6 +384,58 @@ class PresetDetailScreen(MDScreen):
 
 class ExerciseLibraryScreen(MDScreen):
     previous_screen = StringProperty("home")
+    exercise_list = ObjectProperty(None)
+
+    _placeholders = [
+        {
+            "name": "Push-ups",
+            "description": "Placeholder description for push-ups.",
+        },
+        {
+            "name": "Squats",
+            "description": "Placeholder description for squats.",
+        },
+        {
+            "name": "Lunges",
+            "description": "Placeholder description for lunges.",
+        },
+        {
+            "name": "Plank",
+            "description": "Placeholder description for plank holds.",
+        },
+        {
+            "name": "Burpees",
+            "description": "Placeholder description for burpees.",
+        },
+    ]
+
+    def on_pre_enter(self, *args):
+        self.populate()
+        return super().on_pre_enter(*args)
+
+    def populate(self):
+        if not self.exercise_list:
+            return
+        self.exercise_list.clear_widgets()
+        for ex in self._placeholders:
+            item = OneLineRightIconListItem(text=ex["name"])
+            icon = IconRightWidget(icon="pencil")
+            icon.bind(on_release=lambda inst, ex=ex: self.open_edit_popup(ex))
+            item.add_widget(icon)
+            self.exercise_list.add_widget(item)
+
+    def open_edit_popup(self, exercise):
+        dialog = MDDialog(
+            title=exercise["name"],
+            text=exercise["description"],
+            buttons=[
+                MDRaisedButton(
+                    text="Close",
+                    on_release=lambda *a: dialog.dismiss(),
+                )
+            ],
+        )
+        dialog.open()
 
     def go_back(self):
         if self.manager:
