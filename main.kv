@@ -266,6 +266,11 @@ ScreenManager:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
+        MDLabel:
+            text: root.exercise_name if root.exercise_name else "Edit Exercise"
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
         MDBoxLayout:
             size_hint_y: None
             height: "40dp"
@@ -574,6 +579,7 @@ ScreenManager:
 
 <EditExerciseScreen>:
     metrics_list: metrics_list
+    current_tab: "metrics"
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -583,18 +589,42 @@ ScreenManager:
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
-        ScrollView:
-            MDList:
-                id: metrics_list
         MDBoxLayout:
-            orientation: "horizontal"
+            size_hint_y: None
+            height: "40dp"
             spacing: "10dp"
             MDRaisedButton:
-                text: "Add Metric"
-                on_release: root.open_add_metric_popup()
+                text: "Metrics"
+                md_bg_color: app.theme_cls.primary_color if root.current_tab == "metrics" else (.5, .5, .5, 1)
+                on_release: root.switch_tab("metrics")
             MDRaisedButton:
-                text: "New Metric"
-                on_release: root.open_new_metric_popup()
+                text: "Details"
+                md_bg_color: app.theme_cls.primary_color if root.current_tab == "details" else (.5, .5, .5, 1)
+                on_release: root.switch_tab("details")
+        ScreenManager:
+            id: exercise_tabs
+            size_hint_y: 1
+            transition: NoTransition()
+            on_kv_post: self.current = root.current_tab
+            Screen:
+                name: "metrics"
+                FloatLayout:
+                    ScrollView:
+                        MDList:
+                            id: metrics_list
+                    MDFloatingActionButton:
+                        icon: "plus"
+                        md_bg_color: app.theme_cls.primary_color
+                        pos_hint: {"right": 0.98, "y": 0.02}
+                        tooltip_text: "Add Metric"
+                        on_release: root.open_add_metric_popup()
+            Screen:
+                name: "details"
+                ScrollView:
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        size_hint_y: None
+                        height: self.minimum_height
         MDRaisedButton:
             text: "Back"
             on_release: root.go_back()

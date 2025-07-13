@@ -786,8 +786,9 @@ class AddMetricPopup(MDDialog):
         scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
         scroll.add_widget(list_view)
 
+        new_btn = MDRaisedButton(text="New Metric", on_release=self.show_new_metric_form)
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
-        buttons = [cancel_btn]
+        buttons = [new_btn, cancel_btn]
         return scroll, buttons, "Select Metric"
 
     def _build_new_metric_widgets(self):
@@ -1034,6 +1035,12 @@ class EditExerciseScreen(MDScreen):
     exercise_index = NumericProperty(-1)
     previous_screen = StringProperty("edit_preset")
     metrics_list = ObjectProperty(None)
+    current_tab = StringProperty("metrics")
+
+    def switch_tab(self, tab: str):
+        """Switch between the metrics and details tabs."""
+        if tab in ("metrics", "details"):
+            self.current_tab = tab
 
     def on_pre_enter(self, *args):
         self.populate()
