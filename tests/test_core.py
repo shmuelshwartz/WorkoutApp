@@ -1,14 +1,15 @@
 from pathlib import Path
 import sys
 import sqlite3
+import pytest
 
 # Ensure the project root is on the import path so `core` can be imported
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 import core
 
 
-def test_load_workout_presets_updates_global():
-    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+def test_load_workout_presets_updates_global(seeded_db_path):
+    db_path = seeded_db_path
     presets = core.load_workout_presets(db_path)
 
     assert presets == core.WORKOUT_PRESETS
@@ -25,8 +26,8 @@ def test_load_workout_presets_updates_global():
             assert "sets" in exercise
 
 
-def test_exercise_sets_are_positive_ints():
-    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+def test_exercise_sets_are_positive_ints(seeded_db_path):
+    db_path = seeded_db_path
     presets = core.load_workout_presets(db_path)
 
     for preset in presets:
@@ -35,8 +36,8 @@ def test_exercise_sets_are_positive_ints():
             assert exercise["sets"] > 0
 
 
-def test_get_metrics_for_exercise():
-    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+def test_get_metrics_for_exercise(seeded_db_path):
+    db_path = seeded_db_path
     metrics = core.get_metrics_for_exercise("Bench Press", db_path)
 
     assert isinstance(metrics, list)
@@ -51,8 +52,8 @@ def test_get_metrics_for_exercise():
             assert metric["values"]
 
 
-def test_get_all_exercises():
-    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+def test_get_all_exercises(seeded_db_path):
+    db_path = seeded_db_path
     exercises = core.get_all_exercises(db_path)
 
     assert isinstance(exercises, list)
@@ -61,8 +62,8 @@ def test_get_all_exercises():
         assert isinstance(name, str)
 
 
-def test_metric_type_schema():
-    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+def test_metric_type_schema(seeded_db_path):
+    db_path = seeded_db_path
     schema = core.get_metric_type_schema(db_path)
 
     names = [f["name"] for f in schema]
@@ -78,8 +79,8 @@ def test_metric_type_schema():
             assert field.get("options")
 
 
-def test_workout_session_loads_preset_and_records(monkeypatch):
-    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+def test_workout_session_loads_preset_and_records(seeded_db_path, monkeypatch):
+    db_path = seeded_db_path
 
     session = core.WorkoutSession("Push Day", db_path=db_path)
 
@@ -99,10 +100,9 @@ def test_workout_session_loads_preset_and_records(monkeypatch):
     assert finished
 
 
-def test_metric_type_crud(tmp_path):
-    db_src = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+def test_metric_type_crud(seeded_db_path, tmp_path):
     db_path = tmp_path / "workout.db"
-    db_path.write_bytes(db_src.read_bytes())
+    db_path.write_bytes(seeded_db_path.read_bytes())
 
     name = "TestMetric"
     core.add_metric_type(
@@ -125,8 +125,8 @@ def test_metric_type_crud(tmp_path):
     assert not any(m["name"] == name for m in metrics)
 
 
-def test_workout_session_summary_contains_details():
-    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+def test_workout_session_summary_contains_details(seeded_db_path):
+    db_path = seeded_db_path
     session = core.WorkoutSession("Push Day", db_path=db_path)
 
     total_sets = sum(ex["sets"] for ex in session.exercises)
@@ -144,8 +144,8 @@ def test_workout_session_summary_contains_details():
     assert "Duration:" in summary
 
 
-def test_rest_timer_updates_on_record(monkeypatch):
-    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+def test_rest_timer_updates_on_record(seeded_db_path, monkeypatch):
+    db_path = seeded_db_path
 
     fake_time = [1000.0]
 

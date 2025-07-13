@@ -437,6 +437,18 @@ class ExerciseLibraryScreen(MDScreen):
         )
         dialog.open()
 
+    def new_exercise(self):
+        """Open ``EditExerciseScreen`` to create a new exercise."""
+        app = MDApp.get_running_app()
+        if not app or not app.root:
+            return
+        screen = app.root.get_screen("edit_exercise")
+        screen.exercise_name = ""
+        screen.section_index = -1
+        screen.exercise_index = -1
+        screen.previous_screen = "exercise_library"
+        app.root.current = "edit_exercise"
+
     def go_back(self):
         if self.manager:
             self.manager.current = self.previous_screen
@@ -666,6 +678,7 @@ class SelectedExerciseItem(MDBoxLayout):
         screen.exercise_name = self.text
         screen.section_index = self.section_index
         screen.exercise_index = self.exercise_index
+        screen.previous_screen = "edit_preset"
         app.editing_section_index = self.section_index
         app.editing_exercise_index = self.exercise_index
         app.root.current = "edit_exercise"
@@ -1019,6 +1032,7 @@ class EditExerciseScreen(MDScreen):
     exercise_name = StringProperty("")
     section_index = NumericProperty(-1)
     exercise_index = NumericProperty(-1)
+    previous_screen = StringProperty("edit_preset")
     metrics_list = ObjectProperty(None)
 
     def on_pre_enter(self, *args):
@@ -1132,6 +1146,10 @@ class EditExerciseScreen(MDScreen):
     def open_edit_metric_popup(self, metric):
         popup = EditMetricPopup(self, metric)
         popup.open()
+
+    def go_back(self):
+        if self.manager:
+            self.manager.current = self.previous_screen
 
 
 class WorkoutApp(MDApp):

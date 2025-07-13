@@ -7,11 +7,9 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from core import PresetEditor, DEFAULT_SETS_PER_EXERCISE
 
-DB_PATH = Path(__file__).resolve().parents[1] / "data" / "workout.db"
 
-
-def test_load_existing_preset():
-    editor = PresetEditor("Push Day", DB_PATH)
+def test_load_existing_preset(seeded_db_path):
+    editor = PresetEditor("Push Day", seeded_db_path)
     try:
         assert editor.preset_name == "Push Day"
         assert editor.sections
@@ -25,8 +23,8 @@ def test_load_existing_preset():
         editor.close()
 
 
-def test_add_section_and_exercise():
-    editor = PresetEditor(db_path=DB_PATH)
+def test_add_section_and_exercise(seeded_db_path):
+    editor = PresetEditor(db_path=seeded_db_path)
     try:
         idx = editor.add_section("My Section")
         assert idx == 0
@@ -37,8 +35,8 @@ def test_add_section_and_exercise():
         editor.close()
 
 
-def test_add_exercise_validates_name():
-    editor = PresetEditor(db_path=DB_PATH)
+def test_add_exercise_validates_name(seeded_db_path):
+    editor = PresetEditor(db_path=seeded_db_path)
     try:
         idx = editor.add_section()
         with pytest.raises(ValueError):

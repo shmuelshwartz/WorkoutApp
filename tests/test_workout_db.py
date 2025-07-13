@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+import pytest
 
 def show_workout_structure(db_path):
     conn = sqlite3.connect(str(db_path))
@@ -39,8 +40,8 @@ def show_workout_structure(db_path):
     conn.close()
 
 
-def test_show_workout_structure(capsys):
-    db_path = Path(__file__).resolve().parent / ".." / "data" / "workout.db"
+def test_show_workout_structure(seeded_db_path, capsys):
+    db_path = seeded_db_path
     show_workout_structure(db_path)
     captured = capsys.readouterr()
     assert "Workout:" in captured.out
