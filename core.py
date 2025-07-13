@@ -53,6 +53,29 @@ def get_all_exercises(db_path: Path = Path(__file__).resolve().parent / "data" /
     return exercises
 
 
+def get_exercise_details(
+    exercise_name: str,
+    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+) -> dict | None:
+    """Return name and description for ``exercise_name``.
+
+    Returns ``None`` if the exercise does not exist.
+    """
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT name, description FROM exercises WHERE name = ?",
+        (exercise_name,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    name, description = row
+    return {"name": name, "description": description or ""}
+
+
 def get_metrics_for_exercise(
     exercise_name: str,
     db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
