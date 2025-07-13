@@ -394,29 +394,6 @@ class ExerciseLibraryScreen(MDScreen):
     previous_screen = StringProperty("home")
     exercise_list = ObjectProperty(None)
 
-    _placeholders = [
-        {
-            "name": "Push-ups",
-            "description": "Placeholder description for push-ups.",
-        },
-        {
-            "name": "Squats",
-            "description": "Placeholder description for squats.",
-        },
-        {
-            "name": "Lunges",
-            "description": "Placeholder description for lunges.",
-        },
-        {
-            "name": "Plank",
-            "description": "Placeholder description for plank holds.",
-        },
-        {
-            "name": "Burpees",
-            "description": "Placeholder description for burpees.",
-        },
-    ]
-
     def on_pre_enter(self, *args):
         self.populate()
         return super().on_pre_enter(*args)
@@ -425,17 +402,20 @@ class ExerciseLibraryScreen(MDScreen):
         if not self.exercise_list:
             return
         self.exercise_list.clear_widgets()
-        for ex in self._placeholders:
-            item = OneLineRightIconListItem(text=ex["name"])
+        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        for name in core.get_all_exercises(db_path):
+            item = OneLineRightIconListItem(text=name)
             icon = IconRightWidget(icon="pencil")
-            icon.bind(on_release=lambda inst, ex=ex: self.open_edit_popup(ex))
+            icon.bind(on_release=lambda inst, n=name: self.open_edit_popup(n))
             item.add_widget(icon)
             self.exercise_list.add_widget(item)
 
-    def open_edit_popup(self, exercise):
+    def open_edit_popup(self, exercise_name):
+        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        details = core.get_exercise_details(exercise_name, db_path)
         dialog = MDDialog(
-            title=exercise["name"],
-            text=exercise["description"],
+            title=exercise_name,
+            text=details["description"] if details else "",
             buttons=[
                 MDRaisedButton(
                     text="Close",
