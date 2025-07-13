@@ -116,21 +116,27 @@ ScreenManager:
 <ExerciseLibraryScreen@MDScreen>:
     on_pre_enter: root.populate()
     exercise_list: exercise_list
-    BoxLayout:
-        orientation: "vertical"
-        spacing: "10dp"
-        padding: "20dp"
-        MDLabel:
-            text: "Exercise Library - browse all exercises"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-        ScrollView:
-            MDList:
-                id: exercise_list
-        MDRaisedButton:
-            text: "Back"
-            on_release: root.go_back()
+    FloatLayout:
+        MDBoxLayout:
+            orientation: "vertical"
+            spacing: "10dp"
+            padding: "20dp"
+            MDLabel:
+                text: "Exercise Library - browse all exercises"
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: 0.2, 0.6, 0.86, 1
+            ScrollView:
+                MDList:
+                    id: exercise_list
+            MDRaisedButton:
+                text: "Back"
+                on_release: root.go_back()
+        MDFloatingActionButton:
+            icon: "plus"
+            md_bg_color: app.theme_cls.primary_color
+            pos_hint: {"right": 0.98, "y": 0.02}
+            on_release: root.new_exercise()
 
 <ProgressScreen@MDScreen>:
     BoxLayout:
@@ -591,7 +597,7 @@ ScreenManager:
                 on_release: root.open_new_metric_popup()
         MDRaisedButton:
             text: "Back"
-            on_release: app.root.current = "edit_preset"
+            on_release: root.go_back()
 
 <PreviousWorkoutsScreen@MDScreen>:
     BoxLayout:
