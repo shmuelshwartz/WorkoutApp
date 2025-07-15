@@ -593,7 +593,7 @@ ScreenManager:
             text_color: 0.2, 0.6, 0.86, 1
             size_hint_y:0.1
         MDBoxLayout:
-            size_hint_y:0.8
+            size_hint_y: None
             height: "40dp"
             spacing: "10dp"
             MDRaisedButton:
@@ -604,40 +604,43 @@ ScreenManager:
                 text: "Details"
                 md_bg_color: app.theme_cls.primary_color if root.current_tab == "details" else (.5, .5, .5, 1)
                 on_release: root.switch_tab("details")
-            ScreenManager:
-                id: exercise_tabs
-                size_hint_y: 1
-                transition: NoTransition()
-                on_kv_post: self.current = root.current_tab
-                Screen:
-                    name: "metrics"
-                    FloatLayout:
-                        ScrollView:
-                            MDList:
-                                id: metrics_list
-                        MDFloatingActionButton:
-                            icon: "plus"
-                            md_bg_color: app.theme_cls.primary_color
-                            pos_hint: {"right": 0.98, "y": 0.02}
-                            tooltip_text: "Add Metric"
-                            on_release: root.open_add_metric_popup()
-                Screen:
-                    name: "details"
-                    ScrollView:
-                        MDBoxLayout:
-                            orientation: "vertical"
-                            size_hint_y: None
-                            height: self.minimum_height
-                            MDTextField:
-                                id: name_field
-                                hint_text: "Name"
-                                text: root.exercise_name
-                                multiline: False
-                            MDTextField:
-                                id: description_field
-                                hint_text: "Description"
-                                text: root.exercise_description
-                                multiline: True
+        ScreenManager:
+            id: exercise_tabs
+            size_hint_y: 1
+            transition: NoTransition()
+            on_kv_post: self.current = root.current_tab
+            Screen:
+                name: "metrics"
+                FloatLayout:
+                ScrollView:
+                    MDList:
+                        id: metrics_list
+                MDFloatingActionButton:
+                    icon: "plus"
+                    md_bg_color: app.theme_cls.primary_color
+                    pos_hint: {"center_x": 0.5, "y": 0.02}
+                    tooltip_text: "Add Metric"
+                    on_release: root.open_add_metric_popup()
+            Screen:
+                name: "details"
+                ScrollView:
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: "10dp"
+                        MDTextField:
+                            id: name_field
+                            hint_text: "Name"
+                            text: root.exercise_name
+                            multiline: False
+                            size_hint_x: 1
+                        MDTextField:
+                            id: description_field
+                            hint_text: "Description"
+                            text: root.exercise_description
+                            multiline: True
+                            size_hint_x: 1
         MDRaisedButton:
             size_hint_y:0.1
             text: "Back"
