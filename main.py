@@ -411,19 +411,16 @@ class ExerciseLibraryScreen(MDScreen):
             self.exercise_list.add_widget(item)
 
     def open_edit_popup(self, exercise_name):
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
-        details = core.get_exercise_details(exercise_name, db_path)
-        dialog = MDDialog(
-            title=exercise_name,
-            text=details["description"] if details else "",
-            buttons=[
-                MDRaisedButton(
-                    text="Close",
-                    on_release=lambda *a: dialog.dismiss(),
-                )
-            ],
-        )
-        dialog.open()
+        """Navigate to ``EditExerciseScreen`` with ``exercise_name`` loaded."""
+        app = MDApp.get_running_app()
+        if not app or not app.root:
+            return
+        screen = app.root.get_screen("edit_exercise")
+        screen.exercise_name = exercise_name
+        screen.section_index = -1
+        screen.exercise_index = -1
+        screen.previous_screen = "exercise_library"
+        app.root.current = "edit_exercise"
 
     def new_exercise(self):
         """Open ``EditExerciseScreen`` to create a new exercise."""
