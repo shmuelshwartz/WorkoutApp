@@ -113,8 +113,23 @@ ScreenManager:
             text: "Back to Presets"
             on_release: app.root.current = "presets"
 
+<ExerciseRow@OneLineRightIconListItem>:
+    name: ""
+    is_user_created: False
+    edit_callback: None
+    delete_callback: None
+    IconRightWidget:
+        icon: "pencil"
+        on_release: root.edit_callback(root.name, root.is_user_created) if root.edit_callback else None
+    IconRightWidget:
+        icon: "delete"
+        theme_text_color: "Custom"
+        text_color: 1, 0, 0, 1
+        on_release: root.delete_callback(root.name) if root.delete_callback else None
+        opacity: 1 if root.is_user_created else 0
+        disabled: not root.is_user_created
+
 <ExerciseLibraryScreen@MDScreen>:
-    on_pre_enter: root.populate()
     exercise_list: exercise_list
     FloatLayout:
         MDBoxLayout:
@@ -141,9 +156,15 @@ ScreenManager:
                 MDIconButton:
                     icon: "filter-variant"
                     on_release: root.open_filter_popup()
-            ScrollView:
-                MDList:
-                    id: exercise_list
+            MDRecycleView:
+                id: exercise_list
+                viewclass: "ExerciseRow"
+                RecycleBoxLayout:
+                    default_size: None, dp(56)
+                    default_size_hint: 1, None
+                    size_hint_y: None
+                    height: self.minimum_height
+                    orientation: "vertical"
             MDRaisedButton:
                 text: "Back"
                 on_release: root.go_back()

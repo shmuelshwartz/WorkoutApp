@@ -18,17 +18,20 @@ from kivy.uix.scrollview import ScrollView
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import (
     OneLineListItem,
-    OneLineRightIconListItem,
-    IconRightWidget,
     MDList,
 )
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.card import MDSeparator
 from kivymd.uix.dialog import MDDialog
+try:
+    from kivymd.uix.spinner import MDSpinner
+except Exception:  # pragma: no cover - fallback for tests without kivymd
+    from kivy.uix.spinner import Spinner as MDSpinner
 from kivymd.uix.button import MDRaisedButton
 from kivy.uix.screenmanager import NoTransition
 from pathlib import Path
+import os
 
 # Import core so we can always reference the up-to-date WORKOUT_PRESETS list
 import core
@@ -61,6 +64,24 @@ METRIC_FIELD_ORDER = [
     "scope",
     "is_required",
 ]
+
+
+class LoadingDialog(MDDialog):
+    """Simple dialog displaying a spinner while work is performed."""
+
+    def __init__(self, text: str = "Loading...", **kwargs):
+        box = MDBoxLayout(
+            orientation="vertical",
+            spacing="8dp",
+            size_hint_y=None,
+            height="72dp",
+        )
+        spinner = MDSpinner(size_hint=(None, None), size=("48dp", "48dp"))
+        spinner.pos_hint = {"center_x": 0.5}
+        box.add_widget(spinner)
+        box.add_widget(MDLabel(text=text, halign="center"))
+        super().__init__(type="custom", content_cls=box, **kwargs)
+
 
 class WorkoutActiveScreen(MDScreen):
     """Screen that shows an active workout with a stopwatch."""
@@ -413,6 +434,11 @@ class ExerciseLibraryScreen(MDScreen):
     # Version of the exercise library when the cache was loaded
     cache_version = NumericProperty(-1)
 
+    loading_dialog = ObjectProperty(None, allownone=True)
+
+    _search_event = None
+
+
     def on_pre_enter(self, *args):
         app = MDApp.get_running_app()
         if (
@@ -423,11 +449,24 @@ class ExerciseLibraryScreen(MDScreen):
             self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
             if app:
                 self.cache_version = app.exercise_library_version
-        self.populate()
+
+        self.populate(True)
+
         return super().on_pre_enter(*args)
 
-    def populate(self):
+    def populate(self, show_loading: bool = False):
+        if show_loading and not os.environ.get("KIVY_UNITTEST"):
+            self.loading_dialog = LoadingDialog()
+            self.loading_dialog.open()
+            Clock.schedule_once(self._populate_impl, 0)
+        else:
+            self._populate_impl()
+
+    def _populate_impl(self, dt: float | None = None):
         if not self.exercise_list:
+            if self.loading_dialog:
+                self.loading_dialog.dismiss()
+                self.loading_dialog = None
             return
         self.exercise_list.clear_widgets()
         app = MDApp.get_running_app()
@@ -440,6 +479,7 @@ class ExerciseLibraryScreen(MDScreen):
             if app:
                 self.cache_version = app.exercise_library_version
         exercises = self.all_exercises or []
+
         if self.filter_mode == "user":
             exercises = [ex for ex in exercises if ex[1]]
         elif self.filter_mode == "premade":
@@ -447,21 +487,30 @@ class ExerciseLibraryScreen(MDScreen):
         if self.search_text:
             s = self.search_text.lower()
             exercises = [ex for ex in exercises if s in ex[0].lower()]
+        data = []
         for name, is_user in exercises:
-            item = OneLineRightIconListItem(text=name)
-            if is_user:
-                item.theme_text_color = "Custom"
-                item.text_color = (0.6, 0.2, 0.8, 1)
-            icon = IconRightWidget(icon="pencil")
-            icon.bind(on_release=lambda inst, n=name, u=is_user: self.open_edit_popup(n, u))
-            item.add_widget(icon)
+            item = {
+                "name": name,
+                "text": name,
+                "is_user_created": is_user,
+                "edit_callback": self.open_edit_popup,
+                "delete_callback": self.confirm_delete_exercise,
+            }
             if is_user:
                 del_icon = IconRightWidget(icon="delete")
                 del_icon.theme_text_color = "Custom"
                 del_icon.text_color = (1, 0, 0, 1)
                 del_icon.bind(on_release=lambda inst, n=name: self.confirm_delete_exercise(n))
                 item.add_widget(del_icon)
+                item["theme_text_color"] = "Custom"
+                item["text_color"] = (0.6, 0.2, 0.8, 1)
+            data.append(item)
             self.exercise_list.add_widget(item)
+        self.exercise_list.data = data
+        if self.loading_dialog:
+            self.loading_dialog.dismiss()
+            self.loading_dialog = None
+
 
     def open_filter_popup(self):
         list_view = MDList()
@@ -485,8 +534,17 @@ class ExerciseLibraryScreen(MDScreen):
         self.filter_dialog.open()
 
     def update_search(self, text):
+        """Update search text with debounce to limit populate frequency."""
         self.search_text = text
-        self.populate()
+        if self._search_event:
+            self._search_event.cancel()
+
+        def do_populate(dt):
+            self._search_event = None
+            self.populate()
+
+        # schedule populate with a short delay to debounce rapid input
+        self._search_event = Clock.schedule_once(do_populate, 0.2)
 
     def apply_filter(self, mode, *args):
         self.filter_mode = mode
@@ -1251,6 +1309,7 @@ class EditExerciseScreen(MDScreen):
     current_tab = StringProperty("metrics")
     save_enabled = BooleanProperty(False)
     is_user_created = ObjectProperty(None, allownone=True)
+    loading_dialog = ObjectProperty(None, allownone=True)
 
     def switch_tab(self, tab: str):
         """Switch between the metrics and details tabs."""
@@ -1259,6 +1318,15 @@ class EditExerciseScreen(MDScreen):
             if "exercise_tabs" in self.ids:
                 self.ids.exercise_tabs.current = tab
     def on_pre_enter(self, *args):
+        if os.environ.get("KIVY_UNITTEST"):
+            self._load_exercise()
+        else:
+            self.loading_dialog = LoadingDialog()
+            self.loading_dialog.open()
+            Clock.schedule_once(lambda dt: self._load_exercise(), 0)
+        return super().on_pre_enter(*args)
+
+    def _load_exercise(self):
         db_path = Path(__file__).resolve().parent / "data" / "workout.db"
         self.exercise_obj = core.Exercise(
             self.exercise_name,
@@ -1270,7 +1338,9 @@ class EditExerciseScreen(MDScreen):
         self.exercise_description = self.exercise_obj.description
         self.save_enabled = False
         self.populate()
-        return super().on_pre_enter(*args)
+        if self.loading_dialog:
+            self.loading_dialog.dismiss()
+            self.loading_dialog = None
 
     def populate(self):
         self.populate_metrics()
