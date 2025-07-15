@@ -1142,14 +1142,18 @@ class EditExerciseScreen(MDScreen):
     def update_name(self, name: str):
         if self.exercise_obj is not None:
             self.exercise_obj.name = name
+            self.save_enabled = self.exercise_obj.is_modified()
+        else:
+            self.save_enabled = False
         self.exercise_name = name
-        self.save_enabled = self.exercise_obj.is_modified()
 
     def update_description(self, desc: str):
         if self.exercise_obj is not None:
             self.exercise_obj.description = desc
+            self.save_enabled = self.exercise_obj.is_modified()
+        else:
+            self.save_enabled = False
         self.exercise_description = desc
-        self.save_enabled = self.exercise_obj.is_modified()
 
     def remove_metric(self, metric_name):
         if self.exercise_obj:
