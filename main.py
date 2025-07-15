@@ -408,8 +408,21 @@ class ExerciseLibraryScreen(MDScreen):
     filter_mode = StringProperty("both")
     filter_dialog = ObjectProperty(None, allownone=True)
     search_text = StringProperty("")
+    # Cached list of all exercises including user-created ones
+    all_exercises = ListProperty(None, allownone=True)
+    # Version of the exercise library when the cache was loaded
+    cache_version = NumericProperty(-1)
 
     def on_pre_enter(self, *args):
+        app = MDApp.get_running_app()
+        if (
+            self.all_exercises is None
+            or (app and self.cache_version != getattr(app, "exercise_library_version", 0))
+        ):
+            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
+            if app:
+                self.cache_version = app.exercise_library_version
         self.populate()
         return super().on_pre_enter(*args)
 
@@ -417,8 +430,16 @@ class ExerciseLibraryScreen(MDScreen):
         if not self.exercise_list:
             return
         self.exercise_list.clear_widgets()
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
-        exercises = core.get_all_exercises(db_path, include_user_created=True)
+        app = MDApp.get_running_app()
+        if (
+            self.all_exercises is None
+            or (app and self.cache_version != getattr(app, "exercise_library_version", 0))
+        ):
+            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
+            if app:
+                self.cache_version = app.exercise_library_version
+        exercises = self.all_exercises or []
         if self.filter_mode == "user":
             exercises = [ex for ex in exercises if ex[1]]
         elif self.filter_mode == "premade":
@@ -494,8 +515,12 @@ class ExerciseLibraryScreen(MDScreen):
             db_path = Path(__file__).resolve().parent / "data" / "workout.db"
             try:
                 core.delete_exercise(exercise_name, db_path=db_path, is_user_created=True)
+                app = MDApp.get_running_app()
+                if app:
+                    app.exercise_library_version += 1
             except Exception:
                 pass
+            self.all_exercises = None
             self.populate()
             if dialog:
                 dialog.dismiss()
@@ -1364,6 +1389,9 @@ class EditExerciseScreen(MDScreen):
 
         def do_save(*args):
             core.save_exercise(self.exercise_obj)
+            app = MDApp.get_running_app()
+            if app:
+                app.exercise_library_version += 1
             self.save_enabled = False
             if dialog:
                 dialog.dismiss()
@@ -1411,6 +1439,8 @@ class WorkoutApp(MDApp):
     editing_exercise_index: int = -1
     # True when metrics being entered correspond to a newly completed set
     record_new_set = False
+    # Incremented whenever an exercise is added, edited or deleted
+    exercise_library_version: int = 0
 
     def build(self):
         return Builder.load_file(str(Path(__file__).with_name("main.kv")))
