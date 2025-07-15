@@ -997,6 +997,14 @@ class AddMetricPopup(MDDialog):
         if not name:
             errors.append("name")
 
+        # check for duplicate metric name
+        existing_names = {m.get("name") for m in self.screen.exercise_obj.metrics}
+        if name and name in existing_names:
+            errors.append("name")
+            if hasattr(self.input_widgets["name"], "helper_text"):
+                self.input_widgets["name"].helper_text = "Duplicate name"
+                self.input_widgets["name"].helper_text_mode = "on_error"
+
         if input_type == "bool" and source_type == "manual_enum":
             errors.extend(["input_type", "source_type"])
 
