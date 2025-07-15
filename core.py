@@ -631,21 +631,67 @@ class WorkoutSession:
 
 
 class Exercise:
-    """Placeholder class for editing exercises.
+    """Editable exercise loaded from the database.
 
-    Editing or creating an exercise will be performed using an instance
-    of this class. The database will only be queried when retrieving an
-    existing exercise and when saving it after editing.
+    This is a lightweight helper used by the ``EditExerciseScreen``.  It
+    mirrors the details stored in the database but keeps all modifications
+    in memory.  Nothing is written back to the database unless the caller
+    chooses to persist the changes.
     """
 
-    def __init__(self, name: str = "", description: str = "") -> None:
-        self.name = name
-        self.description = description
+    def __init__(
+        self,
+        name: str = "",
+        *,
+        db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    ) -> None:
+        self.db_path = Path(db_path)
+        self.name: str = name
+        self.description: str = ""
+        self.metrics: list[dict] = []
+
+        if name:
+            self.load(name)
+
+    def load(self, name: str) -> None:
+        """Load ``name`` from ``db_path`` into this object."""
+
+        details = get_exercise_details(name, self.db_path)
+        if details:
+            self.name = details.get("name", name)
+            self.description = details.get("description", "")
+        self.metrics = get_metrics_for_exercise(name, db_path=self.db_path)
+
+    # ------------------------------------------------------------------
+    # Modification helpers.  These operate only on the in-memory object
+    # and never touch the database.
+    # ------------------------------------------------------------------
+    def add_metric(self, metric: dict) -> None:
+        """Append ``metric`` to the metrics list."""
+
+        self.metrics.append(metric)
+
+    def remove_metric(self, metric_name: str) -> None:
+        """Remove metric with ``metric_name`` if present."""
+
+        self.metrics = [m for m in self.metrics if m.get("name") != metric_name]
+
+    def update_metric(self, metric_name: str, **updates) -> None:
+        """Update metric named ``metric_name`` with ``updates``."""
+
+        for metric in self.metrics:
+            if metric.get("name") == metric_name:
+                metric.update(updates)
+                break
 
     def to_dict(self) -> dict:
-        """Return the exercise data in dictionary form."""
+        """Return a ``dict`` representation of the exercise."""
 
-        return {"name": self.name, "description": self.description}
+        return {
+            "name": self.name,
+            "description": self.description,
+            "metrics": [m.copy() for m in self.metrics],
+        }
 
 
 

@@ -165,3 +165,31 @@ def test_rest_timer_updates_on_record(monkeypatch):
 
     session.adjust_rest_timer(10)
     assert session.rest_target_time == 1040.0 + core.DEFAULT_REST_DURATION
+
+
+def test_exercise_object_loads_and_edits_without_db_change(tmp_path):
+    db_src = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+    db_path = tmp_path / "workout.db"
+    db_path.write_bytes(db_src.read_bytes())
+
+    ex = core.Exercise("Bench Press", db_path=db_path)
+
+    assert ex.name == "Bench Press"
+    assert ex.metrics
+
+    original = core.get_metrics_for_exercise("Bench Press", db_path)
+
+    # manipulate the in-memory object
+    ex.update_metric("Reps", input_type="float")
+    ex.remove_metric("Weight")
+    ex.add_metric({"name": "Tempo", "input_type": "int", "source_type": "manual_text", "values": []})
+
+    # database should be unchanged
+    after = core.get_metrics_for_exercise("Bench Press", db_path)
+    assert after == original
+
+    assert any(m["name"] == "Tempo" for m in ex.metrics)
+    assert not any(m["name"] == "Weight" for m in ex.metrics)
+    for m in ex.metrics:
+        if m["name"] == "Reps":
+            assert m["input_type"] == "float"
