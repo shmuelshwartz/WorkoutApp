@@ -1033,6 +1033,22 @@ class AddMetricPopup(MDDialog):
         if values:
             metric["values"] = values
 
+        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        try:
+            core.add_metric_type(
+                metric["name"],
+                metric["input_type"],
+                metric["source_type"],
+                metric["input_timing"],
+                metric["scope"],
+                metric.get("description", ""),
+                metric.get("is_required", False),
+                db_path=db_path,
+            )
+        except sqlite3.IntegrityError:
+            self.input_widgets["name"].error = True
+            return
+
         self.screen.exercise_obj.add_metric(metric)
         self.show_metric_list()
         self.screen.save_enabled = self.screen.exercise_obj.is_modified()
