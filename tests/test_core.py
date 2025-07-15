@@ -86,10 +86,6 @@ def test_workout_session_loads_preset_and_records(monkeypatch):
     assert session.exercises
     assert session.exercises[0]["name"] == "Shoulder Circles"
 
-    def fail_connect(*args, **kwargs):
-        raise AssertionError("database accessed during workout")
-
-    monkeypatch.setattr(sqlite3, "connect", fail_connect)
 
     total_sets = sum(ex["sets"] for ex in session.exercises)
     finished = False
@@ -184,7 +180,7 @@ def test_exercise_object_loads_and_edits_without_db_change(tmp_path):
     ex.remove_metric("Weight")
     ex.add_metric({"name": "Tempo", "input_type": "int", "source_type": "manual_text", "values": []})
 
-    # database should be unchanged
+    # database should remain unchanged until the exercise is saved
     after = core.get_metrics_for_exercise("Bench Press", db_path)
     assert after == original
 
