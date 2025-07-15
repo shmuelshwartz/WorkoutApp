@@ -48,7 +48,7 @@ import math
 
 from kivy.core.window import Window
 import string
-
+import sqlite3
 Window.size = (280, 280 * (20 / 9))
 
 # Order of fields for metric editing popups
