@@ -18,8 +18,6 @@ from kivy.uix.scrollview import ScrollView
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import (
     OneLineListItem,
-    OneLineRightIconListItem,
-    IconRightWidget,
     MDList,
 )
 from kivymd.uix.selectioncontrol import MDCheckbox
@@ -416,7 +414,7 @@ class ExerciseLibraryScreen(MDScreen):
     def populate(self):
         if not self.exercise_list:
             return
-        self.exercise_list.clear_widgets()
+        self.exercise_list.data = []
         db_path = Path(__file__).resolve().parent / "data" / "workout.db"
         exercises = core.get_all_exercises(db_path, include_user_created=True)
         if self.filter_mode == "user":
@@ -426,21 +424,20 @@ class ExerciseLibraryScreen(MDScreen):
         if self.search_text:
             s = self.search_text.lower()
             exercises = [ex for ex in exercises if s in ex[0].lower()]
+        data = []
         for name, is_user in exercises:
-            item = OneLineRightIconListItem(text=name)
+            item = {
+                "name": name,
+                "text": name,
+                "is_user_created": is_user,
+                "edit_callback": self.open_edit_popup,
+                "delete_callback": self.confirm_delete_exercise,
+            }
             if is_user:
-                item.theme_text_color = "Custom"
-                item.text_color = (0.6, 0.2, 0.8, 1)
-            icon = IconRightWidget(icon="pencil")
-            icon.bind(on_release=lambda inst, n=name, u=is_user: self.open_edit_popup(n, u))
-            item.add_widget(icon)
-            if is_user:
-                del_icon = IconRightWidget(icon="delete")
-                del_icon.theme_text_color = "Custom"
-                del_icon.text_color = (1, 0, 0, 1)
-                del_icon.bind(on_release=lambda inst, n=name: self.confirm_delete_exercise(n))
-                item.add_widget(del_icon)
-            self.exercise_list.add_widget(item)
+                item["theme_text_color"] = "Custom"
+                item["text_color"] = (0.6, 0.2, 0.8, 1)
+            data.append(item)
+        self.exercise_list.data = data
 
     def open_filter_popup(self):
         list_view = MDList()
