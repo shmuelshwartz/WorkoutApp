@@ -130,7 +130,6 @@ ScreenManager:
         disabled: not root.is_user_created
 
 <ExerciseLibraryScreen@MDScreen>:
-    on_pre_enter: root.populate()
     exercise_list: exercise_list
     FloatLayout:
         MDBoxLayout:
