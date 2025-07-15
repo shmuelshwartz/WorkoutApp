@@ -434,6 +434,12 @@ class ExerciseLibraryScreen(MDScreen):
             icon = IconRightWidget(icon="pencil")
             icon.bind(on_release=lambda inst, n=name, u=is_user: self.open_edit_popup(n, u))
             item.add_widget(icon)
+            if is_user:
+                del_icon = IconRightWidget(icon="delete")
+                del_icon.theme_text_color = "Custom"
+                del_icon.text_color = (1, 0, 0, 1)
+                del_icon.bind(on_release=lambda inst, n=name: self.confirm_delete_exercise(n))
+                item.add_widget(del_icon)
             self.exercise_list.add_widget(item)
 
     def open_filter_popup(self):
@@ -480,6 +486,29 @@ class ExerciseLibraryScreen(MDScreen):
         screen.exercise_index = -1
         screen.previous_screen = "exercise_library"
         app.root.current = "edit_exercise"
+
+    def confirm_delete_exercise(self, exercise_name):
+        dialog = None
+
+        def do_delete(*args):
+            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            try:
+                core.delete_exercise(exercise_name, db_path=db_path, is_user_created=True)
+            except Exception:
+                pass
+            self.populate()
+            if dialog:
+                dialog.dismiss()
+
+        dialog = MDDialog(
+            title="Delete Exercise?",
+            text=f"Delete {exercise_name}?",
+            buttons=[
+                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                MDRaisedButton(text="Delete", on_release=do_delete),
+            ],
+        )
+        dialog.open()
 
     def new_exercise(self):
         """Open ``EditExerciseScreen`` to create a new exercise."""

@@ -93,3 +93,18 @@ def test_edit_and_save_updates_list(test_db, monkeypatch):
     lib.populate()
     names = _get_names(lib.exercise_list)
     assert "Push-ups Elite" in names
+
+
+def test_delete_button_for_user_exercise(test_db):
+    ex = core.Exercise("Bench Press")
+    core.save_exercise(ex)
+    screen = ExerciseLibraryScreen()
+    screen.exercise_list = MDList()
+    screen.filter_mode = "user"
+    screen.populate()
+    items = [w for w in screen.exercise_list.children if isinstance(w, OneLineRightIconListItem)]
+    assert items
+    icons = [c for c in items[0].children if hasattr(c, "icon")]
+    assert any(getattr(i, "icon", "") == "delete" for i in icons)
+
+

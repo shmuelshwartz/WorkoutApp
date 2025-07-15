@@ -261,3 +261,19 @@ def test_exercise_list_ordering(tmp_path):
         "Bench Press",
         "Push-ups",
     ]
+
+def test_delete_user_exercise(tmp_path):
+    db_src = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+    db_path = tmp_path / "workout.db"
+    db_path.write_bytes(db_src.read_bytes())
+
+    ex = core.Exercise("Bench Press", db_path=db_path)
+    core.save_exercise(ex)
+
+    assert core.get_exercise_details("Bench Press", db_path)["is_user_created"]
+
+    core.delete_exercise("Bench Press", db_path=db_path)
+
+    # builtin copy remains
+    assert core.get_exercise_details("Bench Press", db_path, is_user_created=False)
+    assert core.get_exercise_details("Bench Press", db_path, is_user_created=True) is None
