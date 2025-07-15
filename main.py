@@ -902,12 +902,24 @@ class AddMetricPopup(MDDialog):
         popup.open()
 
     def add_metric(self, name, *args):
-        # Do not persist changes to the database in this demo mode
+        """Add the selected metric type to the exercise object."""
+        metric_defs = core.get_all_metric_types()
+        for m in metric_defs:
+            if m["name"] == name:
+                self.screen.exercise_obj.add_metric(m)
+                break
         self.dismiss()
         self.screen.populate()
 
     def save_metric(self, *args):
-        # Skip writing new metric types to the database
+        """Create a new metric definition and add it to the exercise object."""
+        metric = {}
+        for key, widget in self.input_widgets.items():
+            if isinstance(widget, MDCheckbox):
+                metric[key] = bool(widget.active)
+            else:
+                metric[key] = widget.text
+        self.screen.exercise_obj.add_metric(metric)
         self.show_metric_list()
 
 
@@ -1004,7 +1016,14 @@ class EditMetricPopup(MDDialog):
         return layout, buttons, "Edit Metric"
 
     def save_metric(self, *args):
-        # Skip saving metric edits to the database
+        """Update the metric on the exercise object with the new values."""
+        updates = {}
+        for key, widget in self.input_widgets.items():
+            if isinstance(widget, MDCheckbox):
+                updates[key] = bool(widget.active)
+            else:
+                updates[key] = widget.text
+        self.screen.exercise_obj.update_metric(self.metric["name"], **updates)
         self.dismiss()
         self.screen.populate()
 
@@ -1021,6 +1040,7 @@ class EditExerciseScreen(MDScreen):
     metrics_list = ObjectProperty(None)
     name_field = ObjectProperty(None)
     description_field = ObjectProperty(None)
+    exercise_obj = ObjectProperty(None, rebind=True)
     current_tab = StringProperty("metrics")
 
     def switch_tab(self, tab: str):
@@ -1029,8 +1049,11 @@ class EditExerciseScreen(MDScreen):
             self.current_tab = tab
             if "exercise_tabs" in self.ids:
                 self.ids.exercise_tabs.current = tab
-
     def on_pre_enter(self, *args):
+        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        self.exercise_obj = core.Exercise(self.exercise_name, db_path=db_path)
+        self.exercise_name = self.exercise_obj.name
+        self.exercise_description = self.exercise_obj.description
         self.populate()
         return super().on_pre_enter(*args)
 
@@ -1039,16 +1062,10 @@ class EditExerciseScreen(MDScreen):
         self.populate_details()
 
     def populate_metrics(self):
-        if not self.metrics_list or not self.exercise_name:
+        if not self.metrics_list or not self.exercise_obj:
             return
         self.metrics_list.clear_widgets()
-        preset_name = ""
-        app = MDApp.get_running_app()
-        if app and app.preset_editor:
-            preset_name = app.preset_editor.preset_name
-        metrics = core.get_metrics_for_exercise(
-            self.exercise_name, preset_name=preset_name
-        )
+        metrics = self.exercise_obj.metrics
         for m in metrics:
             row = MDBoxLayout(size_hint_y=None, height="40dp")
             lbl = MDLabel(text=m.get("name", ""), halign="left")
@@ -1069,25 +1086,26 @@ class EditExerciseScreen(MDScreen):
             self.metrics_list.add_widget(MDSeparator())
 
     def populate_details(self):
-        if not self.exercise_name:
-            if self.name_field:
-                self.name_field.text = ""
-            if self.description_field:
-                self.description_field.text = ""
+        if not self.exercise_obj:
             return
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
-        details = core.get_exercise_details(self.exercise_name, db_path)
-        if details:
-            self.exercise_description = details.get("description", "")
-        else:
-            self.exercise_description = ""
         if self.name_field:
-            self.name_field.text = self.exercise_name
+            self.name_field.text = self.exercise_obj.name
         if self.description_field:
-            self.description_field.text = self.exercise_description
+            self.description_field.text = self.exercise_obj.description
+
+    def update_name(self, name: str):
+        if self.exercise_obj is not None:
+            self.exercise_obj.name = name
+        self.exercise_name = name
+
+    def update_description(self, desc: str):
+        if self.exercise_obj is not None:
+            self.exercise_obj.description = desc
+        self.exercise_description = desc
 
     def remove_metric(self, metric_name):
-        # Skip removing metrics from the database
+        if self.exercise_obj:
+            self.exercise_obj.remove_metric(metric_name)
         self.populate()
 
     def confirm_remove_metric(self, metric_name):
