@@ -902,24 +902,12 @@ class AddMetricPopup(MDDialog):
         popup.open()
 
     def add_metric(self, name, *args):
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
-        core.add_metric_to_exercise(self.screen.exercise_name, name, db_path)
+        # Do not persist changes to the database in this demo mode
         self.dismiss()
         self.screen.populate()
 
     def save_metric(self, *args):
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
-        values = {name: widget for name, widget in self.input_widgets.items()}
-        core.add_metric_type(
-            values.get("name").text if "name" in values else "",
-            values.get("input_type").text if "input_type" in values else "",
-            values.get("source_type").text if "source_type" in values else "",
-            values.get("input_timing").text if "input_timing" in values else "",
-            values.get("scope").text if "scope" in values else "",
-            description=values.get("description").text if "description" in values else "",
-            is_required=values.get("is_required").active if "is_required" in values else False,
-            db_path=db_path,
-        )
+        # Skip writing new metric types to the database
         self.show_metric_list()
 
 
@@ -1016,35 +1004,7 @@ class EditMetricPopup(MDDialog):
         return layout, buttons, "Edit Metric"
 
     def save_metric(self, *args):
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
-        values = {name: widget for name, widget in self.input_widgets.items()}
-
-        make_default = self.make_default.active
-        kwargs = {
-            "input_type": values.get("input_type").text if "input_type" in values else None,
-            "source_type": values.get("source_type").text if "source_type" in values else None,
-            "input_timing": values.get("input_timing").text if "input_timing" in values else None,
-            "scope": values.get("scope").text if "scope" in values else None,
-            "description": values.get("description").text if "description" in values else None,
-            "is_required": values.get("is_required").active if "is_required" in values else None,
-        }
-
-        if make_default:
-            core.update_metric_type(self.metric["name"], db_path=db_path, **kwargs)
-        else:
-            app = MDApp.get_running_app()
-            preset_name = app.preset_editor.preset_name if app and app.preset_editor else ""
-            core.set_section_exercise_metric_override(
-                preset_name,
-                app.editing_section_index,
-                self.screen.exercise_name,
-                self.metric["name"],
-                input_timing=kwargs.get("input_timing", self.metric.get("input_timing", "post_set")),
-                is_required=kwargs.get("is_required", self.metric.get("is_required", False)),
-                scope=kwargs.get("scope", self.metric.get("scope", "set")),
-                db_path=db_path,
-            )
-
+        # Skip saving metric edits to the database
         self.dismiss()
         self.screen.populate()
 
@@ -1089,82 +1049,23 @@ class EditExerciseScreen(MDScreen):
         metrics = core.get_metrics_for_exercise(
             self.exercise_name, preset_name=preset_name
         )
-        timing_options = [
-            "preset",
-            "pre_workout",
-            "post_workout",
-            "pre_set",
-            "post_set",
-        ]
-
         for m in metrics:
-            box = MDBoxLayout(
-                orientation="vertical",
-                padding="8dp",
-                spacing="4dp",
-                size_hint_y=None,
-            )
-            box.bind(minimum_height=box.setter("height"))
-
-            def _make_label(text, **kwargs):
-                lbl = MDLabel(text=text, size_hint_y=None, **kwargs)
-                lbl.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
-                lbl.height = lbl.texture_size[1]
-                return lbl
-
-            header = MDBoxLayout(size_hint_y=None, height="40dp")
-            header.add_widget(
-                _make_label(f"Metric: {m.get('name','')}", bold=True, size_hint_x=0.7)
-            )
+            row = MDBoxLayout(size_hint_y=None, height="40dp")
+            lbl = MDLabel(text=m.get("name", ""), halign="left")
+            row.add_widget(lbl)
             edit_btn = MDIconButton(icon="pencil")
             edit_btn.bind(on_release=lambda inst, metric=m: self.open_edit_metric_popup(metric))
-            header.add_widget(edit_btn)
+            row.add_widget(edit_btn)
             remove_btn = MDIconButton(
                 icon="delete",
                 theme_text_color="Custom",
                 text_color=(1, 0, 0, 1),
             )
             remove_btn.bind(
-                on_release=lambda inst, name=m.get("name", ""): self.remove_metric(name)
+                on_release=lambda inst, name=m.get("name", ""): self.confirm_remove_metric(name)
             )
-            header.add_widget(remove_btn)
-            box.add_widget(header)
-
-            box.add_widget(_make_label(f"Input type: {m.get('input_type','')}"))
-            box.add_widget(_make_label(f"Source type: {m.get('source_type','')}"))
-
-            timing_row = MDBoxLayout(size_hint_y=None, height="40dp")
-            timing_row.add_widget(_make_label("Input timing:", size_hint_x=0.5))
-            spinner = Spinner(text=m.get('input_timing','preset'), values=timing_options, size_hint_x=0.5)
-            timing_row.add_widget(spinner)
-            box.add_widget(timing_row)
-
-            preset_row = MDBoxLayout(size_hint_y=None, height="40dp")
-            preset_row.add_widget(_make_label("Metric value:", size_hint_x=0.5))
-            preset_input = MDTextField(size_hint_x=0.5)
-            preset_row.add_widget(preset_input)
-            preset_row.opacity = 1 if spinner.text == "preset" else 0
-            preset_row.disabled = spinner.text != "preset"
-
-            def _update_preset_row(inst, val, row=preset_row):
-                row.opacity = 1 if val == "preset" else 0
-                row.disabled = val != "preset"
-
-            spinner.bind(text=_update_preset_row)
-            box.add_widget(preset_row)
-
-            req_row = MDBoxLayout(size_hint_y=None, height="40dp")
-            req_row.add_widget(_make_label("Required:", size_hint_x=0.5))
-            req_checkbox = MDCheckbox(active=bool(m.get('is_required')), size_hint_x=None)
-            req_row.add_widget(req_checkbox)
-            box.add_widget(req_row)
-
-            box.add_widget(_make_label(f"Scope: {m.get('scope','')}"))
-            desc = m.get('description') or ""
-            if desc:
-                box.add_widget(_make_label(f"Description: {desc}", halign="left"))
-
-            self.metrics_list.add_widget(box)
+            row.add_widget(remove_btn)
+            self.metrics_list.add_widget(row)
             self.metrics_list.add_widget(MDSeparator())
 
     def populate_details(self):
@@ -1186,11 +1087,26 @@ class EditExerciseScreen(MDScreen):
             self.description_field.text = self.exercise_description
 
     def remove_metric(self, metric_name):
-        if not self.exercise_name:
-            return
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
-        core.remove_metric_from_exercise(self.exercise_name, metric_name, db_path)
+        # Skip removing metrics from the database
         self.populate()
+
+    def confirm_remove_metric(self, metric_name):
+        dialog = None
+
+        def do_delete(*args):
+            self.remove_metric(metric_name)
+            if dialog:
+                dialog.dismiss()
+
+        dialog = MDDialog(
+            title="Remove Metric?",
+            text=f"Delete {metric_name}?",
+            buttons=[
+                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                MDRaisedButton(text="Delete", on_release=do_delete),
+            ],
+        )
+        dialog.open()
 
     def open_add_metric_popup(self):
         popup = AddMetricPopup(self, mode="select")
