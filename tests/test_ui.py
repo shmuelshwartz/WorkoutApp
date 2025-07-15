@@ -15,7 +15,8 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import core
 from main import ExerciseLibraryScreen, EditExerciseScreen
-from kivymd.uix.list import MDList, OneLineRightIconListItem
+from kivymd.uix.list import MDList
+from kivymd.uix.recycleview import MDRecycleView
 
 
 @pytest.fixture
@@ -36,13 +37,13 @@ def test_db(tmp_path):
     patch.undo()
 
 
-def _get_names(list_widget):
-    return [w.text for w in list_widget.children if isinstance(w, OneLineRightIconListItem)]
+def _get_names(rv):
+    return [item.get("text") for item in rv.data]
 
 
 def test_search_filtering(test_db):
     screen = ExerciseLibraryScreen()
-    screen.exercise_list = MDList()
+    screen.exercise_list = MDRecycleView()
     screen.search_text = "bench"
     screen.populate()
     names = _get_names(screen.exercise_list)
@@ -56,7 +57,7 @@ def test_filter_options(test_db):
     core.save_exercise(ex)
 
     screen = ExerciseLibraryScreen()
-    screen.exercise_list = MDList()
+    screen.exercise_list = MDRecycleView()
     screen.filter_mode = "user"
     screen.populate()
     user_names = _get_names(screen.exercise_list)
@@ -88,7 +89,7 @@ def test_edit_and_save_updates_list(test_db, monkeypatch):
     screen.save_exercise()
 
     lib = ExerciseLibraryScreen()
-    lib.exercise_list = MDList()
+    lib.exercise_list = MDRecycleView()
     lib.filter_mode = "user"
     lib.populate()
     names = _get_names(lib.exercise_list)
@@ -99,12 +100,11 @@ def test_delete_button_for_user_exercise(test_db):
     ex = core.Exercise("Bench Press")
     core.save_exercise(ex)
     screen = ExerciseLibraryScreen()
-    screen.exercise_list = MDList()
+    screen.exercise_list = MDRecycleView()
     screen.filter_mode = "user"
     screen.populate()
-    items = [w for w in screen.exercise_list.children if isinstance(w, OneLineRightIconListItem)]
-    assert items
-    icons = [c for c in items[0].children if hasattr(c, "icon")]
-    assert any(getattr(i, "icon", "") == "delete" for i in icons)
+    data = screen.exercise_list.data
+    assert data
+    assert data[0].get("is_user_created")
 
 
