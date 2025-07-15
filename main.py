@@ -393,6 +393,8 @@ class PresetDetailScreen(MDScreen):
 class ExerciseLibraryScreen(MDScreen):
     previous_screen = StringProperty("home")
     exercise_list = ObjectProperty(None)
+    filter_mode = StringProperty("both")
+    filter_dialog = ObjectProperty(None, allownone=True)
 
     def on_pre_enter(self, *args):
         self.populate()
@@ -403,12 +405,48 @@ class ExerciseLibraryScreen(MDScreen):
             return
         self.exercise_list.clear_widgets()
         db_path = Path(__file__).resolve().parent / "data" / "workout.db"
-        for name in core.get_all_exercises(db_path):
+        exercises = core.get_all_exercises(db_path, include_user_created=True)
+        if self.filter_mode == "user":
+            exercises = [ex for ex in exercises if ex[1]]
+        elif self.filter_mode == "premade":
+            exercises = [ex for ex in exercises if not ex[1]]
+        for name, is_user in exercises:
             item = OneLineRightIconListItem(text=name)
+            if is_user:
+                item.theme_text_color = "Custom"
+                item.text_color = (0.6, 0.2, 0.8, 1)
             icon = IconRightWidget(icon="pencil")
             icon.bind(on_release=lambda inst, n=name: self.open_edit_popup(n))
             item.add_widget(icon)
             self.exercise_list.add_widget(item)
+
+    def open_filter_popup(self):
+        list_view = MDList()
+        options = [
+            ("User Created", "user"),
+            ("Premade", "premade"),
+            ("Both", "both"),
+        ]
+        for label, mode in options:
+            item = OneLineListItem(text=label)
+            item.bind(on_release=lambda inst, m=mode: self.apply_filter(m))
+            list_view.add_widget(item)
+        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(200))
+        scroll.add_widget(list_view)
+        close_btn = MDRaisedButton(
+            text="Close", on_release=lambda *a: self.filter_dialog.dismiss()
+        )
+        self.filter_dialog = MDDialog(
+            title="Filter Exercises", type="custom", content_cls=scroll, buttons=[close_btn]
+        )
+        self.filter_dialog.open()
+
+    def apply_filter(self, mode, *args):
+        self.filter_mode = mode
+        if self.filter_dialog:
+            self.filter_dialog.dismiss()
+            self.filter_dialog = None
+        self.populate()
 
     def open_edit_popup(self, exercise_name):
         """Navigate to ``EditExerciseScreen`` with ``exercise_name`` loaded."""
