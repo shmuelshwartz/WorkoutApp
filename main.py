@@ -47,6 +47,7 @@ import time
 import math
 
 from kivy.core.window import Window
+import string
 
 Window.size = (280, 280 * (20 / 9))
 
@@ -819,6 +820,8 @@ class AddMetricPopup(MDDialog):
     # ------------------------------------------------------------------
     def _build_select_widgets(self):
         metrics = core.get_all_metric_types()
+        existing = {m.get("name") for m in self.screen.exercise_obj.metrics}
+        metrics = [m for m in metrics if m["name"] not in existing]
         list_view = MDList()
         for m in metrics:
             item = OneLineListItem(text=m["name"])
@@ -900,6 +903,47 @@ class AddMetricPopup(MDDialog):
 
             self.input_widgets[name] = widget
 
+        # Text box for enum values (hidden unless manual_enum is selected)
+        self.enum_values_field = MDTextField(
+            hint_text="Enum Values (comma separated)",
+            size_hint_y=None,
+            height=0,
+            opacity=0,
+            disabled=True,
+        )
+        form.add_widget(self.enum_values_field)
+
+        def update_enum_visibility(*args):
+            show = self.input_widgets["source_type"].text == "manual_enum"
+            if show:
+                self.enum_values_field.disabled = False
+                self.enum_values_field.opacity = 1
+                self.enum_values_field.height = default_height
+            else:
+                self.enum_values_field.disabled = True
+                self.enum_values_field.opacity = 0
+                self.enum_values_field.height = 0
+
+        def update_enum_filter(*args):
+            input_type = self.input_widgets["input_type"].text
+            if input_type == "int":
+                allowed = string.digits + ","
+            elif input_type == "float":
+                allowed = string.digits + ".,"
+            else:  # default to str
+                allowed = string.ascii_letters + ","
+
+            def _filter(value, from_undo):
+                return "".join(ch for ch in value if ch in allowed)
+
+            self.enum_values_field.input_filter = _filter
+
+        if "source_type" in self.input_widgets and "input_type" in self.input_widgets:
+            self.input_widgets["source_type"].bind(text=lambda *a: update_enum_visibility())
+            self.input_widgets["input_type"].bind(text=lambda *a: update_enum_filter())
+            update_enum_visibility()
+            update_enum_filter()
+
         layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
         layout.add_widget(form)
 
@@ -943,13 +987,52 @@ class AddMetricPopup(MDDialog):
         self.screen.save_enabled = self.screen.exercise_obj.is_modified()
 
     def save_metric(self, *args):
-        """Create a new metric definition and add it to the exercise object."""
+        """Validate fields and add the new metric to the exercise object."""
+        errors = []
+
+        name = self.input_widgets["name"].text.strip()
+        input_type = self.input_widgets["input_type"].text
+        source_type = self.input_widgets["source_type"].text
+
+        if not name:
+            errors.append("name")
+
+        if input_type == "bool" and source_type == "manual_enum":
+            errors.extend(["input_type", "source_type"])
+
+        if source_type == "manual_slider" and input_type != "float":
+            errors.extend(["input_type", "source_type"])
+
+        values = []
+        if source_type == "manual_enum":
+            text = self.enum_values_field.text.strip()
+            if not text:
+                errors.append("enum_values")
+            else:
+                values = [v.strip() for v in text.split(",") if v.strip()]
+                if not values:
+                    errors.append("enum_values")
+
+        red = (1, 0, 0, 1)
+        for key, widget in self.input_widgets.items():
+            if isinstance(widget, Spinner):
+                widget.text_color = red if key in errors else (1, 1, 1, 1)
+            elif isinstance(widget, MDTextField):
+                widget.error = key in errors
+        self.enum_values_field.error = "enum_values" in errors
+
+        if errors:
+            return
+
         metric = {}
         for key, widget in self.input_widgets.items():
             if isinstance(widget, MDCheckbox):
                 metric[key] = bool(widget.active)
             else:
                 metric[key] = widget.text
+        if values:
+            metric["values"] = values
+
         self.screen.exercise_obj.add_metric(metric)
         self.show_metric_list()
         self.screen.save_enabled = self.screen.exercise_obj.is_modified()
