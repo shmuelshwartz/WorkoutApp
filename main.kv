@@ -608,7 +608,7 @@ ScreenManager:
                 id: exercise_tabs
                 size_hint_y: 1
                 transition: NoTransition()
-                current: root.current_tab
+                on_kv_post: self.current = root.current_tab
             Screen:
                 name: "metrics"
                 FloatLayout:
