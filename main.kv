@@ -579,6 +579,8 @@ ScreenManager:
 
 <EditExerciseScreen>:
     metrics_list: metrics_list
+    name_field: name_field
+    description_field: description_field
     current_tab: "metrics"
     BoxLayout:
         orientation: "vertical"
@@ -602,11 +604,11 @@ ScreenManager:
                 text: "Details"
                 md_bg_color: app.theme_cls.primary_color if root.current_tab == "details" else (.5, .5, .5, 1)
                 on_release: root.switch_tab("details")
-        ScreenManager:
-            id: exercise_tabs
-            size_hint_y: 1
-            transition: NoTransition()
-            on_kv_post: self.current = root.current_tab
+            ScreenManager:
+                id: exercise_tabs
+                size_hint_y: 1
+                transition: NoTransition()
+                current: root.current_tab
             Screen:
                 name: "metrics"
                 FloatLayout:
@@ -626,6 +628,16 @@ ScreenManager:
                         orientation: "vertical"
                         size_hint_y: None
                         height: self.minimum_height
+                        MDTextField:
+                            id: name_field
+                            hint_text: "Name"
+                            text: root.exercise_name
+                            multiline: False
+                        MDTextField:
+                            id: description_field
+                            hint_text: "Description"
+                            text: root.exercise_description
+                            multiline: True
         MDRaisedButton:
             text: "Back"
             on_release: root.go_back()

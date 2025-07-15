@@ -1019,22 +1019,31 @@ class EditExerciseScreen(MDScreen):
     """Screen for editing an individual exercise within a preset."""
 
     exercise_name = StringProperty("")
+    exercise_description = StringProperty("")
     section_index = NumericProperty(-1)
     exercise_index = NumericProperty(-1)
     previous_screen = StringProperty("edit_preset")
     metrics_list = ObjectProperty(None)
+    name_field = ObjectProperty(None)
+    description_field = ObjectProperty(None)
     current_tab = StringProperty("metrics")
 
     def switch_tab(self, tab: str):
         """Switch between the metrics and details tabs."""
         if tab in ("metrics", "details"):
             self.current_tab = tab
+            if "exercise_tabs" in self.ids:
+                self.ids.exercise_tabs.current = tab
 
     def on_pre_enter(self, *args):
         self.populate()
         return super().on_pre_enter(*args)
 
     def populate(self):
+        self.populate_metrics()
+        self.populate_details()
+
+    def populate_metrics(self):
         if not self.metrics_list or not self.exercise_name:
             return
         self.metrics_list.clear_widgets()
@@ -1122,6 +1131,24 @@ class EditExerciseScreen(MDScreen):
 
             self.metrics_list.add_widget(box)
             self.metrics_list.add_widget(MDSeparator())
+
+    def populate_details(self):
+        if not self.exercise_name:
+            if self.name_field:
+                self.name_field.text = ""
+            if self.description_field:
+                self.description_field.text = ""
+            return
+        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        details = core.get_exercise_details(self.exercise_name, db_path)
+        if details:
+            self.exercise_description = details.get("description", "")
+        else:
+            self.exercise_description = ""
+        if self.name_field:
+            self.name_field.text = self.exercise_name
+        if self.description_field:
+            self.description_field.text = self.exercise_description
 
     def remove_metric(self, metric_name):
         if not self.exercise_name:
