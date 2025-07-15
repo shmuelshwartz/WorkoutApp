@@ -932,6 +932,7 @@ class AddMetricPopup(MDDialog):
                 break
         self.dismiss()
         self.screen.populate()
+        self.screen.save_enabled = self.screen.exercise_obj.is_modified()
 
     def save_metric(self, *args):
         """Create a new metric definition and add it to the exercise object."""
@@ -943,6 +944,7 @@ class AddMetricPopup(MDDialog):
                 metric[key] = widget.text
         self.screen.exercise_obj.add_metric(metric)
         self.show_metric_list()
+        self.screen.save_enabled = self.screen.exercise_obj.is_modified()
 
 
 class EditMetricPopup(MDDialog):
@@ -1059,6 +1061,7 @@ class EditMetricPopup(MDDialog):
         self.screen.exercise_obj.update_metric(self.metric["name"], **updates)
         self.dismiss()
         self.screen.populate()
+        self.screen.save_enabled = self.screen.exercise_obj.is_modified()
 
 
 
@@ -1075,6 +1078,7 @@ class EditExerciseScreen(MDScreen):
     description_field = ObjectProperty(None)
     exercise_obj = ObjectProperty(None, rebind=True)
     current_tab = StringProperty("metrics")
+    save_enabled = BooleanProperty(False)
 
     def switch_tab(self, tab: str):
         """Switch between the metrics and details tabs."""
@@ -1087,6 +1091,7 @@ class EditExerciseScreen(MDScreen):
         self.exercise_obj = core.Exercise(self.exercise_name, db_path=db_path)
         self.exercise_name = self.exercise_obj.name
         self.exercise_description = self.exercise_obj.description
+        self.save_enabled = False
         self.populate()
         return super().on_pre_enter(*args)
 
@@ -1130,16 +1135,20 @@ class EditExerciseScreen(MDScreen):
         if self.exercise_obj is not None:
             self.exercise_obj.name = name
         self.exercise_name = name
+        self.save_enabled = self.exercise_obj.is_modified()
 
     def update_description(self, desc: str):
         if self.exercise_obj is not None:
             self.exercise_obj.description = desc
         self.exercise_description = desc
+        self.save_enabled = self.exercise_obj.is_modified()
 
     def remove_metric(self, metric_name):
         if self.exercise_obj:
             self.exercise_obj.remove_metric(metric_name)
         self.populate()
+        if self.exercise_obj:
+            self.save_enabled = self.exercise_obj.is_modified()
 
     def confirm_remove_metric(self, metric_name):
         dialog = None
@@ -1171,9 +1180,73 @@ class EditExerciseScreen(MDScreen):
         popup = EditMetricPopup(self, metric)
         popup.open()
 
+    def save_exercise(self):
+        if not self.exercise_obj:
+            return
+
+        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        msg = "Save changes to this exercise?"
+        if not self.exercise_obj.is_user_created:
+            cursor.execute(
+                "SELECT 1 FROM exercises WHERE name = ? AND is_user_created = 1",
+                (self.exercise_obj.name,),
+            )
+            exists = cursor.fetchone()
+            if exists:
+                msg = (
+                    f"A user-defined copy of {self.exercise_obj.name} exists and will be overwritten."
+                )
+            else:
+                msg = (
+                    f"{self.exercise_obj.name} is predefined. A user-defined copy will be created."
+                )
+        conn.close()
+
+        dialog = None
+
+        def do_save(*args):
+            # Placeholder for DB persistence to respect the no-DB-change rule
+            self.exercise_obj.mark_saved()
+            self.save_enabled = False
+            if dialog:
+                dialog.dismiss()
+
+        dialog = MDDialog(
+            title="Confirm Save",
+            text=msg,
+            buttons=[
+                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                MDRaisedButton(text="Save", on_release=do_save),
+            ],
+        )
+        dialog.open()
+
     def go_back(self):
-        if self.manager:
-            self.manager.current = self.previous_screen
+        if self.save_enabled:
+            dialog = None
+
+            def discard(*args):
+                if dialog:
+                    dialog.dismiss()
+                if self.manager:
+                    self.manager.current = self.previous_screen
+
+            dialog = MDDialog(
+                title="Discard Changes?",
+                text="You have unsaved changes. Discard them?",
+                buttons=[
+                    MDRaisedButton(
+                        text="Cancel", on_release=lambda *a: dialog.dismiss()
+                    ),
+                    MDRaisedButton(text="Discard", on_release=discard),
+                ],
+            )
+            dialog.open()
+        else:
+            if self.manager:
+                self.manager.current = self.previous_screen
 
 class WorkoutApp(MDApp):
     workout_session = None

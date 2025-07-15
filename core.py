@@ -71,7 +71,7 @@ def get_exercise_details(
     exercise_name: str,
     db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
 ) -> dict | None:
-    """Return name and description for ``exercise_name``.
+    """Return details for ``exercise_name`` including ``is_user_created``.
 
     Returns ``None`` if the exercise does not exist.
     """
@@ -79,15 +79,19 @@ def get_exercise_details(
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT name, description FROM exercises WHERE name = ?",
+        "SELECT name, description, is_user_created FROM exercises WHERE name = ?",
         (exercise_name,),
     )
     row = cursor.fetchone()
     conn.close()
     if not row:
         return None
-    name, description = row
-    return {"name": name, "description": description or ""}
+    name, description, user_flag = row
+    return {
+        "name": name,
+        "description": description or "",
+        "is_user_created": bool(user_flag),
+    }
 
 
 def get_metrics_for_exercise(
@@ -663,9 +667,13 @@ class Exercise:
         self.name: str = name
         self.description: str = ""
         self.metrics: list[dict] = []
+        self.is_user_created: bool = True
+        self._original: dict | None = None
 
         if name:
             self.load(name)
+        else:
+            self._original = self.to_dict()
 
     def load(self, name: str) -> None:
         """Load ``name`` from ``db_path`` into this object."""
@@ -674,7 +682,9 @@ class Exercise:
         if details:
             self.name = details.get("name", name)
             self.description = details.get("description", "")
+            self.is_user_created = details.get("is_user_created", True)
         self.metrics = get_metrics_for_exercise(name, db_path=self.db_path)
+        self._original = self.to_dict()
 
     # ------------------------------------------------------------------
     # Modification helpers.  These operate only on the in-memory object
@@ -706,6 +716,16 @@ class Exercise:
             "description": self.description,
             "metrics": [m.copy() for m in self.metrics],
         }
+
+    def is_modified(self) -> bool:
+        """Return ``True`` if the exercise differs from its original state."""
+
+        return self._original != self.to_dict()
+
+    def mark_saved(self) -> None:
+        """Reset the original state to the current data."""
+
+        self._original = self.to_dict()
 
 
 
