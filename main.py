@@ -18,8 +18,6 @@ from kivy.uix.scrollview import ScrollView
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import (
     OneLineListItem,
-    OneLineRightIconListItem,
-    IconRightWidget,
     MDList,
 )
 from kivymd.uix.selectioncontrol import MDCheckbox
@@ -431,7 +429,11 @@ class ExerciseLibraryScreen(MDScreen):
     filter_mode = StringProperty("both")
     filter_dialog = ObjectProperty(None, allownone=True)
     search_text = StringProperty("")
+
     loading_dialog = ObjectProperty(None, allownone=True)
+
+    _search_event = None
+
 
     def on_pre_enter(self, *args):
         self.populate(True)
@@ -451,7 +453,7 @@ class ExerciseLibraryScreen(MDScreen):
                 self.loading_dialog.dismiss()
                 self.loading_dialog = None
             return
-        self.exercise_list.clear_widgets()
+        self.exercise_list.data = []
         db_path = Path(__file__).resolve().parent / "data" / "workout.db"
         exercises = core.get_all_exercises(db_path, include_user_created=True)
         if self.filter_mode == "user":
@@ -461,24 +463,30 @@ class ExerciseLibraryScreen(MDScreen):
         if self.search_text:
             s = self.search_text.lower()
             exercises = [ex for ex in exercises if s in ex[0].lower()]
+        data = []
         for name, is_user in exercises:
-            item = OneLineRightIconListItem(text=name)
-            if is_user:
-                item.theme_text_color = "Custom"
-                item.text_color = (0.6, 0.2, 0.8, 1)
-            icon = IconRightWidget(icon="pencil")
-            icon.bind(on_release=lambda inst, n=name, u=is_user: self.open_edit_popup(n, u))
-            item.add_widget(icon)
+            item = {
+                "name": name,
+                "text": name,
+                "is_user_created": is_user,
+                "edit_callback": self.open_edit_popup,
+                "delete_callback": self.confirm_delete_exercise,
+            }
             if is_user:
                 del_icon = IconRightWidget(icon="delete")
                 del_icon.theme_text_color = "Custom"
                 del_icon.text_color = (1, 0, 0, 1)
                 del_icon.bind(on_release=lambda inst, n=name: self.confirm_delete_exercise(n))
                 item.add_widget(del_icon)
+                item["theme_text_color"] = "Custom"
+                item["text_color"] = (0.6, 0.2, 0.8, 1)
+            data.append(item)
             self.exercise_list.add_widget(item)
+        self.exercise_list.data = data
         if self.loading_dialog:
             self.loading_dialog.dismiss()
             self.loading_dialog = None
+
 
     def open_filter_popup(self):
         list_view = MDList()
@@ -502,8 +510,17 @@ class ExerciseLibraryScreen(MDScreen):
         self.filter_dialog.open()
 
     def update_search(self, text):
+        """Update search text with debounce to limit populate frequency."""
         self.search_text = text
-        self.populate()
+        if self._search_event:
+            self._search_event.cancel()
+
+        def do_populate(dt):
+            self._search_event = None
+            self.populate()
+
+        # schedule populate with a short delay to debounce rapid input
+        self._search_event = Clock.schedule_once(do_populate, 0.2)
 
     def apply_filter(self, mode, *args):
         self.filter_mode = mode
