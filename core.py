@@ -79,7 +79,9 @@ def get_exercise_details(
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT name, description, is_user_created FROM exercises WHERE name = ?",
+        "SELECT name, description, is_user_created"
+        " FROM exercises WHERE name = ?"
+        " ORDER BY is_user_created DESC LIMIT 1",
         (exercise_name,),
     )
     row = cursor.fetchone()
@@ -109,7 +111,10 @@ def get_metrics_for_exercise(
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id FROM exercises WHERE name = ?", (exercise_name,))
+    cursor.execute(
+        "SELECT id FROM exercises WHERE name = ? ORDER BY is_user_created DESC LIMIT 1",
+        (exercise_name,),
+    )
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -727,6 +732,60 @@ class Exercise:
         """Reset the original state to the current data."""
 
         self._original = self.to_dict()
+
+
+def save_exercise(exercise: Exercise) -> None:
+    """Persist ``exercise`` to the database as a user-defined copy."""
+
+    db_path = exercise.db_path
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT id FROM exercises WHERE name = ? AND is_user_created = 1",
+        (exercise.name,),
+    )
+    row = cursor.fetchone()
+    if row:
+        ex_id = row[0]
+        cursor.execute(
+            "UPDATE exercises SET description = ? WHERE id = ?",
+            (exercise.description, ex_id),
+        )
+        cursor.execute("DELETE FROM exercise_metrics WHERE exercise_id = ?", (ex_id,))
+        cursor.execute(
+            "DELETE FROM exercise_enum_values WHERE exercise_id = ?",
+            (ex_id,),
+        )
+    else:
+        cursor.execute(
+            "INSERT INTO exercises (name, description, is_user_created) VALUES (?, ?, 1)",
+            (exercise.name, exercise.description),
+        )
+        ex_id = cursor.lastrowid
+
+    for position, m in enumerate(exercise.metrics):
+        cursor.execute("SELECT id, source_type FROM metric_types WHERE name = ?", (m["name"],))
+        mt_row = cursor.fetchone()
+        if not mt_row:
+            continue
+        metric_id, source_type = mt_row
+        cursor.execute(
+            "INSERT INTO exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, ?)",
+            (ex_id, metric_id, position),
+        )
+        if source_type == "manual_enum" and m.get("values"):
+            for idx, val in enumerate(m.get("values", [])):
+                cursor.execute(
+                    "INSERT INTO exercise_enum_values (metric_type_id, exercise_id, value, position) VALUES (?, ?, ?, ?)",
+                    (metric_id, ex_id, val, idx),
+                )
+
+    conn.commit()
+    conn.close()
+
+    exercise.is_user_created = True
+    exercise.mark_saved()
 
 
 
