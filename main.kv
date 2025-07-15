@@ -643,12 +643,14 @@ ScreenManager:
                             text: root.exercise_name
                             multiline: False
                             size_hint_x: 1
+                            on_text: root.update_name(self.text)
                         MDTextField:
                             id: description_field
                             hint_text: "Description"
                             text: root.exercise_description
                             multiline: True
                             size_hint_x: 1
+                            on_text: root.update_description(self.text)
         MDRaisedButton:
             size_hint_y:0.1
             text: "Back"
