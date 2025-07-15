@@ -237,3 +237,27 @@ def test_exercise_save_persists_changes(tmp_path):
 
     reloaded = core.Exercise("Push-ups", db_path=db_path)
     assert reloaded.is_user_created
+
+
+def test_exercise_list_ordering(tmp_path):
+    db_src = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+    db_path = tmp_path / "workout.db"
+    db_path.write_bytes(db_src.read_bytes())
+
+    # Create user copies of two exercises
+    ex = core.Exercise("Bench Press", db_path=db_path)
+    core.save_exercise(ex)
+
+    ex = core.Exercise("Push-ups", db_path=db_path)
+    core.save_exercise(ex)
+
+    exercises = core.get_all_exercises(db_path, include_user_created=True)
+    names = [name for name, _ in exercises]
+
+    assert names == [
+        "Bench Press",
+        "Pull-ups",
+        "Push-ups",
+        "Bench Press",
+        "Push-ups",
+    ]

@@ -57,7 +57,9 @@ def get_all_exercises(
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
     if include_user_created:
-        cursor.execute("SELECT name, is_user_created FROM exercises ORDER BY name")
+        cursor.execute(
+            "SELECT name, is_user_created FROM exercises ORDER BY is_user_created, name"
+        )
         rows = cursor.fetchall()
         exercises = [(name, bool(flag)) for name, flag in rows]
     else:
