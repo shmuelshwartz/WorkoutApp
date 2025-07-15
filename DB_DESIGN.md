@@ -16,7 +16,7 @@ The database cleanly separates:
 ### 🔵 Global Exercise Library
 - `exercises`: Master list of all exercises
 - `exercise_metrics`: Default metrics for each exercise
-- `user_defined_enum_values`: Custom enums for enum-type metrics
+- `exercise_enum_values`: Custom enums for enum-type metrics
 
 This acts as a central repository of exercises and their typical metrics.
 
@@ -51,7 +51,7 @@ This enables descriptive presets without altering the core schema.
 | `exercises`                | Master list of all exercises (name, description, user-created flag)                            |
 | `exercise_metrics`         | Default metrics for each exercise (referencing `metric_types`)                                 |
 | `metric_types`             | Definitions of all possible metrics (e.g., Reps, Weight, RPE) and their input configurations   |
-| `user_defined_enum_values` | Custom enum values tied to specific metrics and exercises                                      |
+| `exercise_enum_values` | Custom enum values tied to specific metrics and exercises                                      |
 | `presets`                  | Workout templates containing ordered sections and exercises                                    |
 | `preset_metadata`          | Key-value pairs for preset-level information (e.g., “Day 1”, “Focus: Strength”)                |
 | `sections`                 | Logical divisions of a preset (e.g., Warm-up, Workout)                                         |
@@ -111,9 +111,9 @@ This enables descriptive presets without modifying core tables.
 
 ---
 
-## 📦 User Defined Enums
+## 📦 Exercise Enums
 
-`user_defined_enum_values` allows adding custom enum values to metrics of type `manual_enum`.
+`exercise_enum_values` allows adding custom enum values to metrics of type `manual_enum`.
 
 📌 Example:
 - Metric: Machine
@@ -168,7 +168,7 @@ Each exercise:
 | Presets & Sections      | `presets`, `sections`           |
 | Preset Exercises        | `section_exercises`             |
 | Preset Exercise Metrics | `section_exercise_metrics`      |
-| Custom Enums            | `user_defined_enum_values`      |
+| Custom Enums            | `exercise_enum_values`      |
 | Preset Metadata         | `preset_metadata`               |
 
 This schema provides a **powerful, modular system** for defining workouts while giving users the freedom to tweak and reuse exercises flexibly.

@@ -140,7 +140,7 @@ def get_metrics_for_exercise(
             cursor.execute(
                 """
                 SELECT value
-                FROM user_defined_enum_values
+                FROM exercise_enum_values
                 WHERE metric_type_id = ? AND exercise_id = ?
                 ORDER BY position
                 """,
