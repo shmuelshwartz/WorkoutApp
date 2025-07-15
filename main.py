@@ -468,7 +468,10 @@ class ExerciseLibraryScreen(MDScreen):
                 self.loading_dialog.dismiss()
                 self.loading_dialog = None
             return
-        self.exercise_list.clear_widgets()
+        # Clearing widgets directly can remove the internal layout manager of
+        # ``RecycleView``. Reset the data list instead so the manager stays
+        # intact and items refresh correctly.
+        self.exercise_list.data = []
         app = MDApp.get_running_app()
         if (
             self.all_exercises is None
