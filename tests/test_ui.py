@@ -108,3 +108,21 @@ def test_delete_button_for_user_exercise(test_db):
     assert any(getattr(i, "icon", "") == "delete" for i in icons)
 
 
+def test_update_search_debounces_populate(test_db):
+    screen = ExerciseLibraryScreen()
+    screen.exercise_list = MDList()
+    # call update_search twice quickly; second should cancel first
+    screen.update_search("ben")
+    first_event = screen._search_event
+    screen.update_search("bench")
+    second_event = screen._search_event
+    assert first_event != second_event
+    # run scheduled event
+    from kivy.clock import Clock
+    Clock.tick()  # process scheduling
+    Clock.tick()  # ensure callback executed
+    names = _get_names(screen.exercise_list)
+    assert names and all("bench" in n.lower() for n in names)
+
+
+
