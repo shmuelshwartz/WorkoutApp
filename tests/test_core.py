@@ -61,6 +61,22 @@ def test_get_all_exercises():
         assert isinstance(name, str)
 
 
+def test_predefined_only_details_and_metrics():
+    db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+
+    # Bench Press exists only as a predefined exercise
+    details = core.get_exercise_details("Bench Press", db_path)
+    assert details and not details["is_user_created"]
+    builtin = core.get_exercise_details("Bench Press", db_path, is_user_created=False)
+    assert builtin == details
+    assert core.get_exercise_details("Bench Press", db_path, is_user_created=True) is None
+
+    metrics_default = core.get_metrics_for_exercise("Bench Press", db_path)
+    metrics_builtin = core.get_metrics_for_exercise("Bench Press", db_path, is_user_created=False)
+    assert metrics_default == metrics_builtin
+    assert core.get_metrics_for_exercise("Bench Press", db_path, is_user_created=True) == []
+
+
 def test_metric_type_schema():
     db_path = Path(__file__).resolve().parents[1] / "data" / "workout.db"
     schema = core.get_metric_type_schema(db_path)
@@ -202,6 +218,22 @@ def test_exercise_save_persists_changes(tmp_path):
 
     core.save_exercise(ex)
 
+    # default should return the user-created copy
     details = core.get_exercise_details("Push-ups", db_path)
     assert details["is_user_created"]
     assert details["description"] == "Modified description"
+
+    # explicit queries for each variant
+    built_in = core.get_exercise_details("Push-ups", db_path, is_user_created=False)
+    assert built_in and not built_in["is_user_created"]
+    user_copy = core.get_exercise_details("Push-ups", db_path, is_user_created=True)
+    assert user_copy["description"] == "Modified description"
+
+    default_metrics = core.get_metrics_for_exercise("Push-ups", db_path)
+    user_metrics = core.get_metrics_for_exercise("Push-ups", db_path, is_user_created=True)
+    built_in_metrics = core.get_metrics_for_exercise("Push-ups", db_path, is_user_created=False)
+    assert default_metrics == user_metrics
+    assert built_in_metrics
+
+    reloaded = core.Exercise("Push-ups", db_path=db_path)
+    assert reloaded.is_user_created

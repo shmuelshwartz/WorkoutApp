@@ -70,20 +70,32 @@ def get_all_exercises(
 def get_exercise_details(
     exercise_name: str,
     db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    is_user_created: bool | None = None,
 ) -> dict | None:
-    """Return details for ``exercise_name`` including ``is_user_created``.
+    """Return details for ``exercise_name``.
+
+    If ``is_user_created`` is ``None`` (the default), the user-created
+    copy will be preferred when both predefined and user-defined versions
+    exist.  Otherwise the requested variant will be fetched.
 
     Returns ``None`` if the exercise does not exist.
     """
 
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT name, description, is_user_created"
-        " FROM exercises WHERE name = ?"
-        " ORDER BY is_user_created DESC LIMIT 1",
-        (exercise_name,),
-    )
+    if is_user_created is None:
+        cursor.execute(
+            "SELECT name, description, is_user_created"
+            " FROM exercises WHERE name = ?"
+            " ORDER BY is_user_created DESC LIMIT 1",
+            (exercise_name,),
+        )
+    else:
+        cursor.execute(
+            "SELECT name, description, is_user_created"
+            " FROM exercises WHERE name = ? AND is_user_created = ?",
+            (exercise_name, int(is_user_created)),
+        )
     row = cursor.fetchone()
     conn.close()
     if not row:
@@ -100,6 +112,7 @@ def get_metrics_for_exercise(
     exercise_name: str,
     db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
     preset_name: str | None = None,
+    is_user_created: bool | None = None,
 ) -> list:
     """Return metric definitions for ``exercise_name``.
 
@@ -111,10 +124,16 @@ def get_metrics_for_exercise(
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT id FROM exercises WHERE name = ? ORDER BY is_user_created DESC LIMIT 1",
-        (exercise_name,),
-    )
+    if is_user_created is None:
+        cursor.execute(
+            "SELECT id FROM exercises WHERE name = ? ORDER BY is_user_created DESC LIMIT 1",
+            (exercise_name,),
+        )
+    else:
+        cursor.execute(
+            "SELECT id FROM exercises WHERE name = ? AND is_user_created = ?",
+            (exercise_name, int(is_user_created)),
+        )
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -689,7 +708,11 @@ class Exercise:
             self.name = details.get("name", name)
             self.description = details.get("description", "")
             self.is_user_created = details.get("is_user_created", True)
-        self.metrics = get_metrics_for_exercise(name, db_path=self.db_path)
+        self.metrics = get_metrics_for_exercise(
+            name,
+            db_path=self.db_path,
+            is_user_created=details.get("is_user_created") if details else None,
+        )
         self._original = self.to_dict()
 
     # ------------------------------------------------------------------
