@@ -50,6 +50,17 @@ from kivy.core.window import Window
 
 Window.size = (280, 280 * (20 / 9))
 
+# Order of fields for metric editing popups
+METRIC_FIELD_ORDER = [
+    "name",
+    "description",
+    "input_type",
+    "source_type",
+    "input_timing",
+    "scope",
+    "is_required",
+]
+
 class WorkoutActiveScreen(MDScreen):
     """Screen that shows an active workout with a stopwatch."""
 
@@ -822,6 +833,7 @@ class AddMetricPopup(MDDialog):
         if not schema:
             schema = [
                 {"name": "name"},
+                {"name": "description"},
                 {"name": "input_type", "options": ["int", "float", "str", "bool"]},
                 {
                     "name": "source_type",
@@ -837,12 +849,22 @@ class AddMetricPopup(MDDialog):
                         "post_set",
                     ],
                 },
-                {"name": "is_required"},
                 {
                     "name": "scope",
                     "options": ["session", "section", "exercise", "set"],
                 },
-                {"name": "description"},
+                {"name": "is_required"},
+            ]
+        else:
+            order_map = {field["name"]: field for field in schema}
+            schema = [
+                order_map[name]
+                for name in METRIC_FIELD_ORDER
+                if name in order_map
+            ] + [
+                field
+                for field in schema
+                if field["name"] not in METRIC_FIELD_ORDER
             ]
 
         form = MDBoxLayout(
@@ -928,6 +950,7 @@ class EditMetricPopup(MDDialog):
         if not schema:
             schema = [
                 {"name": "name"},
+                {"name": "description"},
                 {"name": "input_type", "options": ["int", "float", "str", "bool"]},
                 {
                     "name": "source_type",
@@ -943,12 +966,22 @@ class EditMetricPopup(MDDialog):
                         "post_set",
                     ],
                 },
-                {"name": "is_required"},
                 {
                     "name": "scope",
                     "options": ["session", "section", "exercise", "set"],
                 },
-                {"name": "description"},
+                {"name": "is_required"},
+            ]
+        else:
+            order_map = {field["name"]: field for field in schema}
+            schema = [
+                order_map[name]
+                for name in METRIC_FIELD_ORDER
+                if name in order_map
+            ] + [
+                field
+                for field in schema
+                if field["name"] not in METRIC_FIELD_ORDER
             ]
 
         form = MDBoxLayout(
