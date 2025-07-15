@@ -687,6 +687,7 @@ class Exercise:
         name: str = "",
         *,
         db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+        is_user_created: bool | None = None,
     ) -> None:
         self.db_path = Path(db_path)
         self.name: str = name
@@ -696,22 +697,26 @@ class Exercise:
         self._original: dict | None = None
 
         if name:
-            self.load(name)
+            self.load(name, is_user_created=is_user_created)
         else:
             self._original = self.to_dict()
 
-    def load(self, name: str) -> None:
+    def load(self, name: str, *, is_user_created: bool | None = None) -> None:
         """Load ``name`` from ``db_path`` into this object."""
 
-        details = get_exercise_details(name, self.db_path)
+        details = get_exercise_details(name, self.db_path, is_user_created)
         if details:
             self.name = details.get("name", name)
             self.description = details.get("description", "")
             self.is_user_created = details.get("is_user_created", True)
+        else:
+            self.is_user_created = bool(is_user_created) if is_user_created is not None else True
         self.metrics = get_metrics_for_exercise(
             name,
             db_path=self.db_path,
-            is_user_created=details.get("is_user_created") if details else None,
+            is_user_created=(
+                details.get("is_user_created") if details else is_user_created
+            ),
         )
         self._original = self.to_dict()
 

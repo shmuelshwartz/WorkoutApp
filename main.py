@@ -432,7 +432,7 @@ class ExerciseLibraryScreen(MDScreen):
                 item.theme_text_color = "Custom"
                 item.text_color = (0.6, 0.2, 0.8, 1)
             icon = IconRightWidget(icon="pencil")
-            icon.bind(on_release=lambda inst, n=name: self.open_edit_popup(n))
+            icon.bind(on_release=lambda inst, n=name, u=is_user: self.open_edit_popup(n, u))
             item.add_widget(icon)
             self.exercise_list.add_widget(item)
 
@@ -468,13 +468,14 @@ class ExerciseLibraryScreen(MDScreen):
             self.filter_dialog = None
         self.populate()
 
-    def open_edit_popup(self, exercise_name):
+    def open_edit_popup(self, exercise_name, is_user_created):
         """Navigate to ``EditExerciseScreen`` with ``exercise_name`` loaded."""
         app = MDApp.get_running_app()
         if not app or not app.root:
             return
         screen = app.root.get_screen("edit_exercise")
         screen.exercise_name = exercise_name
+        screen.is_user_created = is_user_created
         screen.section_index = -1
         screen.exercise_index = -1
         screen.previous_screen = "exercise_library"
@@ -487,6 +488,7 @@ class ExerciseLibraryScreen(MDScreen):
             return
         screen = app.root.get_screen("edit_exercise")
         screen.exercise_name = ""
+        screen.is_user_created = True
         screen.section_index = -1
         screen.exercise_index = -1
         screen.previous_screen = "exercise_library"
@@ -1186,6 +1188,7 @@ class EditExerciseScreen(MDScreen):
     exercise_obj = ObjectProperty(None, rebind=True)
     current_tab = StringProperty("metrics")
     save_enabled = BooleanProperty(False)
+    is_user_created = ObjectProperty(None, allownone=True)
 
     def switch_tab(self, tab: str):
         """Switch between the metrics and details tabs."""
@@ -1195,7 +1198,12 @@ class EditExerciseScreen(MDScreen):
                 self.ids.exercise_tabs.current = tab
     def on_pre_enter(self, *args):
         db_path = Path(__file__).resolve().parent / "data" / "workout.db"
-        self.exercise_obj = core.Exercise(self.exercise_name, db_path=db_path)
+        self.exercise_obj = core.Exercise(
+            self.exercise_name,
+            db_path=db_path,
+            is_user_created=self.is_user_created,
+        )
+        self.is_user_created = self.exercise_obj.is_user_created
         self.exercise_name = self.exercise_obj.name
         self.exercise_description = self.exercise_obj.description
         self.save_enabled = False
