@@ -517,9 +517,10 @@ class WorkoutSession:
     """In-memory representation of a workout session.
 
     The session loads the selected preset from the database when it is
-    created and then works entirely with the in-memory data structure.  No
-    database access occurs after initialisation, so the database can be closed
-    or moved while the workout is in progress.
+    created.  While the workout is running it manages state in memory and
+    never writes to the database.  It may read additional information from
+    the database if needed but will not modify any tables until the workout
+    is finished, at which point the completed session is saved.
     """
 
     def __init__(
@@ -652,8 +653,8 @@ class Exercise:
     """Editable exercise loaded from the database.
 
     This is a lightweight helper used by the ``EditExerciseScreen``.  It
-    mirrors the details stored in the database but keeps all modifications
-    in memory.  Nothing is written back to the database unless the caller
+    mirrors the details stored in the database and keeps all modifications
+    in memory.  The database is updated only when the caller explicitly
     chooses to persist the changes.
     """
 
@@ -688,7 +689,7 @@ class Exercise:
 
     # ------------------------------------------------------------------
     # Modification helpers.  These operate only on the in-memory object
-    # and never touch the database.
+    # until the exercise is explicitly saved back to the database.
     # ------------------------------------------------------------------
     def add_metric(self, metric: dict) -> None:
         """Append ``metric`` to the metrics list."""
