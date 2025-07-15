@@ -593,7 +593,7 @@ ScreenManager:
             text_color: 0.2, 0.6, 0.86, 1
             size_hint_y:0.1
         MDBoxLayout:
-            size_hint_y: None
+            size_hint_y:0.8
             height: "40dp"
             spacing: "10dp"
             MDRaisedButton:
@@ -609,36 +609,37 @@ ScreenManager:
                 size_hint_y: 1
                 transition: NoTransition()
                 on_kv_post: self.current = root.current_tab
-            Screen:
-                name: "metrics"
-                FloatLayout:
+                Screen:
+                    name: "metrics"
+                    FloatLayout:
+                        ScrollView:
+                            MDList:
+                                id: metrics_list
+                        MDFloatingActionButton:
+                            icon: "plus"
+                            md_bg_color: app.theme_cls.primary_color
+                            pos_hint: {"right": 0.98, "y": 0.02}
+                            tooltip_text: "Add Metric"
+                            on_release: root.open_add_metric_popup()
+                Screen:
+                    name: "details"
                     ScrollView:
-                        MDList:
-                            id: metrics_list
-                    MDFloatingActionButton:
-                        icon: "plus"
-                        md_bg_color: app.theme_cls.primary_color
-                        pos_hint: {"right": 0.98, "y": 0.02}
-                        tooltip_text: "Add Metric"
-                        on_release: root.open_add_metric_popup()
-            Screen:
-                name: "details"
-                ScrollView:
-                    MDBoxLayout:
-                        orientation: "vertical"
-                        size_hint_y: None
-                        height: self.minimum_height
-                        MDTextField:
-                            id: name_field
-                            hint_text: "Name"
-                            text: root.exercise_name
-                            multiline: False
-                        MDTextField:
-                            id: description_field
-                            hint_text: "Description"
-                            text: root.exercise_description
-                            multiline: True
+                        MDBoxLayout:
+                            orientation: "vertical"
+                            size_hint_y: None
+                            height: self.minimum_height
+                            MDTextField:
+                                id: name_field
+                                hint_text: "Name"
+                                text: root.exercise_name
+                                multiline: False
+                            MDTextField:
+                                id: description_field
+                                hint_text: "Description"
+                                text: root.exercise_description
+                                multiline: True
         MDRaisedButton:
+            size_hint_y:0.1
             text: "Back"
             on_release: root.go_back()
 
