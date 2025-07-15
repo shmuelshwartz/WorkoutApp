@@ -97,4 +97,8 @@ JOIN
     exercises e ON em.exercise_id = e.id
 JOIN 
     metric_types mt ON em.metric_type_id = mt.id;
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_exercises_name_user_created" ON "exercises" (
+	"name",
+	"is_user_created"
+);
 COMMIT;
