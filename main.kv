@@ -658,10 +658,16 @@ ScreenManager:
                             multiline: True
                             size_hint_x: 1
                             on_text: root.update_description(self.text)
-        MDRaisedButton:
-            size_hint_y:0.1
-            text: "Back"
-            on_release: root.go_back()
+        MDBoxLayout:
+            size_hint_y: 0.1
+            spacing: "10dp"
+            MDRaisedButton:
+                text: "Save"
+                disabled: not root.save_enabled
+                on_release: root.save_exercise()
+            MDRaisedButton:
+                text: "Back"
+                on_release: root.go_back()
 
 <PreviousWorkoutsScreen@MDScreen>:
     BoxLayout:
