@@ -818,6 +818,45 @@ def save_exercise(exercise: Exercise) -> None:
     exercise.mark_saved()
 
 
+def delete_exercise(
+    name: str,
+    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    *,
+    is_user_created: bool = True,
+) -> bool:
+    """Delete `name` from the exercises table.
+
+    Only the variant matching `is_user_created` will be removed. The
+    function returns `True` when a row was deleted.
+    """
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id FROM exercises WHERE name = ? AND is_user_created = ?",
+        (name, int(is_user_created)),
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return False
+
+    ex_id = row[0]
+
+    cursor.execute(
+        "SELECT 1 FROM section_exercises WHERE exercise_id = ? LIMIT 1",
+        (ex_id,),
+    )
+    if cursor.fetchone():
+        conn.close()
+        raise ValueError("Exercise is in use and cannot be deleted")
+
+    cursor.execute("DELETE FROM exercises WHERE id = ?", (ex_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+
 
 class PresetEditor:
     """Helper for creating or editing workout presets in memory."""
