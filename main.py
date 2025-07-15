@@ -406,6 +406,7 @@ class ExerciseLibraryScreen(MDScreen):
     filter_mode = StringProperty("both")
     filter_dialog = ObjectProperty(None, allownone=True)
     search_text = StringProperty("")
+    _search_event = None
 
     def on_pre_enter(self, *args):
         self.populate()
@@ -461,8 +462,17 @@ class ExerciseLibraryScreen(MDScreen):
         self.filter_dialog.open()
 
     def update_search(self, text):
+        """Update search text with debounce to limit populate frequency."""
         self.search_text = text
-        self.populate()
+        if self._search_event:
+            self._search_event.cancel()
+
+        def do_populate(dt):
+            self._search_event = None
+            self.populate()
+
+        # schedule populate with a short delay to debounce rapid input
+        self._search_event = Clock.schedule_once(do_populate, 0.2)
 
     def apply_filter(self, mode, *args):
         self.filter_mode = mode
