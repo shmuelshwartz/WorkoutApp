@@ -395,6 +395,7 @@ class ExerciseLibraryScreen(MDScreen):
     exercise_list = ObjectProperty(None)
     filter_mode = StringProperty("both")
     filter_dialog = ObjectProperty(None, allownone=True)
+    search_text = StringProperty("")
 
     def on_pre_enter(self, *args):
         self.populate()
@@ -410,6 +411,9 @@ class ExerciseLibraryScreen(MDScreen):
             exercises = [ex for ex in exercises if ex[1]]
         elif self.filter_mode == "premade":
             exercises = [ex for ex in exercises if not ex[1]]
+        if self.search_text:
+            s = self.search_text.lower()
+            exercises = [ex for ex in exercises if s in ex[0].lower()]
         for name, is_user in exercises:
             item = OneLineRightIconListItem(text=name)
             if is_user:
@@ -440,6 +444,10 @@ class ExerciseLibraryScreen(MDScreen):
             title="Filter Exercises", type="custom", content_cls=scroll, buttons=[close_btn]
         )
         self.filter_dialog.open()
+
+    def update_search(self, text):
+        self.search_text = text
+        self.populate()
 
     def apply_filter(self, mode, *args):
         self.filter_mode = mode

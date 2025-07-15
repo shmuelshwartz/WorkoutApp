@@ -121,6 +121,13 @@ ScreenManager:
             orientation: "vertical"
             spacing: "10dp"
             padding: "20dp"
+            MDTextField:
+                id: search_field
+                hint_text: "Search exercises"
+                text: root.search_text
+                on_text: root.update_search(self.text)
+                size_hint_y: None
+                height: "40dp"
             MDBoxLayout:
                 orientation: "horizontal"
                 size_hint_y: None
