@@ -496,16 +496,12 @@ class ExerciseLibraryScreen(MDScreen):
                 "edit_callback": self.open_edit_popup,
                 "delete_callback": self.confirm_delete_exercise,
             }
-            if is_user:
-                del_icon = IconRightWidget(icon="delete")
-                del_icon.theme_text_color = "Custom"
-                del_icon.text_color = (1, 0, 0, 1)
-                del_icon.bind(on_release=lambda inst, n=name: self.confirm_delete_exercise(n))
-                item.add_widget(del_icon)
-                item["theme_text_color"] = "Custom"
-                item["text_color"] = (0.6, 0.2, 0.8, 1)
             data.append(item)
-            self.exercise_list.add_widget(item)
+
+        # ``RecycleView`` expects ``data`` to contain dictionaries describing
+        # how the viewclass should be configured. Adding widgets directly to the
+        # view is incorrect and results in ``WidgetException``.  The data list is
+        # assigned at once to refresh the view.
         self.exercise_list.data = data
         if self.loading_dialog:
             self.loading_dialog.dismiss()
