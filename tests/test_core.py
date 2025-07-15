@@ -189,3 +189,19 @@ def test_exercise_object_loads_and_edits_without_db_change(tmp_path):
     for m in ex.metrics:
         if m["name"] == "Reps":
             assert m["input_type"] == "float"
+
+
+def test_exercise_save_persists_changes(tmp_path):
+    db_src = Path(__file__).resolve().parents[1] / "data" / "workout.db"
+    db_path = tmp_path / "workout.db"
+    db_path.write_bytes(db_src.read_bytes())
+
+    ex = core.Exercise("Push-ups", db_path=db_path)
+    ex.description = "Modified description"
+    assert not ex.is_user_created
+
+    core.save_exercise(ex)
+
+    details = core.get_exercise_details("Push-ups", db_path)
+    assert details["is_user_created"]
+    assert details["description"] == "Modified description"

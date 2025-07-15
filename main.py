@@ -1302,9 +1302,7 @@ class EditExerciseScreen(MDScreen):
         dialog = None
 
         def do_save(*args):
-            # Placeholder for DB persistence; the final implementation will
-            # write the updated exercise details to the database
-            self.exercise_obj.mark_saved()
+            core.save_exercise(self.exercise_obj)
             self.save_enabled = False
             if dialog:
                 dialog.dismiss()
