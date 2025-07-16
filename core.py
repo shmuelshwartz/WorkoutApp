@@ -144,10 +144,18 @@ def get_metrics_for_exercise(
 
     cursor.execute(
         """
-        SELECT mt.id, mt.name, mt.input_type, mt.source_type,
-               mt.input_timing, mt.is_required, mt.scope, mt.description
+        SELECT mt.id,
+               mt.name,
+               COALESCE(o.input_type, mt.input_type),
+               COALESCE(o.source_type, mt.source_type),
+               COALESCE(o.input_timing, mt.input_timing),
+               COALESCE(o.is_required, mt.is_required),
+               COALESCE(o.scope, mt.scope),
+               mt.description
         FROM library_exercise_metrics em
         JOIN library_metric_types mt ON mt.id = em.metric_type_id
+        LEFT JOIN library_exercise_metric_overrides o
+               ON o.exercise_metric_id = em.id
         WHERE em.exercise_id = ?
         ORDER BY em.id
         """,
@@ -539,6 +547,102 @@ def set_section_exercise_metric_override(
     conn.close()
 
 
+def set_exercise_metric_override(
+    exercise_name: str,
+    metric_type_name: str,
+    *,
+    input_type: str | None = None,
+    source_type: str | None = None,
+    input_timing: str | None = None,
+    is_required: bool | None = None,
+    scope: str | None = None,
+    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+) -> None:
+    """Apply an override for ``metric_type_name`` for a specific exercise."""
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM library_exercises WHERE name = ?", (exercise_name,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError(f"Exercise '{exercise_name}' not found")
+    exercise_id = row[0]
+
+    cursor.execute("SELECT id FROM library_metric_types WHERE name = ?", (metric_type_name,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError(f"Metric '{metric_type_name}' not found")
+    metric_type_id = row[0]
+
+    cursor.execute(
+        "SELECT id FROM library_exercise_metrics WHERE exercise_id = ? AND metric_type_id = ?",
+        (exercise_id, metric_type_id),
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError("Exercise is not associated with the metric")
+    em_id = row[0]
+
+    cursor.execute(
+        "SELECT 1 FROM library_exercise_metric_overrides WHERE exercise_metric_id = ?",
+        (em_id,),
+    )
+    exists = cursor.fetchone() is not None
+
+    if not any(arg is not None for arg in [input_type, source_type, input_timing, is_required, scope]):
+        if exists:
+            cursor.execute(
+                "DELETE FROM library_exercise_metric_overrides WHERE exercise_metric_id = ?",
+                (em_id,),
+            )
+            conn.commit()
+        conn.close()
+        return
+
+    if exists:
+        updates = []
+        params: list = []
+        if input_type is not None:
+            updates.append("input_type = ?")
+            params.append(input_type)
+        if source_type is not None:
+            updates.append("source_type = ?")
+            params.append(source_type)
+        if input_timing is not None:
+            updates.append("input_timing = ?")
+            params.append(input_timing)
+        if is_required is not None:
+            updates.append("is_required = ?")
+            params.append(int(is_required))
+        if scope is not None:
+            updates.append("scope = ?")
+            params.append(scope)
+        if updates:
+            params.append(em_id)
+            cursor.execute(
+                f"UPDATE library_exercise_metric_overrides SET {', '.join(updates)} WHERE exercise_metric_id = ?",
+                params,
+            )
+    else:
+        cursor.execute(
+            "INSERT INTO library_exercise_metric_overrides (exercise_metric_id, input_type, source_type, input_timing, is_required, scope) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                em_id,
+                input_type,
+                source_type,
+                input_timing,
+                int(is_required) if is_required is not None else None,
+                scope,
+            ),
+        )
+    conn.commit()
+    conn.close()
+
+
 class WorkoutSession:
     """In-memory representation of a workout session.
 
@@ -804,6 +908,34 @@ def save_exercise(exercise: Exercise) -> None:
             "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, ?)",
             (ex_id, metric_id, position),
         )
+        em_id = cursor.lastrowid
+
+        cursor.execute(
+            "SELECT input_type, source_type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
+            (metric_id,),
+        )
+        default_row = cursor.fetchone()
+        if default_row:
+            def_in_type, def_source, def_timing, def_req, def_scope = default_row
+            if (
+                m.get("input_type") != def_in_type
+                or m.get("source_type") != def_source
+                or m.get("input_timing") != def_timing
+                or bool(m.get("is_required")) != bool(def_req)
+                or m.get("scope") != def_scope
+            ):
+                cursor.execute(
+                    "INSERT INTO library_exercise_metric_overrides (exercise_metric_id, input_type, source_type, input_timing, is_required, scope) VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        em_id,
+                        m.get("input_type"),
+                        m.get("source_type"),
+                        m.get("input_timing"),
+                        int(m.get("is_required", False)),
+                        m.get("scope"),
+                    ),
+                )
+
         if source_type == "manual_enum" and m.get("values"):
             for idx, val in enumerate(m.get("values", [])):
                 cursor.execute(
