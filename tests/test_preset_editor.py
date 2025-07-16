@@ -36,6 +36,7 @@ def db_copy(tmp_path):
     cur.executescript(
         """
         DROP VIEW IF EXISTS view_exercise_metrics;
+        DROP VIEW IF EXISTS library_view_exercise_metrics;
         CREATE VIEW library_view_exercise_metrics AS
             SELECT em.id AS exercise_metric_id,
                    em.exercise_id,
@@ -46,7 +47,7 @@ def db_copy(tmp_path):
             JOIN library_exercises e ON em.exercise_id = e.id
             JOIN library_metric_types mt ON em.metric_type_id = mt.id;
         DROP INDEX IF EXISTS idx_exercises_name_user_created;
-        CREATE UNIQUE INDEX idx_library_exercises_name_user_created ON library_exercises (name, is_user_created);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_library_exercises_name_user_created ON library_exercises (name, is_user_created);
         """
     )
     conn.commit()
@@ -67,7 +68,7 @@ def db_with_preset(db_copy):
     )
     section_id = cur.lastrowid
     # Use an existing exercise from the sample DB
-    cur.execute("SELECT id FROM library_exercises WHERE name = 'Push-ups'")
+    cur.execute("SELECT id FROM library_exercises WHERE name = 'Push ups'")
     ex_id = cur.fetchone()[0]
     cur.execute(
         "INSERT INTO preset_section_exercises (section_id, exercise_id, position, number_of_sets)"
@@ -95,8 +96,8 @@ def test_add_and_remove_section(db_copy):
 def test_add_exercise_success(db_copy):
     editor = PresetEditor(db_path=db_copy)
     editor.add_section("Warmup")
-    ex = editor.add_exercise(0, "Push-ups", sets=4)
-    assert ex == {"name": "Push-ups", "sets": 4}
+    ex = editor.add_exercise(0, "Push ups", sets=4)
+    assert ex == {"name": "Push ups", "sets": 4}
     assert editor.sections[0]["exercises"] == [ex]
     editor.close()
 
@@ -105,7 +106,7 @@ def test_add_exercise_invalid_index(db_copy):
     editor = PresetEditor(db_path=db_copy)
     editor.add_section("Warmup")
     with pytest.raises(IndexError):
-        editor.add_exercise(2, "Push-ups")
+        editor.add_exercise(2, "Push ups")
     editor.close()
 
 
@@ -121,14 +122,14 @@ def test_to_dict_after_modifications(db_copy):
     editor = PresetEditor(db_path=db_copy)
     editor.preset_name = "My Preset"
     editor.add_section("Warmup")
-    editor.add_exercise(0, "Push-ups")
+    editor.add_exercise(0, "Push ups")
     expected = {
         "name": "My Preset",
         "sections": [
             {
                 "name": "Warmup",
                 "exercises": [
-                    {"name": "Push-ups", "sets": DEFAULT_SETS_PER_EXERCISE}
+                    {"name": "Push ups", "sets": DEFAULT_SETS_PER_EXERCISE}
                 ],
             }
         ],
@@ -143,7 +144,7 @@ def test_load_existing_preset(db_with_preset):
     assert len(editor.sections) == 1
     sec = editor.sections[0]
     assert sec["name"] == "Warmup"
-    assert sec["exercises"] == [{"name": "Push-ups", "sets": 3}]
+    assert sec["exercises"] == [{"name": "Push ups", "sets": 3}]
     editor.close()
 
 

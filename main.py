@@ -1024,6 +1024,7 @@ class AddMetricPopup(MDDialog):
                     hint_text=name.replace("_", " ").title(),
                     size_hint_y=None,
                     height=default_height,
+                    multiline=True,
                 )
                 widget.hint_text_font_size = "12sp"
                 enable_auto_resize(widget)
@@ -1037,6 +1038,7 @@ class AddMetricPopup(MDDialog):
             hint_text="Enum Values (comma separated)",
             size_hint_y=None,
             height=default_height,
+            multiline=True,
         )
         self.enum_values_field.hint_text_font_size = "12sp"
         enable_auto_resize(self.enum_values_field)
@@ -1205,7 +1207,7 @@ class EditMetricPopup(MDDialog):
         super().__init__(title=title, type="custom", content_cls=content, buttons=buttons, **kwargs)
 
     def _build_widgets(self):
-        default_height = "48dp"
+        default_height = dp(48)
         self.input_widgets = {}
 
         schema = core.get_metric_type_schema()
@@ -1253,6 +1255,13 @@ class EditMetricPopup(MDDialog):
         )
         form.bind(minimum_height=form.setter("height"))
 
+        def enable_auto_resize(text_field: MDTextField):
+            text_field.bind(
+                text=lambda inst, val: setattr(
+                    inst, "height", max(default_height, inst.minimum_height)
+                )
+            )
+
         for field in schema:
             name = field["name"]
             options = field.get("options")
@@ -1266,7 +1275,13 @@ class EditMetricPopup(MDDialog):
                 widget = Spinner(text=options[0], values=options, size_hint_y=None, height=default_height)
                 form.add_widget(widget)
             else:
-                widget = MDTextField(hint_text=name.replace("_", " ").title(), size_hint_y=None, height=default_height)
+                widget = MDTextField(
+                    hint_text=name.replace("_", " ").title(),
+                    size_hint_y=None,
+                    height=default_height,
+                    multiline=True,
+                )
+                enable_auto_resize(widget)
                 form.add_widget(widget)
 
             self.input_widgets[name] = widget
@@ -1276,8 +1291,10 @@ class EditMetricPopup(MDDialog):
             hint_text="Enum Values (comma separated)",
             size_hint_y=None,
             height=default_height,
+            multiline=True,
         )
         self.enum_values_field.hint_text_font_size = "12sp"
+        enable_auto_resize(self.enum_values_field)
         form.add_widget(self.enum_values_field)
 
         # populate values
