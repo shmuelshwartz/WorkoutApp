@@ -1383,34 +1383,42 @@ class EditMetricPopup(MDDialog):
                 if dialog:
                     dialog.dismiss()
 
-            def save_global(*a):
-                core.update_metric_type(
-                    self.metric["name"],
-                    input_type=updates.get("input_type"),
-                    source_type=updates.get("source_type"),
-                    input_timing=updates.get("input_timing"),
-                    scope=updates.get("scope"),
-                    description=updates.get("description"),
-                    is_required=updates.get("is_required"),
-                    db_path=db_path,
-                )
-                cancel_action()
-                apply_updates()
+            checkbox = MDCheckbox(size_hint=(None, None), height="40dp", width="40dp")
+            label = MDLabel(
+                text="Apply changes to all exercises using this metric",
+                halign="left",
+            )
+            content = MDBoxLayout(
+                orientation="horizontal",
+                spacing="8dp",
+                size_hint_y=None,
+                height="40dp",
+            )
+            content.add_widget(checkbox)
+            content.add_widget(label)
 
-            def save_override(*a):
+            def on_save(*a):
+                if checkbox.active:
+                    core.update_metric_type(
+                        self.metric["name"],
+                        input_type=updates.get("input_type"),
+                        source_type=updates.get("source_type"),
+                        input_timing=updates.get("input_timing"),
+                        scope=updates.get("scope"),
+                        description=updates.get("description"),
+                        is_required=updates.get("is_required"),
+                        db_path=db_path,
+                    )
                 cancel_action()
                 apply_updates()
 
             dialog = MDDialog(
                 title="Save Metric",
-                text=(
-                    "Apply changes to all exercises using this metric or only to "
-                    "the current exercise?"
-                ),
+                type="custom",
+                content_cls=content,
                 buttons=[
                     MDRaisedButton(text="Cancel", on_release=cancel_action),
-                    MDRaisedButton(text="All Exercises", on_release=save_global),
-                    MDRaisedButton(text="Current Exercise", on_release=save_override),
+                    MDRaisedButton(text="Save", on_release=on_save),
                 ],
             )
 
