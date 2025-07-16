@@ -1416,7 +1416,9 @@ class EditMetricPopup(MDDialog):
 
             def _on_open(instance):
                 if hasattr(instance, "ids") and "buttons" in instance.ids:
-                    instance.ids.buttons.orientation = "vertical"
+                    instance.ids.buttons.orientation = (
+                        "vertical" if Window.width < dp(400) else "horizontal"
+                    )
 
             dialog.bind(on_open=_on_open)
             dialog.open()
