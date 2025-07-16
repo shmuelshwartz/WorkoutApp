@@ -10,6 +10,15 @@ CREATE TABLE IF NOT EXISTS "library_exercise_enum_values" (
 	FOREIGN KEY("exercise_id") REFERENCES "library_exercises"("id") ON DELETE CASCADE,
 	FOREIGN KEY("metric_type_id") REFERENCES "library_metric_types"("id") ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS "library_exercise_metric_overrides" (
+	"exercise_metric_id"	INTEGER NOT NULL,
+	"input_type"	TEXT,
+	"source_type"	TEXT,
+	"input_timing"	TEXT,
+	"is_required"	BOOLEAN,
+	"scope"	TEXT,
+	FOREIGN KEY("exercise_metric_id") REFERENCES "library_exercise_metrics"("id") ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS "library_exercise_metrics" (
 	"id"	INTEGER,
 	"exercise_id"	INTEGER NOT NULL,
