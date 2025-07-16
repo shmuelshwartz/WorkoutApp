@@ -1,0 +1,120 @@
+import shutil
+import sqlite3
+from pathlib import Path
+import sys
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from core import PresetEditor, DEFAULT_SETS_PER_EXERCISE
+
+
+@pytest.fixture
+def db_copy(tmp_path):
+    """Return a temporary copy of the sample workout database."""
+    src = Path(__file__).resolve().parent.parent / "data" / "workout.db"
+    dst = tmp_path / "workout.db"
+    shutil.copy(src, dst)
+    return dst
+
+
+@pytest.fixture
+def db_with_preset(db_copy):
+    """Create a preset with one section and one exercise for loading tests."""
+    conn = sqlite3.connect(db_copy)
+    cur = conn.cursor()
+    cur.execute("INSERT INTO presets (name) VALUES (?)", ("Test Preset",))
+    preset_id = cur.lastrowid
+    cur.execute(
+        "INSERT INTO sections (preset_id, name, position) VALUES (?, ?, 0)",
+        (preset_id, "Warmup"),
+    )
+    section_id = cur.lastrowid
+    # Use an existing exercise from the sample DB
+    cur.execute("SELECT id FROM exercises WHERE name = 'Push-ups'")
+    ex_id = cur.fetchone()[0]
+    cur.execute(
+        "INSERT INTO section_exercises (section_id, exercise_id, position, number_of_sets)"
+        " VALUES (?, ?, 0, 3)",
+        (section_id, ex_id),
+    )
+    conn.commit()
+    conn.close()
+    return db_copy
+
+
+def test_add_and_remove_section(db_copy):
+    editor = PresetEditor(db_path=db_copy)
+    idx1 = editor.add_section("Warmup")
+    idx2 = editor.add_section("Main")
+    assert idx1 == 0
+    assert idx2 == 1
+    assert [s["name"] for s in editor.sections] == ["Warmup", "Main"]
+    editor.remove_section(0)
+    assert len(editor.sections) == 1
+    assert editor.sections[0]["name"] == "Main"
+    editor.close()
+
+
+def test_add_exercise_success(db_copy):
+    editor = PresetEditor(db_path=db_copy)
+    editor.add_section("Warmup")
+    ex = editor.add_exercise(0, "Push-ups", sets=4)
+    assert ex == {"name": "Push-ups", "sets": 4}
+    assert editor.sections[0]["exercises"] == [ex]
+    editor.close()
+
+
+def test_add_exercise_invalid_index(db_copy):
+    editor = PresetEditor(db_path=db_copy)
+    editor.add_section("Warmup")
+    with pytest.raises(IndexError):
+        editor.add_exercise(2, "Push-ups")
+    editor.close()
+
+
+def test_add_exercise_unknown_exercise(db_copy):
+    editor = PresetEditor(db_path=db_copy)
+    editor.add_section("Warmup")
+    with pytest.raises(ValueError):
+        editor.add_exercise(0, "DoesNotExist")
+    editor.close()
+
+
+def test_to_dict_after_modifications(db_copy):
+    editor = PresetEditor(db_path=db_copy)
+    editor.preset_name = "My Preset"
+    editor.add_section("Warmup")
+    editor.add_exercise(0, "Push-ups")
+    expected = {
+        "name": "My Preset",
+        "sections": [
+            {
+                "name": "Warmup",
+                "exercises": [
+                    {"name": "Push-ups", "sets": DEFAULT_SETS_PER_EXERCISE}
+                ],
+            }
+        ],
+    }
+    assert editor.to_dict() == expected
+    editor.close()
+
+
+def test_load_existing_preset(db_with_preset):
+    editor = PresetEditor("Test Preset", db_path=db_with_preset)
+    assert editor.preset_name == "Test Preset"
+    assert len(editor.sections) == 1
+    sec = editor.sections[0]
+    assert sec["name"] == "Warmup"
+    assert sec["exercises"] == [{"name": "Push-ups", "sets": 3}]
+    editor.close()
+
+
+def test_close_closes_connection(db_copy):
+    editor = PresetEditor(db_path=db_copy)
+    editor.close()
+    with pytest.raises(sqlite3.ProgrammingError):
+        editor.conn.execute("SELECT 1")
+
+
