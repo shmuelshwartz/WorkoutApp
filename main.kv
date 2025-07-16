@@ -113,21 +113,44 @@ ScreenManager:
             text: "Back to Presets"
             on_release: app.root.current = "presets"
 
-<ExerciseRow@OneLineRightIconListItem>:
+<ExerciseRow@MDBoxLayout>:
     name: ""
+    text: ""
     is_user_created: False
     edit_callback: None
     delete_callback: None
-    IconRightWidget:
-        icon: "pencil"
-        on_release: root.edit_callback(root.name, root.is_user_created) if root.edit_callback else None
-    IconRightWidget:
-        icon: "delete"
+    orientation: "horizontal"
+    size_hint_y: None
+    height: "56dp"
+    padding: "8dp"
+    MDLabel:
+        id: name_label
+        text: root.text
+        size_hint_x: 1
         theme_text_color: "Custom"
-        text_color: 1, 0, 0, 1
-        on_release: root.delete_callback(root.name) if root.delete_callback else None
-        opacity: 1 if root.is_user_created else 0
-        disabled: not root.is_user_created
+        text_color: (0.6, 0.2, 0.8, 1) if root.is_user_created else (0, 0, 0, 1)
+        halign: "left"
+        valign: "center"
+    MDBoxLayout:
+        size_hint_x: None
+        width: "36dp"
+        orientation: "horizontal"
+        spacing: "5dp"
+        valign: "center"
+        MDIcon:
+            icon: "pencil"
+            font_size: "20sp"
+            pos_hint: {"center_y": 0.5}
+            on_touch_down: if self.collide_point(*args[1].pos) and root.edit_callback: root.edit_callback(root.name, root.is_user_created)
+        MDIcon:
+            icon: "delete"
+            font_size: "20sp"
+            theme_text_color: "Custom"
+            text_color: 1, 0, 0, 1
+            pos_hint: {"center_y": 0.5}
+            opacity: 1 if root.is_user_created else 0
+            disabled: not root.is_user_created
+            on_touch_down: if self.collide_point(*args[1].pos) and root.delete_callback: root.delete_callback(root.name)
 
 <ExerciseLibraryScreen>:
     exercise_list: exercise_list
