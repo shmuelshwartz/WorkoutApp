@@ -39,6 +39,10 @@ This is the **central repository** for defining exercises and their default attr
 - These tables are **shared across all presets and sessions** via `exercise_id`.  
 - Changes here (e.g., renaming “Bench Press”) are **immediately visible** wherever `exercise_id` is referenced.
 
+### 📝 Metric Overrides (Per-Exercise Customization)
+
+The `library_exercise_metrics` table now supports per-exercise customization of metric definitions. In addition to linking exercises to metric types, it includes optional override fields: `input_type`, `source_type`, `input_timing`, `is_required`, and `scope`. These fields are `NULL` by default, meaning the exercise inherits the global definition from `library_metric_types`. When populated, they allow a specific exercise (e.g., "5k Run") to redefine how a metric behaves compared to the standard (e.g., making "Distance" an enum with a preset value). This enables fine-grained control without affecting other exercises that use the same metric type.
+
 ---
 
 ## 🟢 Preset-Specific Data (`preset_`)
