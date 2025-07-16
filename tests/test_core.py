@@ -17,28 +17,28 @@ def sample_db(tmp_path):
     cur = conn.cursor()
     # metric types
     cur.execute(
-        "INSERT INTO metric_types (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created) "
+        "INSERT INTO library_metric_types (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created) "
         "VALUES ('Reps', 'int', 'manual_text', 'post_set', 1, 'set', '', 0)"
     )
     cur.execute(
-        "INSERT INTO metric_types (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created) "
+        "INSERT INTO library_metric_types (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created) "
         "VALUES ('Weight', 'float', 'manual_text', 'post_set', 0, 'set', '', 0)"
     )
     # exercises
-    cur.execute("INSERT INTO exercises (name, description, is_user_created) VALUES ('Push Up', 'Upper body', 0)")
-    cur.execute("INSERT INTO exercises (name, description, is_user_created) VALUES ('Bench Press', 'Chest', 0)")
+    cur.execute("INSERT INTO library_exercises (name, description, is_user_created) VALUES ('Push Up', 'Upper body', 0)")
+    cur.execute("INSERT INTO library_exercises (name, description, is_user_created) VALUES ('Bench Press', 'Chest', 0)")
     # exercise metrics
-    cur.execute("INSERT INTO exercise_metrics (exercise_id, metric_type_id, position) VALUES (1, 1, 0)")
-    cur.execute("INSERT INTO exercise_metrics (exercise_id, metric_type_id, position) VALUES (2, 1, 0)")
-    cur.execute("INSERT INTO exercise_metrics (exercise_id, metric_type_id, position) VALUES (2, 2, 1)")
+    cur.execute("INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (1, 1, 0)")
+    cur.execute("INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (2, 1, 0)")
+    cur.execute("INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (2, 2, 1)")
     # preset with one section and two exercises
-    cur.execute("INSERT INTO presets (name) VALUES ('Push Day')")
-    cur.execute("INSERT INTO sections (preset_id, name, position) VALUES (1, 'Main', 0)")
+    cur.execute("INSERT INTO preset_presets (name) VALUES ('Push Day')")
+    cur.execute("INSERT INTO preset_sections (preset_id, name, position) VALUES (1, 'Main', 0)")
     cur.execute(
-        "INSERT INTO section_exercises (section_id, exercise_id, position, number_of_sets) VALUES (1, 1, 0, 2)"
+        "INSERT INTO preset_section_exercises (section_id, exercise_id, position, number_of_sets) VALUES (1, 1, 0, 2)"
     )
     cur.execute(
-        "INSERT INTO section_exercises (section_id, exercise_id, position, number_of_sets) VALUES (1, 2, 1, 3)"
+        "INSERT INTO preset_section_exercises (section_id, exercise_id, position, number_of_sets) VALUES (1, 2, 1, 3)"
     )
     conn.commit()
     conn.close()

@@ -19,7 +19,7 @@ def sample_db(tmp_path: Path) -> Path:
     # metric types
     conn.execute(
         """
-        INSERT INTO metric_types
+        INSERT INTO library_metric_types
             (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
         VALUES (?, ?, ?, ?, ?, ?, '', 0)
         """,
@@ -27,7 +27,7 @@ def sample_db(tmp_path: Path) -> Path:
     )
     conn.execute(
         """
-        INSERT INTO metric_types
+        INSERT INTO library_metric_types
             (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
         VALUES (?, ?, ?, ?, ?, ?, '', 0)
         """,
@@ -35,110 +35,110 @@ def sample_db(tmp_path: Path) -> Path:
     )
     conn.execute(
         """
-        INSERT INTO metric_types
+        INSERT INTO library_metric_types
             (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
         VALUES (?, ?, ?, ?, ?, ?, '', 0)
         """,
         ("Machine", "str", "manual_enum", "pre_workout", 0, "exercise"),
     )
 
-    reps_id = conn.execute("SELECT id FROM metric_types WHERE name='Reps'").fetchone()[0]
-    weight_id = conn.execute("SELECT id FROM metric_types WHERE name='Weight'").fetchone()[0]
-    machine_id = conn.execute("SELECT id FROM metric_types WHERE name='Machine'").fetchone()[0]
+    reps_id = conn.execute("SELECT id FROM library_metric_types WHERE name='Reps'").fetchone()[0]
+    weight_id = conn.execute("SELECT id FROM library_metric_types WHERE name='Weight'").fetchone()[0]
+    machine_id = conn.execute("SELECT id FROM library_metric_types WHERE name='Machine'").fetchone()[0]
 
     # exercises
     conn.execute(
-        "INSERT INTO exercises (name, description, is_user_created) VALUES ('Push-up', 'Push-up exercise', 0)"
+        "INSERT INTO library_exercises (name, description, is_user_created) VALUES ('Push-up', 'Push-up exercise', 0)"
     )
     conn.execute(
-        "INSERT INTO exercises (name, description, is_user_created) VALUES ('Bench Press', 'Bench Press exercise', 0)"
+        "INSERT INTO library_exercises (name, description, is_user_created) VALUES ('Bench Press', 'Bench Press exercise', 0)"
     )
 
-    pushup_id = conn.execute("SELECT id FROM exercises WHERE name='Push-up'").fetchone()[0]
-    bench_id = conn.execute("SELECT id FROM exercises WHERE name='Bench Press'").fetchone()[0]
+    pushup_id = conn.execute("SELECT id FROM library_exercises WHERE name='Push-up'").fetchone()[0]
+    bench_id = conn.execute("SELECT id FROM library_exercises WHERE name='Bench Press'").fetchone()[0]
 
     # enum values for Machine metric (linked to Bench Press)
     conn.execute(
-        "INSERT INTO exercise_enum_values (metric_type_id, exercise_id, value, position) VALUES (?, ?, 'A', 0)",
+        "INSERT INTO library_exercise_enum_values (metric_type_id, exercise_id, value, position) VALUES (?, ?, 'A', 0)",
         (machine_id, bench_id),
     )
     conn.execute(
-        "INSERT INTO exercise_enum_values (metric_type_id, exercise_id, value, position) VALUES (?, ?, 'B', 1)",
+        "INSERT INTO library_exercise_enum_values (metric_type_id, exercise_id, value, position) VALUES (?, ?, 'B', 1)",
         (machine_id, bench_id),
     )
 
     # associate metrics with exercises
     conn.execute(
-        "INSERT INTO exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, 0)",
+        "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, 0)",
         (pushup_id, reps_id),
     )
 
     conn.execute(
-        "INSERT INTO exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, 0)",
+        "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, 0)",
         (bench_id, reps_id),
     )
     conn.execute(
-        "INSERT INTO exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, 1)",
+        "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, 1)",
         (bench_id, weight_id),
     )
     conn.execute(
-        "INSERT INTO exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, 2)",
+        "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, 2)",
         (bench_id, machine_id),
     )
 
     # preset
-    conn.execute("INSERT INTO presets (name) VALUES ('Push Day')")
-    preset_id = conn.execute("SELECT id FROM presets WHERE name='Push Day'").fetchone()[0]
+    conn.execute("INSERT INTO preset_presets (name) VALUES ('Push Day')")
+    preset_id = conn.execute("SELECT id FROM preset_presets WHERE name='Push Day'").fetchone()[0]
     conn.execute(
-        "INSERT INTO sections (preset_id, name, position) VALUES (?, 'Main', 0)",
+        "INSERT INTO preset_sections (preset_id, name, position) VALUES (?, 'Main', 0)",
         (preset_id,),
     )
     section_id = conn.execute(
-        "SELECT id FROM sections WHERE preset_id=?", (preset_id,)
+        "SELECT id FROM preset_sections WHERE preset_id=?", (preset_id,)
     ).fetchone()[0]
 
     # section exercises
     conn.execute(
         """
-        INSERT INTO section_exercises
+        INSERT INTO preset_section_exercises
             (section_id, exercise_id, position, number_of_sets, exercise_name, exercise_description)
         VALUES (?, ?, 0, 2, 'Push-up', '')
         """,
         (section_id, pushup_id),
     )
     push_se_id = conn.execute(
-        "SELECT id FROM section_exercises WHERE exercise_id=? AND section_id=?",
+        "SELECT id FROM preset_section_exercises WHERE exercise_id=? AND section_id=?",
         (pushup_id, section_id),
     ).fetchone()[0]
 
     conn.execute(
         """
-        INSERT INTO section_exercises
+        INSERT INTO preset_section_exercises
             (section_id, exercise_id, position, number_of_sets, exercise_name, exercise_description)
         VALUES (?, ?, 1, 2, 'Bench Press', '')
         """,
         (section_id, bench_id),
     )
     bench_se_id = conn.execute(
-        "SELECT id FROM section_exercises WHERE exercise_id=? AND section_id=?",
+        "SELECT id FROM preset_section_exercises WHERE exercise_id=? AND section_id=?",
         (bench_id, section_id),
     ).fetchone()[0]
 
     # section exercise metrics (override reps timing for bench)
     conn.execute(
-        "INSERT INTO section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, 'post_set', 1, 'set')",
+        "INSERT INTO preset_section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, 'post_set', 1, 'set')",
         (push_se_id, reps_id),
     )
     conn.execute(
-        "INSERT INTO section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, 'pre_set', 1, 'set')",
+        "INSERT INTO preset_section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, 'pre_set', 1, 'set')",
         (bench_se_id, reps_id),
     )
     conn.execute(
-        "INSERT INTO section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, 'pre_set', 0, 'set')",
+        "INSERT INTO preset_section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, 'pre_set', 0, 'set')",
         (bench_se_id, weight_id),
     )
     conn.execute(
-        "INSERT INTO section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, 'pre_workout', 0, 'exercise')",
+        "INSERT INTO preset_section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, 'pre_workout', 0, 'exercise')",
         (bench_se_id, machine_id),
     )
 

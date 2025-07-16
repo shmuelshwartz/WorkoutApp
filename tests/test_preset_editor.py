@@ -15,6 +15,42 @@ def db_copy(tmp_path):
     src = Path(__file__).resolve().parent.parent / "data" / "workout.db"
     dst = tmp_path / "workout.db"
     shutil.copy(src, dst)
+    # migrate table names to the latest schema
+    conn = sqlite3.connect(dst)
+    cur = conn.cursor()
+    migrations = [
+        "ALTER TABLE exercises RENAME TO library_exercises",
+        "ALTER TABLE exercise_metrics RENAME TO library_exercise_metrics",
+        "ALTER TABLE exercise_enum_values RENAME TO library_exercise_enum_values",
+        "ALTER TABLE metric_types RENAME TO library_metric_types",
+        "ALTER TABLE presets RENAME TO preset_presets",
+        "ALTER TABLE sections RENAME TO preset_sections",
+        "ALTER TABLE section_exercises RENAME TO preset_section_exercises",
+        "ALTER TABLE section_exercise_metrics RENAME TO preset_section_exercise_metrics",
+    ]
+    for stmt in migrations:
+        try:
+            cur.execute(stmt)
+        except sqlite3.OperationalError:
+            pass
+    cur.executescript(
+        """
+        DROP VIEW IF EXISTS view_exercise_metrics;
+        CREATE VIEW library_view_exercise_metrics AS
+            SELECT em.id AS exercise_metric_id,
+                   em.exercise_id,
+                   e.name AS exercise_name,
+                   em.metric_type_id,
+                   mt.name AS metric_type_name
+            FROM library_exercise_metrics em
+            JOIN library_exercises e ON em.exercise_id = e.id
+            JOIN library_metric_types mt ON em.metric_type_id = mt.id;
+        DROP INDEX IF EXISTS idx_exercises_name_user_created;
+        CREATE UNIQUE INDEX idx_library_exercises_name_user_created ON library_exercises (name, is_user_created);
+        """
+    )
+    conn.commit()
+    conn.close()
     return dst
 
 
@@ -23,18 +59,18 @@ def db_with_preset(db_copy):
     """Create a preset with one section and one exercise for loading tests."""
     conn = sqlite3.connect(db_copy)
     cur = conn.cursor()
-    cur.execute("INSERT INTO presets (name) VALUES (?)", ("Test Preset",))
+    cur.execute("INSERT INTO preset_presets (name) VALUES (?)", ("Test Preset",))
     preset_id = cur.lastrowid
     cur.execute(
-        "INSERT INTO sections (preset_id, name, position) VALUES (?, ?, 0)",
+        "INSERT INTO preset_sections (preset_id, name, position) VALUES (?, ?, 0)",
         (preset_id, "Warmup"),
     )
     section_id = cur.lastrowid
     # Use an existing exercise from the sample DB
-    cur.execute("SELECT id FROM exercises WHERE name = 'Push-ups'")
+    cur.execute("SELECT id FROM library_exercises WHERE name = 'Push-ups'")
     ex_id = cur.fetchone()[0]
     cur.execute(
-        "INSERT INTO section_exercises (section_id, exercise_id, position, number_of_sets)"
+        "INSERT INTO preset_section_exercises (section_id, exercise_id, position, number_of_sets)"
         " VALUES (?, ?, 0, 3)",
         (section_id, ex_id),
     )
