@@ -1,4 +1,5 @@
 import importlib.util
+import os
 import pytest
 
 # Skip tests entirely if Kivy (and KivyMD) are not installed
@@ -8,8 +9,31 @@ kivy_available = (
 )
 
 if kivy_available:
+    # Prevent opening real windows during tests
+    os.environ.setdefault("KIVY_WINDOW", "mock")
+    os.environ.setdefault("KIVY_UNITTEST", "1")
+
+    from kivy.app import App
+    from kivy.properties import ObjectProperty
+
     from main import RestScreen, MetricInputScreen, WorkoutActiveScreen
     import time
+
+    class _DummyApp:
+        """Minimal stand-in for :class:`~kivymd.app.MDApp` used in tests."""
+
+        theme_cls = object()
+
+        def property(self, name, default=None):  # pragma: no cover - simple shim
+            return ObjectProperty(None)
+
+
+    @pytest.fixture(autouse=True)
+    def _provide_app(monkeypatch):
+        """Ensure widgets see a running App instance."""
+
+        monkeypatch.setattr(App, "get_running_app", lambda: _DummyApp())
+        yield
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
