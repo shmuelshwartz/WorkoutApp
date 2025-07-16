@@ -1066,7 +1066,7 @@ class AddMetricPopup(MDDialog):
             elif input_type == "float":
                 allowed = string.digits + ".,"
             else:  # default to str
-                allowed = string.ascii_letters + ","
+                allowed = string.ascii_letters + " ,"
 
             def _filter(value, from_undo):
                 return "".join(ch for ch in value if ch in allowed)
@@ -1334,7 +1334,7 @@ class EditMetricPopup(MDDialog):
             elif input_type == "float":
                 allowed = string.digits + ".,"
             else:
-                allowed = string.ascii_letters + ","
+                allowed = string.ascii_letters + " ,"
 
             def _filter(value, from_undo):
                 return "".join(ch for ch in value if ch in allowed)

@@ -16,7 +16,7 @@ if kivy_available:
     from kivy.app import App
     from kivy.properties import ObjectProperty
 
-    from main import RestScreen, MetricInputScreen, WorkoutActiveScreen
+    from main import RestScreen, MetricInputScreen, WorkoutActiveScreen, AddMetricPopup
     import time
 
     class _DummyApp:
@@ -62,3 +62,14 @@ def test_update_elapsed_formats_time(monkeypatch):
     screen._update_elapsed(0)
     assert screen.elapsed == pytest.approx(75.0, abs=1e-3)
     assert screen.formatted_time == "01:15"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_enum_values_accepts_spaces():
+    class DummyScreen:
+        exercise_obj = type("obj", (), {"metrics": []})()
+
+    popup = AddMetricPopup(DummyScreen(), mode="new")
+    popup.input_widgets["input_type"].text = "str"
+    filtered = popup.enum_values_field.input_filter("A B,C", False)
+    assert filtered == "A B,C"
