@@ -1016,15 +1016,20 @@ class AddMetricPopup(MDDialog):
 
             self.input_widgets[name] = widget
 
-        # Text box for enum values (hidden unless manual_enum is selected)
+        # Text box for enum values. This should be shown only when the metric's
+        # source type is ``manual_enum``.  For now the field is always visible
+        # to help debug odd behavior with its dynamic visibility.
         self.enum_values_field = MDTextField(
             hint_text="Enum Values (comma separated)",
             size_hint_y=None,
             height=default_height,
         )
-        self.enum_values_field.opacity = 0
-        self.enum_values_field.height = 0
+
         form.add_widget(self.enum_values_field)
+
+        # Normally this field would toggle visibility based on ``source_type``.
+        # The logic is kept for reference but not currently used while we
+        # investigate issues with the enum input box.
 
         def update_enum_visibility(*args):
             show = self.input_widgets["source_type"].text == "manual_enum"
@@ -1050,9 +1055,11 @@ class AddMetricPopup(MDDialog):
             self.enum_values_field.input_filter = _filter
 
         if "source_type" in self.input_widgets and "input_type" in self.input_widgets:
-            self.input_widgets["source_type"].bind(text=lambda *a: update_enum_visibility())
+            # "update_enum_visibility" intentionally not bound at the moment so
+            # the enum field stays visible for debugging.
+            # self.input_widgets["source_type"].bind(text=lambda *a: update_enum_visibility())
             self.input_widgets["input_type"].bind(text=lambda *a: update_enum_filter())
-            update_enum_visibility()
+            # update_enum_visibility()
             update_enum_filter()
 
         layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
