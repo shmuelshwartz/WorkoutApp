@@ -1409,6 +1409,11 @@ class EditMetricPopup(MDDialog):
                         is_required=updates.get("is_required"),
                         db_path=db_path,
                     )
+                    core.set_exercise_metric_override(
+                        self.screen.exercise_obj.name,
+                        self.metric["name"],
+                        db_path=db_path,
+                    )
                 cancel_action()
                 apply_updates()
 

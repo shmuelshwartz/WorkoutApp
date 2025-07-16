@@ -144,3 +144,21 @@ def test_exercise_metric_override_table(sample_db):
     default = next(m for m in metrics if m["name"] == "Weight")
     assert default["input_timing"] == "post_set"
     assert default["is_required"] is False
+
+
+def test_global_update_removes_override(sample_db):
+    core.set_exercise_metric_override(
+        "Bench Press",
+        "Weight",
+        input_timing="pre_workout",
+        db_path=sample_db,
+    )
+    core.update_metric_type("Weight", input_timing="post_workout", db_path=sample_db)
+    metrics = core.get_metrics_for_exercise("Bench Press", db_path=sample_db)
+    override = next(m for m in metrics if m["name"] == "Weight")
+    assert override["input_timing"] == "pre_workout"
+
+    core.set_exercise_metric_override("Bench Press", "Weight", db_path=sample_db)
+    metrics = core.get_metrics_for_exercise("Bench Press", db_path=sample_db)
+    updated = next(m for m in metrics if m["name"] == "Weight")
+    assert updated["input_timing"] == "post_workout"
