@@ -1036,11 +1036,15 @@ class AddMetricPopup(MDDialog):
         def update_enum_visibility(*args):
             show = self.input_widgets["source_type"].text == "manual_enum"
             if show:
+                if self.enum_values_field.parent is None:
+                    form.add_widget(self.enum_values_field)
                 self.enum_values_field.opacity = 1
-                self.enum_values_field.height = default_height
+                # self.enum_values_field.height = default_height
             else:
-                self.enum_values_field.opacity = 0
-                self.enum_values_field.height = 0
+                if self.enum_values_field.parent is not None:
+                    form.remove_widget(self.enum_values_field)
+                # self.enum_values_field.opacity = 0
+                # self.enum_values_field.height = 0
 
         def update_enum_filter(*args):
             input_type = self.input_widgets["input_type"].text
@@ -1062,8 +1066,10 @@ class AddMetricPopup(MDDialog):
                 update_enum_visibility()
             else:
                 # Keep the field visible for debugging
+                if self.enum_values_field.parent is None:
+                    form.add_widget(self.enum_values_field)
                 self.enum_values_field.opacity = 1
-                self.enum_values_field.height = default_height
+                # self.enum_values_field.height = default_height
             update_enum_filter()
 
         layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
