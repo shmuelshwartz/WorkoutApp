@@ -65,6 +65,11 @@ METRIC_FIELD_ORDER = [
     "is_required",
 ]
 
+# When True the enum values field in :class:`AddMetricPopup` will only appear
+# when the metric's source type is ``manual_enum``. Set to ``False`` to keep the
+# field visible at all times while debugging unexpected visibility issues.
+ENABLE_DYNAMIC_ENUM_VISIBILITY = True
+
 
 class LoadingDialog(MDDialog):
     """Simple dialog displaying a spinner while work is performed."""
@@ -1016,20 +1021,17 @@ class AddMetricPopup(MDDialog):
 
             self.input_widgets[name] = widget
 
-        # Text box for enum values. This should be shown only when the metric's
-        # source type is ``manual_enum``.  For now the field is always visible
-        # to help debug odd behavior with its dynamic visibility.
+        # Text box for enum values. Normally this field only appears when the
+        # metric's source type is ``manual_enum``. A global flag controls
+        # whether that dynamic visibility is enabled.
         self.enum_values_field = MDTextField(
             hint_text="Enum Values (comma separated)",
             size_hint_y=None,
             height=default_height,
         )
-
         form.add_widget(self.enum_values_field)
 
-        # Normally this field would toggle visibility based on ``source_type``.
-        # The logic is kept for reference but not currently used while we
-        # investigate issues with the enum input box.
+        # Helper that toggles visibility based on ``source_type``.
 
         def update_enum_visibility(*args):
             show = self.input_widgets["source_type"].text == "manual_enum"
@@ -1053,13 +1055,15 @@ class AddMetricPopup(MDDialog):
                 return "".join(ch for ch in value if ch in allowed)
 
             self.enum_values_field.input_filter = _filter
-
         if "source_type" in self.input_widgets and "input_type" in self.input_widgets:
-            # "update_enum_visibility" intentionally not bound at the moment so
-            # the enum field stays visible for debugging.
-            # self.input_widgets["source_type"].bind(text=lambda *a: update_enum_visibility())
             self.input_widgets["input_type"].bind(text=lambda *a: update_enum_filter())
-            # update_enum_visibility()
+            if ENABLE_DYNAMIC_ENUM_VISIBILITY:
+                self.input_widgets["source_type"].bind(text=lambda *a: update_enum_visibility())
+                update_enum_visibility()
+            else:
+                # Keep the field visible for debugging
+                self.enum_values_field.opacity = 1
+                self.enum_values_field.height = default_height
             update_enum_filter()
 
         layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
