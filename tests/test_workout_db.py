@@ -22,7 +22,7 @@ def populate_sample_data(db_path: Path) -> None:
     cur = conn.cursor()
     # Exercises
     cur.executemany(
-        "INSERT INTO exercises (name, description, is_user_created) VALUES (?, ?, ?)",
+        "INSERT INTO library_exercises (name, description, is_user_created) VALUES (?, ?, ?)",
         [
             ("Bench Press", "Chest", 0),
             ("Push Up", "Standard push up", 0),
@@ -31,34 +31,34 @@ def populate_sample_data(db_path: Path) -> None:
     )
     # Metric types
     cur.executemany(
-        "INSERT INTO metric_types (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created) VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
+        "INSERT INTO library_metric_types (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created) VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
         [
             ("Reps", "int", "manual_text", "post_set", 1, "set", "Number of reps"),
             ("Weight", "float", "manual_text", "post_set", 0, "set", "Weight used"),
         ],
     )
     # Preset with one section and two exercises
-    cur.execute("INSERT INTO presets (name) VALUES ('Push Day')")
+    cur.execute("INSERT INTO preset_presets (name) VALUES ('Push Day')")
     preset_id = cur.lastrowid
     cur.execute(
-        "INSERT INTO sections (preset_id, name, position) VALUES (?, ?, 0)",
+        "INSERT INTO preset_sections (preset_id, name, position) VALUES (?, ?, 0)",
         (preset_id, "Main"),
     )
     section_id = cur.lastrowid
     cur.execute(
-        "SELECT id FROM exercises WHERE name = 'Bench Press' AND is_user_created = 0",
+        "SELECT id FROM library_exercises WHERE name = 'Bench Press' AND is_user_created = 0",
     )
     bench_id = cur.fetchone()[0]
     cur.execute(
-        "SELECT id FROM exercises WHERE name = 'Push Up' AND is_user_created = 0",
+        "SELECT id FROM library_exercises WHERE name = 'Push Up' AND is_user_created = 0",
     )
     push_id = cur.fetchone()[0]
     cur.execute(
-        "INSERT INTO section_exercises (section_id, exercise_id, position, number_of_sets) VALUES (?, ?, 0, 3)",
+        "INSERT INTO preset_section_exercises (section_id, exercise_id, position, number_of_sets) VALUES (?, ?, 0, 3)",
         (section_id, bench_id),
     )
     cur.execute(
-        "INSERT INTO section_exercises (section_id, exercise_id, position, number_of_sets) VALUES (?, ?, 1, 2)",
+        "INSERT INTO preset_section_exercises (section_id, exercise_id, position, number_of_sets) VALUES (?, ?, 1, 2)",
         (section_id, push_id),
     )
     conn.commit()
@@ -117,11 +117,11 @@ def test_add_and_remove_metric_from_exercise(sample_db: Path):
     core.add_metric_to_exercise("Bench Press", "Reps", db_path=sample_db)
     conn = sqlite3.connect(sample_db)
     cur = conn.cursor()
-    cur.execute("""SELECT COUNT(*) FROM exercise_metrics em JOIN exercises e ON em.exercise_id = e.id JOIN metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps'""")
+    cur.execute("""SELECT COUNT(*) FROM library_exercise_metrics em JOIN library_exercises e ON em.exercise_id = e.id JOIN library_metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps'""")
     count = cur.fetchone()[0]
     assert count == 1
     core.remove_metric_from_exercise("Bench Press", "Reps", db_path=sample_db)
-    cur.execute("""SELECT COUNT(*) FROM exercise_metrics em JOIN exercises e ON em.exercise_id = e.id JOIN metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps'""")
+    cur.execute("""SELECT COUNT(*) FROM library_exercise_metrics em JOIN library_exercises e ON em.exercise_id = e.id JOIN library_metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps'""")
     count = cur.fetchone()[0]
     conn.close()
     assert count == 0

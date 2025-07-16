@@ -20,15 +20,15 @@ def load_workout_presets(db_path: Path = Path(__file__).resolve().parent / "data
 
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name FROM presets ORDER BY id")
+    cursor.execute("SELECT id, name FROM preset_presets ORDER BY id")
     presets = []
     for preset_id, preset_name in cursor.fetchall():
         cursor.execute(
             """
             SELECT e.name, se.number_of_sets
-            FROM sections s
-            JOIN section_exercises se ON se.section_id = s.id
-            JOIN exercises e ON se.exercise_id = e.id
+            FROM preset_sections s
+            JOIN preset_section_exercises se ON se.section_id = s.id
+            JOIN library_exercises e ON se.exercise_id = e.id
             WHERE s.preset_id = ?
             ORDER BY s.position, se.position
             """,
@@ -58,12 +58,12 @@ def get_all_exercises(
     cursor = conn.cursor()
     if include_user_created:
         cursor.execute(
-            "SELECT name, is_user_created FROM exercises ORDER BY is_user_created, name"
+            "SELECT name, is_user_created FROM library_exercises ORDER BY is_user_created, name"
         )
         rows = cursor.fetchall()
         exercises = [(name, bool(flag)) for name, flag in rows]
     else:
-        cursor.execute("SELECT name FROM exercises ORDER BY name")
+        cursor.execute("SELECT name FROM library_exercises ORDER BY name")
         exercises = [row[0] for row in cursor.fetchall()]
     conn.close()
     return exercises
@@ -88,14 +88,14 @@ def get_exercise_details(
     if is_user_created is None:
         cursor.execute(
             "SELECT name, description, is_user_created"
-            " FROM exercises WHERE name = ?"
+            " FROM library_exercises WHERE name = ?"
             " ORDER BY is_user_created DESC LIMIT 1",
             (exercise_name,),
         )
     else:
         cursor.execute(
             "SELECT name, description, is_user_created"
-            " FROM exercises WHERE name = ? AND is_user_created = ?",
+            " FROM library_exercises WHERE name = ? AND is_user_created = ?",
             (exercise_name, int(is_user_created)),
         )
     row = cursor.fetchone()
@@ -128,12 +128,12 @@ def get_metrics_for_exercise(
 
     if is_user_created is None:
         cursor.execute(
-            "SELECT id FROM exercises WHERE name = ? ORDER BY is_user_created DESC LIMIT 1",
+            "SELECT id FROM library_exercises WHERE name = ? ORDER BY is_user_created DESC LIMIT 1",
             (exercise_name,),
         )
     else:
         cursor.execute(
-            "SELECT id FROM exercises WHERE name = ? AND is_user_created = ?",
+            "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ?",
             (exercise_name, int(is_user_created)),
         )
     row = cursor.fetchone()
@@ -146,8 +146,8 @@ def get_metrics_for_exercise(
         """
         SELECT mt.id, mt.name, mt.input_type, mt.source_type,
                mt.input_timing, mt.is_required, mt.scope, mt.description
-        FROM exercise_metrics em
-        JOIN metric_types mt ON mt.id = em.metric_type_id
+        FROM library_exercise_metrics em
+        JOIN library_metric_types mt ON mt.id = em.metric_type_id
         WHERE em.exercise_id = ?
         ORDER BY em.id
         """,
@@ -170,7 +170,7 @@ def get_metrics_for_exercise(
             cursor.execute(
                 """
                 SELECT value
-                FROM exercise_enum_values
+                FROM library_exercise_enum_values
                 WHERE metric_type_id = ? AND exercise_id = ?
                 ORDER BY position
                 """,
@@ -195,12 +195,12 @@ def get_metrics_for_exercise(
         cursor.execute(
             """
             SELECT mt.name, sem.input_timing, sem.is_required, sem.scope
-            FROM section_exercise_metrics sem
-            JOIN section_exercises se ON sem.section_exercise_id = se.id
-            JOIN sections s ON se.section_id = s.id
-            JOIN presets p ON s.preset_id = p.id
-            JOIN exercises e ON se.exercise_id = e.id
-            JOIN metric_types mt ON sem.metric_type_id = mt.id
+            FROM preset_section_exercise_metrics sem
+            JOIN preset_section_exercises se ON sem.section_exercise_id = se.id
+            JOIN preset_sections s ON se.section_id = s.id
+            JOIN preset_presets p ON s.preset_id = p.id
+            JOIN library_exercises e ON se.exercise_id = e.id
+            JOIN library_metric_types mt ON sem.metric_type_id = mt.id
             WHERE p.name = ? AND e.id = ?
             """,
             (preset_name, exercise_id),
@@ -232,7 +232,7 @@ def get_all_metric_types(
         """
         SELECT name, input_type, source_type, input_timing,
                is_required, scope, description
-        FROM metric_types
+        FROM library_metric_types
         ORDER BY id
         """
     )
@@ -263,7 +263,7 @@ def get_all_metric_types(
 def get_metric_type_schema(
     db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
 ) -> list:
-    """Return column definitions for the ``metric_types`` table.
+    """Return column definitions for the ``library_metric_types`` table.
 
     Each item is a dictionary with ``name`` and optional ``options`` keys. The
     ``options`` list will contain allowed values if the column has a CHECK
@@ -273,7 +273,7 @@ def get_metric_type_schema(
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='metric_types'"
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='library_metric_types'"
     )
     row = cursor.fetchone()
     conn.close()
@@ -327,7 +327,7 @@ def add_metric_type(
     cursor = conn.cursor()
     cursor.execute(
         """
-        INSERT INTO metric_types
+        INSERT INTO library_metric_types
             (name, input_type, source_type, input_timing,
              is_required, scope, description, is_user_created)
         VALUES (?, ?, ?, ?, ?, ?, ?, 1)
@@ -357,14 +357,14 @@ def add_metric_to_exercise(
 
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM exercises WHERE name = ?", (exercise_name,))
+    cursor.execute("SELECT id FROM library_exercises WHERE name = ?", (exercise_name,))
     row = cursor.fetchone()
     if not row:
         conn.close()
         raise ValueError(f"Exercise '{exercise_name}' not found")
     exercise_id = row[0]
 
-    cursor.execute("SELECT id FROM metric_types WHERE name = ?", (metric_type_name,))
+    cursor.execute("SELECT id FROM library_metric_types WHERE name = ?", (metric_type_name,))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -372,12 +372,12 @@ def add_metric_to_exercise(
     metric_id = row[0]
 
     cursor.execute(
-        "SELECT 1 FROM exercise_metrics WHERE exercise_id = ? AND metric_type_id = ?",
+        "SELECT 1 FROM library_exercise_metrics WHERE exercise_id = ? AND metric_type_id = ?",
         (exercise_id, metric_id),
     )
     if cursor.fetchone() is None:
         cursor.execute(
-            "INSERT INTO exercise_metrics (exercise_id, metric_type_id) VALUES (?, ?)",
+            "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id) VALUES (?, ?)",
             (exercise_id, metric_id),
         )
         conn.commit()
@@ -393,14 +393,14 @@ def remove_metric_from_exercise(
 
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM exercises WHERE name = ?", (exercise_name,))
+    cursor.execute("SELECT id FROM library_exercises WHERE name = ?", (exercise_name,))
     row = cursor.fetchone()
     if not row:
         conn.close()
         raise ValueError(f"Exercise '{exercise_name}' not found")
     exercise_id = row[0]
 
-    cursor.execute("SELECT id FROM metric_types WHERE name = ?", (metric_type_name,))
+    cursor.execute("SELECT id FROM library_metric_types WHERE name = ?", (metric_type_name,))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -408,7 +408,7 @@ def remove_metric_from_exercise(
     metric_id = row[0]
 
     cursor.execute(
-        "DELETE FROM exercise_metrics WHERE exercise_id = ? AND metric_type_id = ?",
+        "DELETE FROM library_exercise_metrics WHERE exercise_id = ? AND metric_type_id = ?",
         (exercise_id, metric_id),
     )
     conn.commit()
@@ -430,7 +430,7 @@ def update_metric_type(
 
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM metric_types WHERE name = ?", (metric_type_name,))
+    cursor.execute("SELECT id FROM library_metric_types WHERE name = ?", (metric_type_name,))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -457,7 +457,7 @@ def update_metric_type(
         params.append(description)
     if updates:
         params.append(metric_type_name)
-        cursor.execute(f"UPDATE metric_types SET {', '.join(updates)} WHERE name = ?", params)
+        cursor.execute(f"UPDATE library_metric_types SET {', '.join(updates)} WHERE name = ?", params)
         conn.commit()
     conn.close()
 
@@ -478,7 +478,7 @@ def set_section_exercise_metric_override(
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id FROM presets WHERE name = ?", (preset_name,))
+    cursor.execute("SELECT id FROM preset_presets WHERE name = ?", (preset_name,))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -486,7 +486,7 @@ def set_section_exercise_metric_override(
     preset_id = row[0]
 
     cursor.execute(
-        "SELECT id FROM sections WHERE preset_id = ? ORDER BY position", (preset_id,)
+        "SELECT id FROM preset_sections WHERE preset_id = ? ORDER BY position", (preset_id,)
     )
     sections = cursor.fetchall()
     if section_index < 0 or section_index >= len(sections):
@@ -494,7 +494,7 @@ def set_section_exercise_metric_override(
         raise IndexError("Section index out of range")
     section_id = sections[section_index][0]
 
-    cursor.execute("SELECT id FROM exercises WHERE name = ?", (exercise_name,))
+    cursor.execute("SELECT id FROM library_exercises WHERE name = ?", (exercise_name,))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -502,7 +502,7 @@ def set_section_exercise_metric_override(
     exercise_id = row[0]
 
     cursor.execute(
-        "SELECT id FROM metric_types WHERE name = ?", (metric_type_name,)
+        "SELECT id FROM library_metric_types WHERE name = ?", (metric_type_name,)
     )
     row = cursor.fetchone()
     if not row:
@@ -511,7 +511,7 @@ def set_section_exercise_metric_override(
     metric_type_id = row[0]
 
     cursor.execute(
-        """SELECT id FROM section_exercises WHERE section_id = ? AND exercise_id = ? ORDER BY position LIMIT 1""",
+        """SELECT id FROM preset_section_exercises WHERE section_id = ? AND exercise_id = ? ORDER BY position LIMIT 1""",
         (section_id, exercise_id),
     )
     row = cursor.fetchone()
@@ -521,18 +521,18 @@ def set_section_exercise_metric_override(
     se_id = row[0]
 
     cursor.execute(
-        "SELECT id FROM section_exercise_metrics WHERE section_exercise_id = ? AND metric_type_id = ?",
+        "SELECT id FROM preset_section_exercise_metrics WHERE section_exercise_id = ? AND metric_type_id = ?",
         (se_id, metric_type_id),
     )
     row = cursor.fetchone()
     if row:
         cursor.execute(
-            "UPDATE section_exercise_metrics SET input_timing = ?, is_required = ?, scope = ? WHERE id = ?",
+            "UPDATE preset_section_exercise_metrics SET input_timing = ?, is_required = ?, scope = ? WHERE id = ?",
             (input_timing, int(is_required), scope, row[0]),
         )
     else:
         cursor.execute(
-            "INSERT INTO section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO preset_section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, ?, ?, ?)",
             (se_id, metric_type_id, input_timing, int(is_required), scope),
         )
     conn.commit()
@@ -772,42 +772,42 @@ def save_exercise(exercise: Exercise) -> None:
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT id FROM exercises WHERE name = ? AND is_user_created = 1",
+        "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = 1",
         (exercise.name,),
     )
     row = cursor.fetchone()
     if row:
         ex_id = row[0]
         cursor.execute(
-            "UPDATE exercises SET description = ? WHERE id = ?",
+            "UPDATE library_exercises SET description = ? WHERE id = ?",
             (exercise.description, ex_id),
         )
-        cursor.execute("DELETE FROM exercise_metrics WHERE exercise_id = ?", (ex_id,))
+        cursor.execute("DELETE FROM library_exercise_metrics WHERE exercise_id = ?", (ex_id,))
         cursor.execute(
-            "DELETE FROM exercise_enum_values WHERE exercise_id = ?",
+            "DELETE FROM library_exercise_enum_values WHERE exercise_id = ?",
             (ex_id,),
         )
     else:
         cursor.execute(
-            "INSERT INTO exercises (name, description, is_user_created) VALUES (?, ?, 1)",
+            "INSERT INTO library_exercises (name, description, is_user_created) VALUES (?, ?, 1)",
             (exercise.name, exercise.description),
         )
         ex_id = cursor.lastrowid
 
     for position, m in enumerate(exercise.metrics):
-        cursor.execute("SELECT id, source_type FROM metric_types WHERE name = ?", (m["name"],))
+        cursor.execute("SELECT id, source_type FROM library_metric_types WHERE name = ?", (m["name"],))
         mt_row = cursor.fetchone()
         if not mt_row:
             continue
         metric_id, source_type = mt_row
         cursor.execute(
-            "INSERT INTO exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, ?)",
+            "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, ?)",
             (ex_id, metric_id, position),
         )
         if source_type == "manual_enum" and m.get("values"):
             for idx, val in enumerate(m.get("values", [])):
                 cursor.execute(
-                    "INSERT INTO exercise_enum_values (metric_type_id, exercise_id, value, position) VALUES (?, ?, ?, ?)",
+                    "INSERT INTO library_exercise_enum_values (metric_type_id, exercise_id, value, position) VALUES (?, ?, ?, ?)",
                     (metric_id, ex_id, val, idx),
                 )
 
@@ -833,7 +833,7 @@ def delete_exercise(
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT id FROM exercises WHERE name = ? AND is_user_created = ?",
+        "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ?",
         (name, int(is_user_created)),
     )
     row = cursor.fetchone()
@@ -844,14 +844,14 @@ def delete_exercise(
     ex_id = row[0]
 
     cursor.execute(
-        "SELECT 1 FROM section_exercises WHERE exercise_id = ? LIMIT 1",
+        "SELECT 1 FROM preset_section_exercises WHERE exercise_id = ? LIMIT 1",
         (ex_id,),
     )
     if cursor.fetchone():
         conn.close()
         raise ValueError("Exercise is in use and cannot be deleted")
 
-    cursor.execute("DELETE FROM exercises WHERE id = ?", (ex_id,))
+    cursor.execute("DELETE FROM library_exercises WHERE id = ?", (ex_id,))
     conn.commit()
     conn.close()
     return True
@@ -881,14 +881,14 @@ class PresetEditor:
         """Load ``preset_name`` from the database into memory."""
 
         cursor = self.conn.cursor()
-        cursor.execute("SELECT id FROM presets WHERE name = ?", (preset_name,))
+        cursor.execute("SELECT id FROM preset_presets WHERE name = ?", (preset_name,))
         row = cursor.fetchone()
         if not row:
             raise ValueError(f"Preset '{preset_name}' not found")
 
         preset_id = row[0]
         cursor.execute(
-            "SELECT id, name FROM sections WHERE preset_id = ? ORDER BY position",
+            "SELECT id, name FROM preset_sections WHERE preset_id = ? ORDER BY position",
             (preset_id,),
         )
 
@@ -899,8 +899,8 @@ class PresetEditor:
             cursor.execute(
                 """
                 SELECT e.name, se.number_of_sets
-                FROM section_exercises se
-                JOIN exercises e ON se.exercise_id = e.id
+                FROM preset_section_exercises se
+                JOIN library_exercises e ON se.exercise_id = e.id
                 WHERE se.section_id = ?
                 ORDER BY se.position
                 """,
@@ -935,7 +935,7 @@ class PresetEditor:
             raise IndexError("Section index out of range")
 
         cursor = self.conn.cursor()
-        cursor.execute("SELECT 1 FROM exercises WHERE name = ?", (exercise_name,))
+        cursor.execute("SELECT 1 FROM library_exercises WHERE name = ?", (exercise_name,))
         if cursor.fetchone() is None:
             raise ValueError(f"Exercise '{exercise_name}' does not exist")
 
