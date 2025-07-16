@@ -65,10 +65,6 @@ METRIC_FIELD_ORDER = [
     "is_required",
 ]
 
-# When True the enum values field in :class:`AddMetricPopup` will only appear
-# when the metric's source type is ``manual_enum``. Set to ``False`` to keep the
-# field visible at all times while debugging unexpected visibility issues.
-ENABLE_DYNAMIC_ENUM_VISIBILITY = True
 
 
 class LoadingDialog(MDDialog):
@@ -1003,6 +999,11 @@ class AddMetricPopup(MDDialog):
         )
         form.bind(minimum_height=form.setter("height"))
 
+        def enable_auto_resize(text_field: MDTextField):
+            text_field.bind(
+                text=lambda inst, val: setattr(inst, "height", max(default_height, inst.minimum_height))
+            )
+
         for field in schema:
             name = field["name"]
             options = field.get("options")
@@ -1016,19 +1017,26 @@ class AddMetricPopup(MDDialog):
                 widget = Spinner(text=options[0], values=options, size_hint_y=None, height=default_height)
                 form.add_widget(widget)
             else:
-                widget = MDTextField(hint_text=name.replace("_", " ").title(), size_hint_y=None, height=default_height)
+                widget = MDTextField(
+                    hint_text=name.replace("_", " ").title(),
+                    size_hint_y=None,
+                    height=default_height,
+                    hint_text_font_size="12sp",
+                )
+                enable_auto_resize(widget)
                 form.add_widget(widget)
 
             self.input_widgets[name] = widget
 
-        # Text box for enum values. Normally this field only appears when the
-        # metric's source type is ``manual_enum``. A global flag controls
-        # whether that dynamic visibility is enabled.
+        # Text box for enum values. This field only appears when the
+        # metric's source type is ``manual_enum``.
         self.enum_values_field = MDTextField(
             hint_text="Enum Values (comma separated)",
             size_hint_y=None,
             height=default_height,
+            hint_text_font_size="12sp",
         )
+        enable_auto_resize(self.enum_values_field)
         form.add_widget(self.enum_values_field)
 
         # Helper that toggles visibility based on ``source_type``.
@@ -1061,15 +1069,8 @@ class AddMetricPopup(MDDialog):
             self.enum_values_field.input_filter = _filter
         if "source_type" in self.input_widgets and "input_type" in self.input_widgets:
             self.input_widgets["input_type"].bind(text=lambda *a: update_enum_filter())
-            if ENABLE_DYNAMIC_ENUM_VISIBILITY:
-                self.input_widgets["source_type"].bind(text=lambda *a: update_enum_visibility())
-                update_enum_visibility()
-            else:
-                # Keep the field visible for debugging
-                if self.enum_values_field.parent is None:
-                    form.add_widget(self.enum_values_field)
-                self.enum_values_field.opacity = 1
-                # self.enum_values_field.height = default_height
+            self.input_widgets["source_type"].bind(text=lambda *a: update_enum_visibility())
+            update_enum_visibility()
             update_enum_filter()
 
         layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
