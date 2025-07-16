@@ -1190,8 +1190,9 @@ class AddMetricPopup(MDDialog):
             return
 
         self.screen.exercise_obj.add_metric(metric)
-        self.show_metric_list()
+        self.screen.populate()
         self.screen.save_enabled = self.screen.exercise_obj.is_modified()
+        self.show_metric_list()
 
 
 class EditMetricPopup(MDDialog):
@@ -1270,6 +1271,15 @@ class EditMetricPopup(MDDialog):
 
             self.input_widgets[name] = widget
 
+        # Text box for enum values shown when ``source_type`` is ``manual_enum``
+        self.enum_values_field = MDTextField(
+            hint_text="Enum Values (comma separated)",
+            size_hint_y=None,
+            height=default_height,
+        )
+        self.enum_values_field.hint_text_font_size = "12sp"
+        form.add_widget(self.enum_values_field)
+
         # populate values
         for key, widget in self.input_widgets.items():
             if key not in self.metric:
@@ -1283,11 +1293,42 @@ class EditMetricPopup(MDDialog):
             elif isinstance(widget, MDTextField):
                 widget.text = str(value)
 
-        row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
-        self.make_default = MDCheckbox(active=True)
-        row.add_widget(self.make_default)
-        row.add_widget(MDLabel(text="Make default"))
-        form.add_widget(row)
+        # populate enum values
+        if self.metric.get("source_type") == "manual_enum":
+            values = ",".join(self.metric.get("values", []))
+            self.enum_values_field.text = values
+        else:
+            if self.enum_values_field.parent is not None:
+                form.remove_widget(self.enum_values_field)
+
+        def update_enum_visibility(*args):
+            show = self.input_widgets["source_type"].text == "manual_enum"
+            if show:
+                if self.enum_values_field.parent is None:
+                    form.add_widget(self.enum_values_field)
+            else:
+                if self.enum_values_field.parent is not None:
+                    form.remove_widget(self.enum_values_field)
+
+        def update_enum_filter(*args):
+            input_type = self.input_widgets["input_type"].text
+            if input_type == "int":
+                allowed = string.digits + ","
+            elif input_type == "float":
+                allowed = string.digits + ".,"
+            else:
+                allowed = string.ascii_letters + ","
+
+            def _filter(value, from_undo):
+                return "".join(ch for ch in value if ch in allowed)
+
+            self.enum_values_field.input_filter = _filter
+
+        if "source_type" in self.input_widgets and "input_type" in self.input_widgets:
+            self.input_widgets["input_type"].bind(text=lambda *a: update_enum_filter())
+            self.input_widgets["source_type"].bind(text=lambda *a: update_enum_visibility())
+            update_enum_visibility()
+            update_enum_filter()
 
         layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
         layout.add_widget(form)
@@ -1299,16 +1340,65 @@ class EditMetricPopup(MDDialog):
 
     def save_metric(self, *args):
         """Update the metric on the exercise object with the new values."""
+
         updates = {}
         for key, widget in self.input_widgets.items():
             if isinstance(widget, MDCheckbox):
                 updates[key] = bool(widget.active)
             else:
                 updates[key] = widget.text
-        self.screen.exercise_obj.update_metric(self.metric["name"], **updates)
-        self.dismiss()
-        self.screen.populate()
-        self.screen.save_enabled = self.screen.exercise_obj.is_modified()
+
+        if self.enum_values_field.parent is not None:
+            text = self.enum_values_field.text.strip()
+            updates["values"] = [v.strip() for v in text.split(",") if v.strip()]
+
+        def apply_updates():
+            self.screen.exercise_obj.update_metric(self.metric["name"], **updates)
+            self.dismiss()
+            self.screen.populate()
+            self.screen.save_enabled = self.screen.exercise_obj.is_modified()
+
+        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        if core.is_metric_type_user_created(self.metric["name"], db_path=db_path):
+            dialog = None
+
+            def cancel_action(*a):
+                if dialog:
+                    dialog.dismiss()
+
+            def save_global(*a):
+                core.update_metric_type(
+                    self.metric["name"],
+                    input_type=updates.get("input_type"),
+                    source_type=updates.get("source_type"),
+                    input_timing=updates.get("input_timing"),
+                    scope=updates.get("scope"),
+                    description=updates.get("description"),
+                    is_required=updates.get("is_required"),
+                    db_path=db_path,
+                )
+                cancel_action()
+                apply_updates()
+
+            def save_override(*a):
+                cancel_action()
+                apply_updates()
+
+            dialog = MDDialog(
+                title="Save Metric",
+                text=(
+                    "Apply changes to all exercises using this metric or only to "
+                    "the current exercise?"
+                ),
+                buttons=[
+                    MDRaisedButton(text="Cancel", on_release=cancel_action),
+                    MDRaisedButton(text="All Exercises", on_release=save_global),
+                    MDRaisedButton(text="Current Exercise", on_release=save_override),
+                ],
+            )
+            dialog.open()
+        else:
+            apply_updates()
 
 
 

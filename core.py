@@ -319,6 +319,23 @@ def get_metric_type_schema(
     return fields
 
 
+def is_metric_type_user_created(
+    metric_type_name: str,
+    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+) -> bool:
+    """Return ``True`` if ``metric_type_name`` is marked as user created."""
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT is_user_created FROM library_metric_types WHERE name = ?",
+        (metric_type_name,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return bool(row[0]) if row else False
+
+
 def add_metric_type(
     name: str,
     input_type: str,
