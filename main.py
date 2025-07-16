@@ -1413,6 +1413,12 @@ class EditMetricPopup(MDDialog):
                     MDRaisedButton(text="Current Exercise", on_release=save_override),
                 ],
             )
+
+            def _on_open(instance):
+                if hasattr(instance, "ids") and "buttons" in instance.ids:
+                    instance.ids.buttons.orientation = "vertical"
+
+            dialog.bind(on_open=_on_open)
             dialog.open()
         else:
             apply_updates()
