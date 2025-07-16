@@ -1,5 +1,5 @@
 BEGIN TRANSACTION;
-CREATE TABLE IF NOT EXISTS "exercise_enum_values" (
+CREATE TABLE IF NOT EXISTS "library_exercise_enum_values" (
 	"id"	INTEGER,
 	"metric_type_id"	INTEGER NOT NULL,
 	"exercise_id"	INTEGER NOT NULL,
@@ -7,26 +7,26 @@ CREATE TABLE IF NOT EXISTS "exercise_enum_values" (
 	"position"	INTEGER NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT),
 	UNIQUE("metric_type_id","exercise_id","value"),
-	FOREIGN KEY("exercise_id") REFERENCES "exercises"("id") ON DELETE CASCADE,
-	FOREIGN KEY("metric_type_id") REFERENCES "metric_types"("id") ON DELETE CASCADE
+	FOREIGN KEY("exercise_id") REFERENCES "library_exercises"("id") ON DELETE CASCADE,
+	FOREIGN KEY("metric_type_id") REFERENCES "library_metric_types"("id") ON DELETE CASCADE
 );
-CREATE TABLE IF NOT EXISTS "exercise_metrics" (
+CREATE TABLE IF NOT EXISTS "library_exercise_metrics" (
 	"id"	INTEGER,
 	"exercise_id"	INTEGER NOT NULL,
 	"metric_type_id"	INTEGER NOT NULL,
 	"position"	INTEGER DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("exercise_id") REFERENCES "exercises"("id") ON DELETE CASCADE,
-	FOREIGN KEY("metric_type_id") REFERENCES "metric_types"("id") ON DELETE CASCADE
+	FOREIGN KEY("exercise_id") REFERENCES "library_exercises"("id") ON DELETE CASCADE,
+	FOREIGN KEY("metric_type_id") REFERENCES "library_metric_types"("id") ON DELETE CASCADE
 );
-CREATE TABLE IF NOT EXISTS "exercises" (
+CREATE TABLE IF NOT EXISTS "library_exercises" (
 	"id"	INTEGER,
 	"name"	TEXT NOT NULL,
 	"description"	TEXT,
 	"is_user_created"	BOOLEAN NOT NULL DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
-CREATE TABLE IF NOT EXISTS "metric_types" (
+CREATE TABLE IF NOT EXISTS "library_metric_types" (
 	"id"	INTEGER,
 	"name"	TEXT NOT NULL UNIQUE,
 	"input_type"	TEXT NOT NULL CHECK("input_type" IN ('int', 'float', 'str', 'bool')),
@@ -44,15 +44,15 @@ CREATE TABLE IF NOT EXISTS "preset_metadata" (
 	"metric_type_id"	INTEGER NOT NULL,
 	"value"	TEXT NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("metric_type_id") REFERENCES "metric_types"("id") ON DELETE CASCADE,
-	FOREIGN KEY("preset_id") REFERENCES "presets"("id") ON DELETE CASCADE
+	FOREIGN KEY("metric_type_id") REFERENCES "library_metric_types"("id") ON DELETE CASCADE,
+	FOREIGN KEY("preset_id") REFERENCES "preset_presets"("id") ON DELETE CASCADE
 );
-CREATE TABLE IF NOT EXISTS "presets" (
+CREATE TABLE IF NOT EXISTS "preset_presets" (
 	"id"	INTEGER,
 	"name"	TEXT NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
-CREATE TABLE IF NOT EXISTS "section_exercise_metrics" (
+CREATE TABLE IF NOT EXISTS "preset_section_exercise_metrics" (
 	"id"	INTEGER,
 	"section_exercise_id"	INT NOT NULL,
 	"metric_type_id"	INT NOT NULL,
@@ -61,10 +61,10 @@ CREATE TABLE IF NOT EXISTS "section_exercise_metrics" (
 	"scope"	TEXT NOT NULL,
 	"default_exercise_metric_id"	INT,
 	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("metric_type_id") REFERENCES "metric_types"("id") ON DELETE CASCADE,
-	FOREIGN KEY("section_exercise_id") REFERENCES "section_exercises"("id") ON DELETE CASCADE
+	FOREIGN KEY("metric_type_id") REFERENCES "library_metric_types"("id") ON DELETE CASCADE,
+	FOREIGN KEY("section_exercise_id") REFERENCES "preset_section_exercises"("id") ON DELETE CASCADE
 );
-CREATE TABLE IF NOT EXISTS "section_exercises" (
+CREATE TABLE IF NOT EXISTS "preset_section_exercises" (
 	"id"	INTEGER,
 	"section_id"	INTEGER NOT NULL,
 	"exercise_id"	INTEGER NOT NULL,
@@ -73,18 +73,18 @@ CREATE TABLE IF NOT EXISTS "section_exercises" (
 	"exercise_name"	TEXT,
 	"exercise_description"	TEXT,
 	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("exercise_id") REFERENCES "exercises"("id"),
-	FOREIGN KEY("section_id") REFERENCES "sections"("id") ON DELETE CASCADE
+	FOREIGN KEY("exercise_id") REFERENCES "library_exercises"("id"),
+	FOREIGN KEY("section_id") REFERENCES "preset_sections"("id") ON DELETE CASCADE
 );
-CREATE TABLE IF NOT EXISTS "sections" (
+CREATE TABLE IF NOT EXISTS "preset_sections" (
 	"id"	INTEGER,
 	"preset_id"	INTEGER NOT NULL,
 	"name"	TEXT NOT NULL,
 	"position"	INTEGER NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("preset_id") REFERENCES "presets"("id") ON DELETE CASCADE
+	FOREIGN KEY("preset_id") REFERENCES "preset_presets"("id") ON DELETE CASCADE
 );
-CREATE VIEW view_exercise_metrics AS
+CREATE VIEW "library_view_exercise_metrics" AS
 SELECT 
     em.id AS exercise_metric_id,
     em.exercise_id,
@@ -92,12 +92,12 @@ SELECT
     em.metric_type_id,
     mt.name AS metric_type_name
 FROM 
-    exercise_metrics em
+    library_exercise_metrics em
 JOIN 
-    exercises e ON em.exercise_id = e.id
+    library_exercises e ON em.exercise_id = e.id
 JOIN 
-    metric_types mt ON em.metric_type_id = mt.id;
-CREATE UNIQUE INDEX IF NOT EXISTS "idx_exercises_name_user_created" ON "exercises" (
+    library_metric_types mt ON em.metric_type_id = mt.id;
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_library_exercises_name_user_created" ON "library_exercises" (
 	"name",
 	"is_user_created"
 );
