@@ -123,3 +123,24 @@ def test_workout_session_progress(sample_db, monkeypatch):
         count += 1
     assert count == 5  # two sets push up + three sets bench press
     assert session.end_time is not None
+
+
+def test_exercise_metric_override_table(sample_db):
+    core.set_exercise_metric_override(
+        "Bench Press",
+        "Weight",
+        input_timing="pre_workout",
+        is_required=True,
+        scope="exercise",
+        db_path=sample_db,
+    )
+    metrics = core.get_metrics_for_exercise("Bench Press", db_path=sample_db)
+    override = next(m for m in metrics if m["name"] == "Weight")
+    assert override["input_timing"] == "pre_workout"
+    assert override["is_required"] is True
+
+    core.set_exercise_metric_override("Bench Press", "Weight", db_path=sample_db)
+    metrics = core.get_metrics_for_exercise("Bench Press", db_path=sample_db)
+    default = next(m for m in metrics if m["name"] == "Weight")
+    assert default["input_timing"] == "post_set"
+    assert default["is_required"] is False
