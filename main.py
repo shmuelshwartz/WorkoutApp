@@ -1017,12 +1017,15 @@ class AddMetricPopup(MDDialog):
                 widget = Spinner(text=options[0], values=options, size_hint_y=None, height=default_height)
                 form.add_widget(widget)
             else:
+                # Older versions of KivyMD do not accept the
+                # ``hint_text_font_size`` kwarg. Set the property
+                # after creation to avoid ``TypeError``.
                 widget = MDTextField(
                     hint_text=name.replace("_", " ").title(),
                     size_hint_y=None,
                     height=default_height,
-                    hint_text_font_size="12sp",
                 )
+                widget.hint_text_font_size = "12sp"
                 enable_auto_resize(widget)
                 form.add_widget(widget)
 
@@ -1034,8 +1037,8 @@ class AddMetricPopup(MDDialog):
             hint_text="Enum Values (comma separated)",
             size_hint_y=None,
             height=default_height,
-            hint_text_font_size="12sp",
         )
+        self.enum_values_field.hint_text_font_size = "12sp"
         enable_auto_resize(self.enum_values_field)
         form.add_widget(self.enum_values_field)
 
