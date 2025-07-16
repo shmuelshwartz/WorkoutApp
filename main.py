@@ -950,7 +950,7 @@ class AddMetricPopup(MDDialog):
         return scroll, buttons, "Select Metric"
 
     def _build_new_metric_widgets(self):
-        default_height = "48dp"
+        default_height = dp(48)
         self.input_widgets = {}
 
         schema = core.get_metric_type_schema()
@@ -1020,20 +1020,18 @@ class AddMetricPopup(MDDialog):
         self.enum_values_field = MDTextField(
             hint_text="Enum Values (comma separated)",
             size_hint_y=None,
-            height=0,
-            opacity=0,
-            disabled=True,
+            height=default_height,
         )
+        self.enum_values_field.opacity = 0
+        self.enum_values_field.height = 0
         form.add_widget(self.enum_values_field)
 
         def update_enum_visibility(*args):
             show = self.input_widgets["source_type"].text == "manual_enum"
             if show:
-                self.enum_values_field.disabled = False
                 self.enum_values_field.opacity = 1
                 self.enum_values_field.height = default_height
             else:
-                self.enum_values_field.disabled = True
                 self.enum_values_field.opacity = 0
                 self.enum_values_field.height = 0
 
