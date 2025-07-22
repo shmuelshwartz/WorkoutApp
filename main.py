@@ -1535,6 +1535,10 @@ class EditExerciseScreen(MDScreen):
             if "exercise_tabs" in self.ids:
                 self.ids.exercise_tabs.current = tab
     def on_pre_enter(self, *args):
+        if self.previous_screen == "edit_preset":
+            self.switch_tab("config")
+        else:
+            self.switch_tab("metrics")
         if os.environ.get("KIVY_UNITTEST"):
             self._load_exercise()
         else:

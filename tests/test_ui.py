@@ -17,7 +17,13 @@ if kivy_available:
     from kivy.app import App
     from kivy.properties import ObjectProperty
 
-    from main import RestScreen, MetricInputScreen, WorkoutActiveScreen, AddMetricPopup
+    from main import (
+        RestScreen,
+        MetricInputScreen,
+        WorkoutActiveScreen,
+        AddMetricPopup,
+        EditExerciseScreen,
+    )
     import time
 
     class _DummyApp:
@@ -74,3 +80,19 @@ def test_enum_values_accepts_spaces():
     popup.input_widgets["input_type"].text = "str"
     filtered = popup.enum_values_field.input_filter("A B,C", False)
     assert filtered == "A B,C"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_exercise_default_tab():
+    screen = EditExerciseScreen()
+    screen.previous_screen = "exercise_library"
+    screen.on_pre_enter()
+    assert screen.current_tab == "metrics"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_exercise_preset_tab():
+    screen = EditExerciseScreen()
+    screen.previous_screen = "edit_preset"
+    screen.on_pre_enter()
+    assert screen.current_tab == "config"
