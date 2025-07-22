@@ -1,5 +1,7 @@
 # 🏋️‍♂️ workout_app Database Design (Prefixed Schema)
 
+> **Note:** The database has already been created and matches the schema defined in `workout_db.sql`. It is not an empty database.
+
 This document describes the database design for **workout_app**. The schema follows a **prefix-based naming convention** to clearly separate global, preset-specific, and session-specific data.  
 
 This approach supports the app’s **offline-first**, highly customizable philosophy, enabling:  
@@ -47,20 +49,22 @@ The `library_exercise_metrics` table now supports per-exercise customization of 
 
 ## 🟢 Preset-Specific Data (`preset_`)
 
-These tables store **workout templates (presets)**, including all their exercises, sections, and overridden metrics.  
+These tables store **workout templates (presets)**, including all their sections, exercises, and per-exercise/per-metric details.  
+**All preset tables are fully self-contained:** every exercise, metric, and enum value used in a preset is snapshotted at creation, so presets remain intact even if the library is changed or deleted.
 
-| Table Name                             | Description                                                 |
-|----------------------------------------|-------------------------------------------------------------|
-| `preset_presets`                       | Workout templates containing ordered sections and exercises |
-| `preset_sections`                      | Logical divisions of a preset (e.g., Warm-up, Main Workout) |
-| `preset_section_exercises`             | Exercises within sections, includes position & set counts   |
-| `preset_section_exercise_metrics`      | Per-preset metrics for each exercise, copied from library   |
-| `preset_metadata`                      | Key-value pairs for preset-level information (e.g., “Day 1”, “Focus: Strength”) |
+| Table Name                                  | Description                                                             |
+|----------------------------------------------|-------------------------------------------------------------------------|
+| `preset_presets`                            | Workout templates (e.g., "Push Day")                                    |
+| `preset_sections`                           | Logical divisions within a preset (e.g., Warm-up, Main Workout)         |
+| `preset_section_exercises`                  | Exercises within sections, with all names/descriptions snapshotted      |
+| `preset_section_exercise_metrics`           | Metrics for each exercise, fully snapshotted, including all properties  |
+| `preset_section_exercise_metric_enum_values`| Enum values for enum-type metrics, snapshotted per preset/metric        |
+| `preset_metadata`                           | Key-value pairs for preset-level information                            |
 
 ✅ **Key Idea**:  
-- When a user adds an exercise from the library:  
-  - All metrics from `library_exercise_metrics` are **copied** into `preset_section_exercise_metrics`.  
-- Changes here only affect that **specific preset**.  
+- **Presets are fully self-contained**: All exercise and metric data is copied into the preset at creation time (including enums).
+- **Library exercise references** (such as `library_exercise_id` in `preset_section_exercises`) are for informational purposes only—**no foreign key is enforced**, and deleting a library exercise will not affect any preset data.
+- **Edits to presets** only affect that specific preset. Library changes do **not** propagate to existing presets.
 
 ---
 
@@ -168,8 +172,6 @@ Each exercise:
 | Presets & Sections      | `preset_presets`, `preset_sections`          |
 | Preset Exercises        | `preset_section_exercises`                   |
 | Preset Exercise Metrics | `preset_section_exercise_metrics`            |
+| Preset Enum Values      | `preset_section_exercise_metric_enum_values` |
 | Preset Metadata         | `preset_metadata`                            |
-
 This schema provides a **modular, maintainable system** for defining workouts with full user flexibility. Prefixes make the schema **self-documenting** and prepare it for future expansion to session-level data (`session_`).
-
-Note: The database has already been created and matches the schema defined in workout_db.sql. It is not an empty database.
