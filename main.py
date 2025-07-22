@@ -32,6 +32,7 @@ from kivymd.uix.button import MDRaisedButton
 from kivy.uix.screenmanager import NoTransition
 from pathlib import Path
 import os
+import sys
 
 # Import core so we can always reference the up-to-date WORKOUT_PRESETS list
 import core
@@ -52,7 +53,9 @@ import math
 from kivy.core.window import Window
 import string
 import sqlite3
-Window.size = (280, 280 * (20 / 9))
+
+if os.name == 'nt' or sys.platform.startswith('win'):
+    Window.size = (280, 280 * (20 / 9))
 
 # Order of fields for metric editing popups
 METRIC_FIELD_ORDER = [
