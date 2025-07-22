@@ -2,6 +2,7 @@ import importlib.util
 import os
 import pytest
 
+os.environ["KIVY_WINDOW"] = "mock"
 # Skip tests entirely if Kivy (and KivyMD) are not installed
 kivy_available = (
     importlib.util.find_spec("kivy") is not None and

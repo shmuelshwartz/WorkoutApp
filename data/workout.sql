@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS "preset_section_exercises" (
 	"position"	INTEGER NOT NULL,
 	"number_of_sets"	INTEGER NOT NULL DEFAULT 1,
 	"library_exercise_id"	INTEGER,
+	"rest_time"	INTEGER NOT NULL DEFAULT 120,
 	PRIMARY KEY("id" AUTOINCREMENT),
 	FOREIGN KEY("section_id") REFERENCES "preset_sections"("id") ON DELETE CASCADE
 );
