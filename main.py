@@ -1467,6 +1467,9 @@ class EditMetricPopup(MDDialog):
             content.add_widget(label)
 
             def on_save(*a):
+                metric_saved = self.screen.exercise_obj.had_metric(
+                    self.metric["name"]
+                )
                 if checkbox.active:
                     core.update_metric_type(
                         self.metric["name"],
@@ -1478,22 +1481,24 @@ class EditMetricPopup(MDDialog):
                         is_required=updates.get("is_required"),
                         db_path=db_path,
                     )
-                    core.set_exercise_metric_override(
-                        self.screen.exercise_obj.name,
-                        self.metric["name"],
-                        db_path=db_path,
-                    )
+                    if metric_saved:
+                        core.set_exercise_metric_override(
+                            self.screen.exercise_obj.name,
+                            self.metric["name"],
+                            db_path=db_path,
+                        )
                 else:
-                    core.set_exercise_metric_override(
-                        self.screen.exercise_obj.name,
-                        self.metric["name"],
-                        input_type=updates.get("input_type"),
-                        source_type=updates.get("source_type"),
-                        input_timing=updates.get("input_timing"),
-                        is_required=updates.get("is_required"),
-                        scope=updates.get("scope"),
-                        db_path=db_path,
-                    )
+                    if metric_saved:
+                        core.set_exercise_metric_override(
+                            self.screen.exercise_obj.name,
+                            self.metric["name"],
+                            input_type=updates.get("input_type"),
+                            source_type=updates.get("source_type"),
+                            input_timing=updates.get("input_timing"),
+                            is_required=updates.get("is_required"),
+                            scope=updates.get("scope"),
+                            db_path=db_path,
+                        )
                 cancel_action()
                 apply_updates()
 

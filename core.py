@@ -888,6 +888,16 @@ class Exercise:
 
         self._original = self.to_dict()
 
+    def had_metric(self, metric_name: str) -> bool:
+        """Return ``True`` if ``metric_name`` existed when loaded."""
+
+        if not self._original:
+            return False
+        for m in self._original.get("metrics", []):
+            if m.get("name") == metric_name:
+                return True
+        return False
+
 
 def save_exercise(exercise: Exercise) -> None:
     """Persist ``exercise`` to the database as a user-defined copy."""
