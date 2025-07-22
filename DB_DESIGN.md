@@ -171,3 +171,5 @@ Each exercise:
 | Preset Metadata         | `preset_metadata`                            |
 
 This schema provides a **modular, maintainable system** for defining workouts with full user flexibility. Prefixes make the schema **self-documenting** and prepare it for future expansion to session-level data (`session_`).
+
+Note: The database has already been created and matches the schema defined in workout_db.sql. It is not an empty database.
