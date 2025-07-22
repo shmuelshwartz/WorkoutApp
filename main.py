@@ -1478,11 +1478,30 @@ class EditMetricPopup(MDDialog):
                         is_required=updates.get("is_required"),
                         db_path=db_path,
                     )
-                    core.set_exercise_metric_override(
-                        self.screen.exercise_obj.name,
-                        self.metric["name"],
-                        db_path=db_path,
-                    )
+                    try:
+                        core.set_exercise_metric_override(
+                            self.screen.exercise_obj.name,
+                            self.metric["name"],
+                            db_path=db_path,
+                        )
+                    except ValueError as exc:
+                        if "not associated" not in str(exc):
+                            raise
+                else:
+                    try:
+                        core.set_exercise_metric_override(
+                            self.screen.exercise_obj.name,
+                            self.metric["name"],
+                            input_type=updates.get("input_type"),
+                            source_type=updates.get("source_type"),
+                            input_timing=updates.get("input_timing"),
+                            is_required=updates.get("is_required"),
+                            scope=updates.get("scope"),
+                            db_path=db_path,
+                        )
+                    except ValueError as exc:
+                        if "not associated" not in str(exc):
+                            raise
                 cancel_action()
                 apply_updates()
 
