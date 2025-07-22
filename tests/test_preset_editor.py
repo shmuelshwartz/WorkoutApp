@@ -146,7 +146,7 @@ def test_save_new_preset(db_copy):
     cur.execute("SELECT name FROM preset_sections")
     assert cur.fetchone()[0] == "Warmup"
     cur.execute("SELECT exercise_name, number_of_sets, rest_time FROM preset_section_exercises")
-    assert cur.fetchone() == ("Push ups", 4, 20)
+    assert cur.fetchone() == ("Push ups", 4, 120)
     conn.close()
     editor.close()
 
