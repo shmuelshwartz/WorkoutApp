@@ -40,8 +40,8 @@ def test_load_workout_presets(sample_db):
         {
             "name": "Push Day",
             "exercises": [
-                {"name": "Push-up", "sets": 2},
-                {"name": "Bench Press", "sets": 2},
+                {"name": "Push-up", "sets": 2, "rest": 120},
+                {"name": "Bench Press", "sets": 2, "rest": 120},
             ],
         }
     ]

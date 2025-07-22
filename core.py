@@ -25,7 +25,7 @@ def load_workout_presets(db_path: Path = Path(__file__).resolve().parent / "data
     for preset_id, preset_name in cursor.fetchall():
         cursor.execute(
             """
-            SELECT se.exercise_name, se.number_of_sets
+            SELECT se.exercise_name, se.number_of_sets, se.rest_time
             FROM preset_sections s
             JOIN preset_section_exercises se ON se.section_id = s.id
             WHERE s.preset_id = ?
@@ -34,7 +34,7 @@ def load_workout_presets(db_path: Path = Path(__file__).resolve().parent / "data
             (preset_id,),
         )
         exercises = [
-            {"name": row[0], "sets": row[1]} for row in cursor.fetchall()
+            {"name": row[0], "sets": row[1], "rest": row[2]} for row in cursor.fetchall()
         ]
         presets.append({"name": preset_name, "exercises": exercises})
     conn.close()
@@ -1055,7 +1055,7 @@ class PresetEditor:
         for section_id, name in cursor.fetchall():
             cursor.execute(
                 """
-                SELECT exercise_name, number_of_sets
+                SELECT exercise_name, number_of_sets, rest_time
                 FROM preset_section_exercises
                 WHERE section_id = ?
                 ORDER BY position
@@ -1063,7 +1063,8 @@ class PresetEditor:
                 (section_id,),
             )
             exercises = [
-                {"name": ex_name, "sets": sets} for ex_name, sets in cursor.fetchall()
+                {"name": ex_name, "sets": sets, "rest": rest}
+                for ex_name, sets, rest in cursor.fetchall()
             ]
             self.sections.append({"name": name, "exercises": exercises})
 
@@ -1087,6 +1088,7 @@ class PresetEditor:
         section_index: int,
         exercise_name: str,
         sets: int = DEFAULT_SETS_PER_EXERCISE,
+        rest: int = DEFAULT_REST_DURATION,
     ) -> dict:
         """Add an exercise to the specified section."""
 
@@ -1098,9 +1100,33 @@ class PresetEditor:
         if cursor.fetchone() is None:
             raise ValueError(f"Exercise '{exercise_name}' does not exist")
 
-        ex = {"name": exercise_name, "sets": sets}
+        ex = {"name": exercise_name, "sets": sets, "rest": rest}
         self.sections[section_index]["exercises"].append(ex)
         return ex
+
+    def update_exercise(
+        self,
+        section_index: int,
+        exercise_index: int,
+        *,
+        sets: int | None = None,
+        rest: int | None = None,
+    ) -> None:
+        """Update sets or rest time for an exercise in the preset."""
+
+        if (
+            section_index < 0
+            or section_index >= len(self.sections)
+            or exercise_index < 0
+            or exercise_index >= len(self.sections[section_index]["exercises"])
+        ):
+            raise IndexError("Exercise index out of range")
+
+        exercise = self.sections[section_index]["exercises"][exercise_index]
+        if sets is not None:
+            exercise["sets"] = sets
+        if rest is not None:
+            exercise["rest"] = rest
 
     def to_dict(self) -> dict:
         """Return the preset data as a dictionary."""
@@ -1193,8 +1219,8 @@ class PresetEditor:
                 lib_id = lr[0] if lr else None
                 cursor.execute(
                     """INSERT INTO preset_section_exercises
-                        (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id)
-                        VALUES (?, ?, ?, ?, ?, ?)""",
+                        (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id, rest_time)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)""",
                     (
                         section_id,
                         ex["name"],
@@ -1202,6 +1228,7 @@ class PresetEditor:
                         ex_pos,
                         ex.get("sets", DEFAULT_SETS_PER_EXERCISE),
                         lib_id,
+                        ex.get("rest", DEFAULT_REST_DURATION),
                     ),
                 )
                 se_id = cursor.lastrowid

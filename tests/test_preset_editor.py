@@ -6,7 +6,7 @@ import sys
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from core import PresetEditor, DEFAULT_SETS_PER_EXERCISE
+from core import PresetEditor, DEFAULT_SETS_PER_EXERCISE, DEFAULT_REST_DURATION
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def test_add_exercise_success(db_copy):
     editor = PresetEditor(db_path=db_copy)
     editor.add_section("Warmup")
     ex = editor.add_exercise(0, "Push ups", sets=4)
-    assert ex == {"name": "Push ups", "sets": 4}
+    assert ex == {"name": "Push ups", "sets": 4, "rest": DEFAULT_REST_DURATION}
     assert editor.sections[0]["exercises"] == [ex]
     editor.close()
 
@@ -103,7 +103,11 @@ def test_to_dict_after_modifications(db_copy):
             {
                 "name": "Warmup",
                 "exercises": [
-                    {"name": "Push ups", "sets": DEFAULT_SETS_PER_EXERCISE}
+                    {
+                        "name": "Push ups",
+                        "sets": DEFAULT_SETS_PER_EXERCISE,
+                        "rest": DEFAULT_REST_DURATION,
+                    }
                 ],
             }
         ],
@@ -118,7 +122,7 @@ def test_load_existing_preset(db_with_preset):
     assert len(editor.sections) == 1
     sec = editor.sections[0]
     assert sec["name"] == "Warmup"
-    assert sec["exercises"] == [{"name": "Push ups", "sets": 3}]
+    assert sec["exercises"] == [{"name": "Push ups", "sets": 3, "rest": 120}]
     editor.close()
 
 
@@ -141,8 +145,8 @@ def test_save_new_preset(db_copy):
     assert cur.fetchone()[0] == "My Preset"
     cur.execute("SELECT name FROM preset_sections")
     assert cur.fetchone()[0] == "Warmup"
-    cur.execute("SELECT exercise_name, number_of_sets FROM preset_section_exercises")
-    assert cur.fetchone() == ("Push ups", 4)
+    cur.execute("SELECT exercise_name, number_of_sets, rest_time FROM preset_section_exercises")
+    assert cur.fetchone() == ("Push ups", 4, 20)
     conn.close()
     editor.close()
 
@@ -153,8 +157,8 @@ def test_save_existing_preset(db_with_preset):
     editor.save()
     conn = sqlite3.connect(db_with_preset)
     cur = conn.cursor()
-    cur.execute("SELECT number_of_sets FROM preset_section_exercises")
-    assert cur.fetchone()[0] == 5
+    cur.execute("SELECT number_of_sets, rest_time FROM preset_section_exercises")
+    assert cur.fetchone() == (5, 120)
     conn.close()
     editor.close()
 
