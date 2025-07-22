@@ -61,28 +61,37 @@ CREATE TABLE IF NOT EXISTS "preset_presets" (
 	"name"	TEXT NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
+CREATE TABLE IF NOT EXISTS "preset_section_exercise_metric_enum_values" (
+	"id"	INTEGER,
+	"section_exercise_metric_id"	INTEGER NOT NULL,
+	"value"	TEXT NOT NULL,
+	"position"	INTEGER NOT NULL,
+	PRIMARY KEY("id" AUTOINCREMENT),
+	FOREIGN KEY("section_exercise_metric_id") REFERENCES "preset_section_exercise_metrics"("id") ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS "preset_section_exercise_metrics" (
 	"id"	INTEGER,
-	"section_exercise_id"	INT NOT NULL,
-	"metric_type_id"	INT NOT NULL,
+	"section_exercise_id"	INTEGER NOT NULL,
+	"metric_name"	TEXT NOT NULL,
+	"input_type"	TEXT NOT NULL,
+	"source_type"	TEXT NOT NULL,
 	"input_timing"	TEXT NOT NULL,
-	"is_required"	NUM NOT NULL DEFAULT 0,
+	"is_required"	BOOLEAN NOT NULL DEFAULT 0,
 	"scope"	TEXT NOT NULL,
-	"default_exercise_metric_id"	INT,
+	"position"	INTEGER NOT NULL DEFAULT 0,
+	"library_metric_type_id"	INTEGER,
 	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("metric_type_id") REFERENCES "library_metric_types"("id") ON DELETE CASCADE,
 	FOREIGN KEY("section_exercise_id") REFERENCES "preset_section_exercises"("id") ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS "preset_section_exercises" (
 	"id"	INTEGER,
 	"section_id"	INTEGER NOT NULL,
-	"exercise_id"	INTEGER NOT NULL,
+	"exercise_name"	TEXT NOT NULL,
+	"exercise_description"	TEXT,
 	"position"	INTEGER NOT NULL,
 	"number_of_sets"	INTEGER NOT NULL DEFAULT 1,
-	"exercise_name"	TEXT,
-	"exercise_description"	TEXT,
+	"library_exercise_id"	INTEGER,
 	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("exercise_id") REFERENCES "library_exercises"("id"),
 	FOREIGN KEY("section_id") REFERENCES "preset_sections"("id") ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS "preset_sections" (
