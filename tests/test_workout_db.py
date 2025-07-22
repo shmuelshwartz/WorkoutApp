@@ -54,11 +54,19 @@ def populate_sample_data(db_path: Path) -> None:
     )
     push_id = cur.fetchone()[0]
     cur.execute(
-        "INSERT INTO preset_section_exercises (section_id, exercise_id, position, number_of_sets) VALUES (?, ?, 0, 3)",
+        """
+        INSERT INTO preset_section_exercises
+            (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id)
+        VALUES (?, 'Bench Press', '', 0, 3, ?)
+        """,
         (section_id, bench_id),
     )
     cur.execute(
-        "INSERT INTO preset_section_exercises (section_id, exercise_id, position, number_of_sets) VALUES (?, ?, 1, 2)",
+        """
+        INSERT INTO preset_section_exercises
+            (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id)
+        VALUES (?, 'Push Up', '', 1, 2, ?)
+        """,
         (section_id, push_id),
     )
     conn.commit()

@@ -35,10 +35,18 @@ def sample_db(tmp_path):
     cur.execute("INSERT INTO preset_presets (name) VALUES ('Push Day')")
     cur.execute("INSERT INTO preset_sections (preset_id, name, position) VALUES (1, 'Main', 0)")
     cur.execute(
-        "INSERT INTO preset_section_exercises (section_id, exercise_id, position, number_of_sets) VALUES (1, 1, 0, 2)"
+        """
+        INSERT INTO preset_section_exercises
+            (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id)
+        VALUES (1, 'Push Up', '', 0, 2, 1)
+        """
     )
     cur.execute(
-        "INSERT INTO preset_section_exercises (section_id, exercise_id, position, number_of_sets) VALUES (1, 2, 1, 3)"
+        """
+        INSERT INTO preset_section_exercises
+            (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id)
+        VALUES (1, 'Bench Press', '', 1, 3, 2)
+        """
     )
     conn.commit()
     conn.close()
