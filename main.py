@@ -1720,7 +1720,10 @@ class EditExerciseScreen(MDScreen):
         dialog = None
 
         def do_save(*args):
-            core.save_exercise(self.exercise_obj)
+            if (not update_in_preset) or (checkbox and checkbox.active):
+                core.save_exercise(self.exercise_obj)
+                if app:
+                    app.exercise_library_version += 1
             if update_in_preset:
                 app.preset_editor.update_exercise(
                     self.section_index,
@@ -1728,20 +1731,52 @@ class EditExerciseScreen(MDScreen):
                     sets=self.exercise_sets,
                     rest=self.exercise_rest,
                 )
-            if app:
-                app.exercise_library_version += 1
             self.save_enabled = False
             if dialog:
                 dialog.dismiss()
 
-        dialog = MDDialog(
-            title="Confirm Save",
-            text=msg,
-            buttons=[
-                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
-                MDRaisedButton(text="Save", on_release=do_save),
-            ],
-        )
+        if update_in_preset:
+            label_text = (
+                "Update exercise in library"
+                if self.exercise_obj.is_user_created
+                else "Create editable copy in library"
+            )
+            msg = (
+                "Changes will apply only to this preset."
+                if self.exercise_obj.is_user_created
+                else f"{self.exercise_obj.name} is predefined and cannot be edited."
+            )
+            checkbox = MDCheckbox(size_hint=(None, None), height="40dp", width="40dp")
+            label = MDLabel(text=label_text, halign="left")
+            content = MDBoxLayout(
+                orientation="horizontal",
+                spacing="8dp",
+                size_hint_y=None,
+                height="40dp",
+            )
+            content.add_widget(checkbox)
+            content.add_widget(label)
+            dialog = MDDialog(
+                title="Confirm Save",
+                type="custom",
+                text=msg,
+                content_cls=content,
+                buttons=[
+                    MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                    MDRaisedButton(text="Save", on_release=do_save),
+                ],
+            )
+        else:
+            checkbox = None
+            dialog = MDDialog(
+                title="Confirm Save",
+                text=msg,
+                buttons=[
+                    MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                    MDRaisedButton(text="Save", on_release=do_save),
+                ],
+            )
+
         dialog.open()
 
     def go_back(self):
