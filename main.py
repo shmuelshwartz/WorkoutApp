@@ -1587,7 +1587,7 @@ class EditExerciseScreen(MDScreen):
         msg = "Save changes to this exercise?"
         if not self.exercise_obj.is_user_created:
             cursor.execute(
-                "SELECT 1 FROM exercises WHERE name = ? AND is_user_created = 1",
+                "SELECT 1 FROM library_exercises WHERE name = ? AND is_user_created = 1",
                 (self.exercise_obj.name,),
             )
             exists = cursor.fetchone()
