@@ -1701,26 +1701,54 @@ class EditExerciseScreen(MDScreen):
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
         msg = "Save changes to this exercise?"
-        if not self.exercise_obj.is_user_created:
-            cursor.execute(
-                "SELECT 1 FROM library_exercises WHERE name = ? AND is_user_created = 1",
-                (self.exercise_obj.name,),
-            )
-            exists = cursor.fetchone()
-            if exists:
-                msg = (
-                    f"A user-defined copy of {self.exercise_obj.name} exists and will be overwritten."
-                )
+
+        if update_in_preset:
+            base_msg = "Changes will apply only to this preset."
+            if self.exercise_obj.is_user_created:
+                msg = base_msg
+                label_text = "Update exercise in library"
             else:
                 msg = (
-                    f"{self.exercise_obj.name} is predefined. A user-defined copy will be created."
+                    f"{base_msg} {self.exercise_obj.name} is predefined and cannot be "
+                    "edited directly. Checking the box will create an editable copy."
                 )
+                label_text = "Create editable copy in library"
+            checkbox = MDCheckbox(size_hint=(None, None), height="40dp", width="40dp")
+            label = MDLabel(text=label_text, halign="left")
+            content = MDBoxLayout(
+                orientation="horizontal",
+                spacing="8dp",
+                size_hint_y=None,
+                height="40dp",
+            )
+            content.add_widget(checkbox)
+            content.add_widget(label)
+        else:
+            if not self.exercise_obj.is_user_created:
+                cursor.execute(
+                    "SELECT 1 FROM library_exercises WHERE name = ? AND is_user_created = 1",
+                    (self.exercise_obj.name,),
+                )
+                exists = cursor.fetchone()
+                if exists:
+                    msg = (
+                        f"A user-defined copy of {self.exercise_obj.name} exists and will be overwritten."
+                    )
+                else:
+                    msg = (
+                        f"{self.exercise_obj.name} is predefined. A user-defined copy will be created."
+                    )
+            checkbox = None
+            content = None
         conn.close()
 
         dialog = None
 
         def do_save(*args):
-            core.save_exercise(self.exercise_obj)
+            if (not update_in_preset) or (checkbox and checkbox.active):
+                core.save_exercise(self.exercise_obj)
+                if app:
+                    app.exercise_library_version += 1
             if update_in_preset:
                 app.preset_editor.update_exercise(
                     self.section_index,
@@ -1728,20 +1756,31 @@ class EditExerciseScreen(MDScreen):
                     sets=self.exercise_sets,
                     rest=self.exercise_rest,
                 )
-            if app:
-                app.exercise_library_version += 1
             self.save_enabled = False
             if dialog:
                 dialog.dismiss()
 
-        dialog = MDDialog(
-            title="Confirm Save",
-            text=msg,
-            buttons=[
-                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
-                MDRaisedButton(text="Save", on_release=do_save),
-            ],
-        )
+        if update_in_preset:
+            dialog = MDDialog(
+                title="Confirm Save",
+                type="custom",
+                text=msg,
+                content_cls=content,
+                buttons=[
+                    MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                    MDRaisedButton(text="Save", on_release=do_save),
+                ],
+            )
+        else:
+            dialog = MDDialog(
+                title="Confirm Save",
+                text=msg,
+                buttons=[
+                    MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                    MDRaisedButton(text="Save", on_release=do_save),
+                ],
+            )
+
         dialog.open()
 
     def go_back(self):
