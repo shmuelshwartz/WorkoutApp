@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS "library_metric_types" (
 	"name"	TEXT NOT NULL UNIQUE,
 	"input_type"	TEXT NOT NULL CHECK("input_type" IN ('int', 'float', 'str', 'bool')),
 	"source_type"	TEXT NOT NULL CHECK("source_type" IN ('manual_text', 'manual_enum', 'manual_slider')),
-	"input_timing"	TEXT NOT NULL CHECK("input_timing" IN ('preset', 'pre_workout', 'post_workout', 'pre_set', 'post_set')),
+	"input_timing"	TEXT NOT NULL CHECK("input_timing" IN ('library', 'preset', 'pre_workout', 'post_workout', 'pre_set', 'post_set')),
 	"is_required"	BOOLEAN DEFAULT FALSE,
 	"scope"	TEXT NOT NULL CHECK("scope" IN ('session', 'section', 'exercise', 'set')),
 	"description"	TEXT,
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS "preset_sections" (
 	PRIMARY KEY("id" AUTOINCREMENT),
 	FOREIGN KEY("preset_id") REFERENCES "preset_presets"("id") ON DELETE CASCADE
 );
-CREATE VIEW "library_view_exercise_metrics" AS
+CREATE VIEW library_view_exercise_metrics AS
 SELECT 
     em.id AS exercise_metric_id,
     em.exercise_id,
