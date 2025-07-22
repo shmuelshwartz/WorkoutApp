@@ -1525,10 +1525,12 @@ class EditExerciseScreen(MDScreen):
     save_enabled = BooleanProperty(False)
     is_user_created = ObjectProperty(None, allownone=True)
     loading_dialog = ObjectProperty(None, allownone=True)
+    exercise_sets = NumericProperty(DEFAULT_SETS_PER_EXERCISE)
+    exercise_rest = NumericProperty(DEFAULT_REST_DURATION)
 
     def switch_tab(self, tab: str):
-        """Switch between the metrics and details tabs."""
-        if tab in ("metrics", "details"):
+        """Switch between available tabs."""
+        if tab in ("metrics", "details", "config"):
             self.current_tab = tab
             if "exercise_tabs" in self.ids:
                 self.ids.exercise_tabs.current = tab
@@ -1551,6 +1553,14 @@ class EditExerciseScreen(MDScreen):
         self.is_user_created = self.exercise_obj.is_user_created
         self.exercise_name = self.exercise_obj.name
         self.exercise_description = self.exercise_obj.description
+        if self.section_index >= 0 and self.exercise_index >= 0:
+            app = MDApp.get_running_app()
+            if app.preset_editor and self.section_index < len(app.preset_editor.sections):
+                exercises = app.preset_editor.sections[self.section_index]["exercises"]
+                if self.exercise_index < len(exercises):
+                    ex = exercises[self.exercise_index]
+                    self.exercise_sets = ex.get("sets", DEFAULT_SETS_PER_EXERCISE)
+                    self.exercise_rest = ex.get("rest", DEFAULT_REST_DURATION)
         self.save_enabled = False
         self.populate()
         if self.loading_dialog:
@@ -1592,6 +1602,20 @@ class EditExerciseScreen(MDScreen):
             self.name_field.text = self.exercise_obj.name
         if self.description_field:
             self.description_field.text = self.exercise_obj.description
+
+    def update_sets(self, val: str):
+        try:
+            self.exercise_sets = int(val)
+        except ValueError:
+            return
+        self.save_enabled = True
+
+    def update_rest(self, val: str):
+        try:
+            self.exercise_rest = int(val)
+        except ValueError:
+            return
+        self.save_enabled = True
 
     def update_name(self, name: str):
         if self.exercise_obj is not None:
@@ -1677,6 +1701,17 @@ class EditExerciseScreen(MDScreen):
             app = MDApp.get_running_app()
             if app:
                 app.exercise_library_version += 1
+                if (
+                    self.section_index >= 0
+                    and self.exercise_index >= 0
+                    and app.preset_editor
+                ):
+                    app.preset_editor.update_exercise(
+                        self.section_index,
+                        self.exercise_index,
+                        sets=self.exercise_sets,
+                        rest=self.exercise_rest,
+                    )
             self.save_enabled = False
             if dialog:
                 dialog.dismiss()

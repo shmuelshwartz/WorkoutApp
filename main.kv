@@ -663,6 +663,14 @@ ScreenManager:
             height: "40dp"
             spacing: "10dp"
             MDRaisedButton:
+                text: "Config"
+                opacity: 1 if root.section_index >= 0 else 0
+                disabled: root.section_index < 0
+                size_hint_x: None
+                width: self.texture_size[0] + dp(20) if root.section_index >= 0 else 0
+                md_bg_color: app.theme_cls.primary_color if root.current_tab == "config" else (.5, .5, .5, 1)
+                on_release: root.switch_tab("config") if root.section_index >= 0 else None
+            MDRaisedButton:
                 text: "Metrics"
                 md_bg_color: app.theme_cls.primary_color if root.current_tab == "metrics" else (.5, .5, .5, 1)
                 on_release: root.switch_tab("metrics")
@@ -675,6 +683,25 @@ ScreenManager:
             size_hint_y: 1
             transition: NoTransition()
             on_kv_post: self.current = root.current_tab
+            Screen:
+                name: "config"
+                BoxLayout:
+                    orientation: "vertical"
+                    spacing: "10dp"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    MDTextField:
+                        id: sets_field
+                        hint_text: "Sets"
+                        text: str(root.exercise_sets)
+                        input_filter: "int"
+                        on_text: root.update_sets(self.text)
+                    MDTextField:
+                        id: rest_field
+                        hint_text: "Rest Time (s)"
+                        text: str(root.exercise_rest)
+                        input_filter: "int"
+                        on_text: root.update_rest(self.text)
             Screen:
                 name: "metrics"
                 FloatLayout:
