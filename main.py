@@ -740,6 +740,7 @@ class EditPresetScreen(MDScreen):
     panel_visible = BooleanProperty(False)
     exercise_panel = ObjectProperty(None)
     current_tab = StringProperty("sections")
+    save_enabled = BooleanProperty(False)
 
     _colors = [
         (1, 0.9, 0.9, 1),
@@ -754,6 +755,7 @@ class EditPresetScreen(MDScreen):
         app = MDApp.get_running_app()
         app.init_preset_editor()
         self.preset_name = app.preset_editor.preset_name or "Preset"
+        self.save_enabled = False
         self.current_tab = "sections"
         if self.sections_box:
             self.sections_box.clear_widgets()
@@ -784,6 +786,7 @@ class EditPresetScreen(MDScreen):
             self.exercise_panel.save_selection()
         self.panel_visible = False
         self.refresh_sections()
+        self.save_enabled = True
 
     def show_only_section(self, index: int):
         """Hide all sections except the one with ``index``."""
@@ -819,6 +822,69 @@ class EditPresetScreen(MDScreen):
         app = MDApp.get_running_app()
         if app.preset_editor:
             app.preset_editor.preset_name = name
+        self.save_enabled = True
+
+    def save_preset(self):
+        app = MDApp.get_running_app()
+        if not app.preset_editor:
+            return
+
+        try:
+            # Validate before confirmation to show immediate error
+            app.preset_editor.save()
+        except ValueError as exc:
+            dialog = MDDialog(title="Error", text=str(exc), buttons=[MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())])
+            dialog.open()
+            return
+
+        dialog = None
+
+        def do_confirm(*args):
+            try:
+                app.preset_editor.save()
+                core.load_workout_presets(app.preset_editor.db_path)
+                app.selected_preset = app.preset_editor.preset_name
+                if dialog:
+                    dialog.dismiss()
+                if self.manager:
+                    self.manager.current = "presets"
+            except Exception as err:
+                err_dialog = MDDialog(title="Error", text=str(err), buttons=[MDRaisedButton(text="OK", on_release=lambda *a: err_dialog.dismiss())])
+                err_dialog.open()
+
+        dialog = MDDialog(
+            title="Confirm Save",
+            text=f"Save changes to {app.preset_editor.preset_name}?",
+            buttons=[
+                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                MDRaisedButton(text="Save", on_release=do_confirm),
+            ],
+        )
+        dialog.open()
+
+    def go_back(self):
+        app = MDApp.get_running_app()
+        if app.preset_editor and app.preset_editor.is_modified():
+            dialog = None
+
+            def discard(*args):
+                if dialog:
+                    dialog.dismiss()
+                if self.manager:
+                    self.manager.current = "presets"
+
+            dialog = MDDialog(
+                title="Discard Changes?",
+                text="You have unsaved changes. Discard them?",
+                buttons=[
+                    MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                    MDRaisedButton(text="Discard", on_release=discard),
+                ],
+            )
+            dialog.open()
+        else:
+            if self.manager:
+                self.manager.current = "presets"
 
 
 
