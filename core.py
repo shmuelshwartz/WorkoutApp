@@ -4,10 +4,10 @@ import time
 import re
 
 # Number of sets each exercise defaults to when starting a workout
-DEFAULT_SETS_PER_EXERCISE = 2
+DEFAULT_SETS_PER_EXERCISE = 3
 
 # Default rest duration between sets in seconds
-DEFAULT_REST_DURATION = 20
+DEFAULT_REST_DURATION = 120
 
 # Will hold preset data loaded from the database. Each item is a dict with
 #   {'name': <preset name>,

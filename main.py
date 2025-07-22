@@ -1674,6 +1674,29 @@ class EditExerciseScreen(MDScreen):
         if not self.exercise_obj:
             return
 
+        # Only update the preset if editing from preset editor
+        app = MDApp.get_running_app()
+        if (
+            app
+            and self.section_index >= 0
+            and self.exercise_index >= 0
+            and app.preset_editor
+        ):
+            update_in_preset = True
+        else:
+            update_in_preset = False
+
+        if not self.exercise_obj.is_modified():
+            if update_in_preset:
+                app.preset_editor.update_exercise(
+                    self.section_index,
+                    self.exercise_index,
+                    sets=self.exercise_sets,
+                    rest=self.exercise_rest,
+                )
+            self.save_enabled = False
+            return
+
         db_path = Path(__file__).resolve().parent / "data" / "workout.db"
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
@@ -1698,20 +1721,15 @@ class EditExerciseScreen(MDScreen):
 
         def do_save(*args):
             core.save_exercise(self.exercise_obj)
-            app = MDApp.get_running_app()
+            if update_in_preset:
+                app.preset_editor.update_exercise(
+                    self.section_index,
+                    self.exercise_index,
+                    sets=self.exercise_sets,
+                    rest=self.exercise_rest,
+                )
             if app:
                 app.exercise_library_version += 1
-                if (
-                    self.section_index >= 0
-                    and self.exercise_index >= 0
-                    and app.preset_editor
-                ):
-                    app.preset_editor.update_exercise(
-                        self.section_index,
-                        self.exercise_index,
-                        sets=self.exercise_sets,
-                        rest=self.exercise_rest,
-                    )
             self.save_enabled = False
             if dialog:
                 dialog.dismiss()
