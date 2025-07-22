@@ -101,44 +101,60 @@ def sample_db(tmp_path: Path) -> Path:
     conn.execute(
         """
         INSERT INTO preset_section_exercises
-            (section_id, exercise_id, position, number_of_sets, exercise_name, exercise_description)
-        VALUES (?, ?, 0, 2, 'Push-up', '')
+            (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id)
+        VALUES (?, 'Push-up', '', 0, 2, ?)
         """,
         (section_id, pushup_id),
     )
     push_se_id = conn.execute(
-        "SELECT id FROM preset_section_exercises WHERE exercise_id=? AND section_id=?",
+        "SELECT id FROM preset_section_exercises WHERE library_exercise_id=? AND section_id=?",
         (pushup_id, section_id),
     ).fetchone()[0]
 
     conn.execute(
         """
         INSERT INTO preset_section_exercises
-            (section_id, exercise_id, position, number_of_sets, exercise_name, exercise_description)
-        VALUES (?, ?, 1, 2, 'Bench Press', '')
+            (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id)
+        VALUES (?, 'Bench Press', '', 1, 2, ?)
         """,
         (section_id, bench_id),
     )
     bench_se_id = conn.execute(
-        "SELECT id FROM preset_section_exercises WHERE exercise_id=? AND section_id=?",
+        "SELECT id FROM preset_section_exercises WHERE library_exercise_id=? AND section_id=?",
         (bench_id, section_id),
     ).fetchone()[0]
 
     # section exercise metrics (override reps timing for bench)
     conn.execute(
-        "INSERT INTO preset_section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, 'post_set', 1, 'set')",
+        """
+        INSERT INTO preset_section_exercise_metrics
+            (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
+        VALUES (?, 'Reps', 'int', 'manual_text', 'post_set', 1, 'set', ?)
+        """,
         (push_se_id, reps_id),
     )
     conn.execute(
-        "INSERT INTO preset_section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, 'pre_set', 1, 'set')",
+        """
+        INSERT INTO preset_section_exercise_metrics
+            (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
+        VALUES (?, 'Reps', 'int', 'manual_text', 'pre_set', 1, 'set', ?)
+        """,
         (bench_se_id, reps_id),
     )
     conn.execute(
-        "INSERT INTO preset_section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, 'pre_set', 0, 'set')",
+        """
+        INSERT INTO preset_section_exercise_metrics
+            (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
+        VALUES (?, 'Weight', 'float', 'manual_text', 'pre_set', 0, 'set', ?)
+        """,
         (bench_se_id, weight_id),
     )
     conn.execute(
-        "INSERT INTO preset_section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, 'pre_workout', 0, 'exercise')",
+        """
+        INSERT INTO preset_section_exercise_metrics
+            (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
+        VALUES (?, 'Machine', 'str', 'manual_enum', 'pre_workout', 0, 'exercise', ?)
+        """,
         (bench_se_id, machine_id),
     )
 

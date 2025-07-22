@@ -25,10 +25,9 @@ def load_workout_presets(db_path: Path = Path(__file__).resolve().parent / "data
     for preset_id, preset_name in cursor.fetchall():
         cursor.execute(
             """
-            SELECT e.name, se.number_of_sets
+            SELECT se.exercise_name, se.number_of_sets
             FROM preset_sections s
             JOIN preset_section_exercises se ON se.section_id = s.id
-            JOIN library_exercises e ON se.exercise_id = e.id
             WHERE s.preset_id = ?
             ORDER BY s.position, se.position
             """,
@@ -202,16 +201,14 @@ def get_metrics_for_exercise(
     if preset_name:
         cursor.execute(
             """
-            SELECT mt.name, sem.input_timing, sem.is_required, sem.scope
+            SELECT sem.metric_name, sem.input_timing, sem.is_required, sem.scope
             FROM preset_section_exercise_metrics sem
             JOIN preset_section_exercises se ON sem.section_exercise_id = se.id
             JOIN preset_sections s ON se.section_id = s.id
             JOIN preset_presets p ON s.preset_id = p.id
-            JOIN library_exercises e ON se.exercise_id = e.id
-            JOIN library_metric_types mt ON sem.metric_type_id = mt.id
-            WHERE p.name = ? AND e.id = ?
+            WHERE p.name = ? AND se.exercise_name = ?
             """,
-            (preset_name, exercise_id),
+            (preset_name, exercise_name),
         )
         overrides = {
             name: {
@@ -519,25 +516,19 @@ def set_section_exercise_metric_override(
         raise IndexError("Section index out of range")
     section_id = sections[section_index][0]
 
-    cursor.execute("SELECT id FROM library_exercises WHERE name = ?", (exercise_name,))
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError(f"Exercise '{exercise_name}' not found")
-    exercise_id = row[0]
-
     cursor.execute(
-        "SELECT id FROM library_metric_types WHERE name = ?", (metric_type_name,)
+        "SELECT id, input_type, source_type FROM library_metric_types WHERE name = ?",
+        (metric_type_name,),
     )
     row = cursor.fetchone()
     if not row:
         conn.close()
         raise ValueError(f"Metric '{metric_type_name}' not found")
-    metric_type_id = row[0]
+    metric_type_id, def_input_type, def_source_type = row
 
     cursor.execute(
-        """SELECT id FROM preset_section_exercises WHERE section_id = ? AND exercise_id = ? ORDER BY position LIMIT 1""",
-        (section_id, exercise_id),
+        """SELECT id FROM preset_section_exercises WHERE section_id = ? AND exercise_name = ? ORDER BY position LIMIT 1""",
+        (section_id, exercise_name),
     )
     row = cursor.fetchone()
     if not row:
@@ -546,8 +537,8 @@ def set_section_exercise_metric_override(
     se_id = row[0]
 
     cursor.execute(
-        "SELECT id FROM preset_section_exercise_metrics WHERE section_exercise_id = ? AND metric_type_id = ?",
-        (se_id, metric_type_id),
+        "SELECT id FROM preset_section_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ?",
+        (se_id, metric_type_name),
     )
     row = cursor.fetchone()
     if row:
@@ -557,8 +548,21 @@ def set_section_exercise_metric_override(
         )
     else:
         cursor.execute(
-            "INSERT INTO preset_section_exercise_metrics (section_exercise_id, metric_type_id, input_timing, is_required, scope) VALUES (?, ?, ?, ?, ?)",
-            (se_id, metric_type_id, input_timing, int(is_required), scope),
+            """
+            INSERT INTO preset_section_exercise_metrics
+                (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                se_id,
+                metric_type_name,
+                def_input_type,
+                def_source_type,
+                input_timing,
+                int(is_required),
+                scope,
+                metric_type_id,
+            ),
         )
     conn.commit()
     conn.close()
@@ -993,7 +997,7 @@ def delete_exercise(
     ex_id = row[0]
 
     cursor.execute(
-        "SELECT 1 FROM preset_section_exercises WHERE exercise_id = ? LIMIT 1",
+        "SELECT 1 FROM preset_section_exercises WHERE library_exercise_id = ? LIMIT 1",
         (ex_id,),
     )
     if cursor.fetchone():
@@ -1047,11 +1051,10 @@ class PresetEditor:
         for section_id, name in cursor.fetchall():
             cursor.execute(
                 """
-                SELECT e.name, se.number_of_sets
-                FROM preset_section_exercises se
-                JOIN library_exercises e ON se.exercise_id = e.id
-                WHERE se.section_id = ?
-                ORDER BY se.position
+                SELECT exercise_name, number_of_sets
+                FROM preset_section_exercises
+                WHERE section_id = ?
+                ORDER BY position
                 """,
                 (section_id,),
             )

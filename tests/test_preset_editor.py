@@ -11,44 +11,15 @@ from core import PresetEditor, DEFAULT_SETS_PER_EXERCISE
 
 @pytest.fixture
 def db_copy(tmp_path):
-    """Return a temporary copy of the sample workout database."""
-    src = Path(__file__).resolve().parent.parent / "data" / "workout.db"
+    """Return a temporary empty database using the bundled schema."""
     dst = tmp_path / "workout.db"
-    shutil.copy(src, dst)
-    # migrate table names to the latest schema
+    schema = Path(__file__).resolve().parents[1] / "data" / "workout.sql"
     conn = sqlite3.connect(dst)
-    cur = conn.cursor()
-    migrations = [
-        "ALTER TABLE exercises RENAME TO library_exercises",
-        "ALTER TABLE exercise_metrics RENAME TO library_exercise_metrics",
-        "ALTER TABLE exercise_enum_values RENAME TO library_exercise_enum_values",
-        "ALTER TABLE metric_types RENAME TO library_metric_types",
-        "ALTER TABLE presets RENAME TO preset_presets",
-        "ALTER TABLE sections RENAME TO preset_sections",
-        "ALTER TABLE section_exercises RENAME TO preset_section_exercises",
-        "ALTER TABLE section_exercise_metrics RENAME TO preset_section_exercise_metrics",
-    ]
-    for stmt in migrations:
-        try:
-            cur.execute(stmt)
-        except sqlite3.OperationalError:
-            pass
-    cur.executescript(
-        """
-        DROP VIEW IF EXISTS view_exercise_metrics;
-        DROP VIEW IF EXISTS library_view_exercise_metrics;
-        CREATE VIEW library_view_exercise_metrics AS
-            SELECT em.id AS exercise_metric_id,
-                   em.exercise_id,
-                   e.name AS exercise_name,
-                   em.metric_type_id,
-                   mt.name AS metric_type_name
-            FROM library_exercise_metrics em
-            JOIN library_exercises e ON em.exercise_id = e.id
-            JOIN library_metric_types mt ON em.metric_type_id = mt.id;
-        DROP INDEX IF EXISTS idx_exercises_name_user_created;
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_library_exercises_name_user_created ON library_exercises (name, is_user_created);
-        """
+    with open(schema, "r", encoding="utf-8") as fh:
+        conn.executescript(fh.read())
+    # minimal exercise for tests
+    conn.execute(
+        "INSERT INTO library_exercises (name, description, is_user_created) VALUES ('Push ups', '', 0)"
     )
     conn.commit()
     conn.close()
@@ -71,8 +42,11 @@ def db_with_preset(db_copy):
     cur.execute("SELECT id FROM library_exercises WHERE name = 'Push ups'")
     ex_id = cur.fetchone()[0]
     cur.execute(
-        "INSERT INTO preset_section_exercises (section_id, exercise_id, position, number_of_sets)"
-        " VALUES (?, ?, 0, 3)",
+        """
+        INSERT INTO preset_section_exercises
+            (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id)
+        VALUES (?, 'Push ups', '', 0, 3, ?)
+        """,
         (section_id, ex_id),
     )
     conn.commit()
