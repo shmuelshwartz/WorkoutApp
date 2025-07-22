@@ -129,3 +129,41 @@ def test_close_closes_connection(db_copy):
         editor.conn.execute("SELECT 1")
 
 
+def test_save_new_preset(db_copy):
+    editor = PresetEditor(db_path=db_copy)
+    editor.preset_name = "My Preset"
+    editor.add_section("Warmup")
+    editor.add_exercise(0, "Push ups", sets=4)
+    editor.save()
+    conn = sqlite3.connect(db_copy)
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM preset_presets")
+    assert cur.fetchone()[0] == "My Preset"
+    cur.execute("SELECT name FROM preset_sections")
+    assert cur.fetchone()[0] == "Warmup"
+    cur.execute("SELECT exercise_name, number_of_sets FROM preset_section_exercises")
+    assert cur.fetchone() == ("Push ups", 4)
+    conn.close()
+    editor.close()
+
+
+def test_save_existing_preset(db_with_preset):
+    editor = PresetEditor("Test Preset", db_path=db_with_preset)
+    editor.sections[0]["exercises"][0]["sets"] = 5
+    editor.save()
+    conn = sqlite3.connect(db_with_preset)
+    cur = conn.cursor()
+    cur.execute("SELECT number_of_sets FROM preset_section_exercises")
+    assert cur.fetchone()[0] == 5
+    conn.close()
+    editor.close()
+
+
+def test_save_duplicate_name(db_with_preset):
+    editor = PresetEditor(db_path=db_with_preset)
+    editor.preset_name = "Test Preset"
+    with pytest.raises(ValueError):
+        editor.save()
+    editor.close()
+
+

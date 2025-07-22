@@ -1026,9 +1026,13 @@ class PresetEditor:
 
         self.preset_name: str = preset_name or ""
         self.sections: list[dict] = []
+        self._preset_id: int | None = None
+        self._original: dict | None = None
 
         if preset_name:
             self.load(preset_name)
+        else:
+            self._original = self.to_dict()
 
     def load(self, preset_name: str) -> None:
         """Load ``preset_name`` from the database into memory."""
@@ -1062,6 +1066,9 @@ class PresetEditor:
                 {"name": ex_name, "sets": sets} for ex_name, sets in cursor.fetchall()
             ]
             self.sections.append({"name": name, "exercises": exercises})
+
+        self._preset_id = preset_id
+        self._original = self.to_dict()
 
     def add_section(self, name: str = "Section") -> int:
         """Add a new section and return its index."""
@@ -1102,3 +1109,141 @@ class PresetEditor:
 
     def close(self) -> None:
         self.conn.close()
+
+    # ------------------------------------------------------------------
+    # Modification tracking helpers
+    # ------------------------------------------------------------------
+    def is_modified(self) -> bool:
+        """Return ``True`` if the preset differs from the original state."""
+
+        return self._original != self.to_dict()
+
+    def mark_saved(self) -> None:
+        """Record the current state as the saved state."""
+
+        self._preset_id = self._preset_id  # keep mypy happy
+        self._original = self.to_dict()
+
+    # ------------------------------------------------------------------
+    # Persistence
+    # ------------------------------------------------------------------
+    def save(self) -> None:
+        """Write the current preset to the database."""
+
+        if not self.preset_name.strip():
+            raise ValueError("Preset name cannot be empty")
+
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT id FROM preset_presets WHERE name = ?", (self.preset_name,))
+        row = cursor.fetchone()
+        if row and (self._preset_id is None or row[0] != self._preset_id):
+            raise ValueError("A preset with that name already exists")
+
+        if row:
+            preset_id = row[0]
+            self._preset_id = preset_id
+            cursor.execute("SELECT id FROM preset_sections WHERE preset_id = ?", (preset_id,))
+            sec_ids = [r[0] for r in cursor.fetchall()]
+            for sid in sec_ids:
+                cursor.execute(
+                    "SELECT id FROM preset_section_exercises WHERE section_id = ?",
+                    (sid,),
+                )
+                ex_ids = [r[0] for r in cursor.fetchall()]
+                for eid in ex_ids:
+                    cursor.execute(
+                        "DELETE FROM preset_section_exercise_metric_enum_values WHERE section_exercise_metric_id IN (SELECT id FROM preset_section_exercise_metrics WHERE section_exercise_id = ?)",
+                        (eid,),
+                    )
+                    cursor.execute(
+                        "DELETE FROM preset_section_exercise_metrics WHERE section_exercise_id = ?",
+                        (eid,),
+                    )
+                cursor.execute(
+                    "DELETE FROM preset_section_exercises WHERE section_id = ?",
+                    (sid,),
+                )
+            cursor.execute("DELETE FROM preset_sections WHERE preset_id = ?", (preset_id,))
+            cursor.execute(
+                "UPDATE preset_presets SET name = ? WHERE id = ?",
+                (self.preset_name, preset_id),
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO preset_presets (name) VALUES (?)",
+                (self.preset_name,),
+            )
+            preset_id = cursor.lastrowid
+            self._preset_id = preset_id
+
+        for sec_pos, sec in enumerate(self.sections):
+            cursor.execute(
+                "INSERT INTO preset_sections (preset_id, name, position) VALUES (?, ?, ?)",
+                (preset_id, sec.get("name", f"Section {sec_pos + 1}"), sec_pos),
+            )
+            section_id = cursor.lastrowid
+            for ex_pos, ex in enumerate(sec.get("exercises", [])):
+                details = get_exercise_details(ex["name"], self.db_path)
+                desc = details.get("description", "") if details else ""
+                cursor.execute(
+                    "SELECT id FROM library_exercises WHERE name = ? ORDER BY is_user_created DESC LIMIT 1",
+                    (ex["name"],),
+                )
+                lr = cursor.fetchone()
+                lib_id = lr[0] if lr else None
+                cursor.execute(
+                    """INSERT INTO preset_section_exercises
+                        (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id)
+                        VALUES (?, ?, ?, ?, ?, ?)""",
+                    (
+                        section_id,
+                        ex["name"],
+                        desc,
+                        ex_pos,
+                        ex.get("sets", DEFAULT_SETS_PER_EXERCISE),
+                        lib_id,
+                    ),
+                )
+                se_id = cursor.lastrowid
+
+                if lib_id is not None:
+                    cursor.execute(
+                        "SELECT metric_type_id, position FROM library_exercise_metrics WHERE exercise_id = ? ORDER BY position",
+                        (lib_id,),
+                    )
+                    for mt_id, mpos in cursor.fetchall():
+                        cursor.execute(
+                            "SELECT name, input_type, source_type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
+                            (mt_id,),
+                        )
+                        (mt_name, m_input, m_source, m_timing, m_req, m_scope) = cursor.fetchone()
+                        cursor.execute(
+                            """INSERT INTO preset_section_exercise_metrics
+                                (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, position, library_metric_type_id)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            (
+                                se_id,
+                                mt_name,
+                                m_input,
+                                m_source,
+                                m_timing,
+                                m_req,
+                                m_scope,
+                                mpos,
+                                mt_id,
+                            ),
+                        )
+                        sem_id = cursor.lastrowid
+                        if m_source == "manual_enum":
+                            cursor.execute(
+                                "SELECT value, position FROM library_exercise_enum_values WHERE metric_type_id = ? AND exercise_id = ? ORDER BY position",
+                                (mt_id, lib_id),
+                            )
+                            for val, vpos in cursor.fetchall():
+                                cursor.execute(
+                                    "INSERT INTO preset_section_exercise_metric_enum_values (section_exercise_metric_id, value, position) VALUES (?, ?, ?)",
+                                    (sem_id, val, vpos),
+                                )
+
+        self.conn.commit()
+        self.mark_saved()

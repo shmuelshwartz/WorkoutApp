@@ -535,9 +535,16 @@ ScreenManager:
                                     size_hint_y: None
                                     height: "48dp"  # Give it space to render properly
 
-                        MDRaisedButton:
-                            text: "Back to Presets"
-                            on_release: app.root.current = "presets"
+            MDBoxLayout:
+                size_hint_y: None
+                height: "40dp"
+                spacing: "10dp"
+                MDRaisedButton:
+                    text: "Save"
+                    on_release: root.save_preset()
+                MDRaisedButton:
+                    text: "Back"
+                    on_release: root.go_back()
 
         ExerciseSelectionPanel:
             id: exercise_panel
