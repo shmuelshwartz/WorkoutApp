@@ -162,3 +162,22 @@ def test_edit_metric_duplicate_name(monkeypatch):
 
     assert not DummyScreen.exercise_obj.updated
     assert popup.input_widgets["name"].error
+
+def test_preset_select_button_color(monkeypatch):
+    """Selecting a preset updates the select button color."""
+    from kivy.lang import Builder
+    from pathlib import Path
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    monkeypatch.setattr(
+        core,
+        "WORKOUT_PRESETS",
+        [{"name": "Sample", "exercises": []}],
+    )
+
+    screen = PresetsScreen()
+    dummy = type("Obj", (), {"md_bg_color": (0, 0, 0, 0)})()
+    screen.select_preset("Sample", dummy)
+
+    assert screen.ids.select_btn.md_bg_color == screen._selected_color
+

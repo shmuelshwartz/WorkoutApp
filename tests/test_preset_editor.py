@@ -171,3 +171,14 @@ def test_save_duplicate_name(db_with_preset):
     editor.close()
 
 
+def test_save_missing_exercise_fails(db_copy):
+    editor = PresetEditor(db_path=db_copy)
+    editor.preset_name = "My Preset"
+    editor.add_section("Warmup")
+    editor.add_exercise(0, "Push ups")
+    editor.sections[0]["exercises"][0]["name"] = "DoesNotExist"
+    with pytest.raises(ValueError):
+        editor.save()
+    editor.close()
+
+
