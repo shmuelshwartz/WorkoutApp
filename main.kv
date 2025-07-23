@@ -81,7 +81,8 @@ ScreenManager:
             text: "Selected: " + root.selected_preset if root.selected_preset else "Select a preset"
             halign: "center"
         MDRaisedButton:
-            text: "Select Preset"
+            id: select_btn
+            text: root.selected_preset if root.selected_preset else "Select Preset"
             disabled: not root.selected_preset
             on_release: root.confirm_selection()
         MDRaisedButton:

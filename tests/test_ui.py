@@ -25,6 +25,7 @@ if kivy_available:
         AddMetricPopup,
         EditExerciseScreen,
         ExerciseSelectionPanel,
+        PresetsScreen,
     )
     import time
 
@@ -117,3 +118,23 @@ def test_exercise_selection_panel_filters(monkeypatch):
     panel.apply_filter("user")
     assert len(panel.exercise_list.children) == 1
     assert panel.exercise_list.children[0].text == "Custom"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_preset_select_button_updates(monkeypatch):
+    """Selecting a preset updates the select button text."""
+    from kivy.lang import Builder
+    from pathlib import Path
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    monkeypatch.setattr(
+        core,
+        "WORKOUT_PRESETS",
+        [{"name": "Sample", "exercises": []}],
+    )
+
+    screen = PresetsScreen()
+    dummy = type("Obj", (), {"md_bg_color": (0, 0, 0, 0)})()
+    screen.select_preset("Sample", dummy)
+
+    assert screen.ids.select_btn.text == "Sample"
