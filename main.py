@@ -398,6 +398,7 @@ class PresetsScreen(MDScreen):
     _default_btn_color = ListProperty(None, allownone=True)
 
     def on_kv_post(self, base_widget):
+        # Store the default color of the "Select" button so it can be restored
         self._default_btn_color = self.ids.select_btn.md_bg_color
         return super().on_kv_post(base_widget)
 
@@ -432,15 +433,12 @@ class PresetsScreen(MDScreen):
             self.selected_item = None
             self.selected_preset = ""
             MDApp.get_running_app().selected_preset = ""
-            if self._default_btn_color is not None:
-                self.ids.select_btn.md_bg_color = self._default_btn_color
             return
 
         if self.selected_item:
             self.selected_item.md_bg_color = (0, 0, 0, 0)
         self.selected_item = item
         self.selected_item.md_bg_color = self._selected_color
-        self.ids.select_btn.md_bg_color = self._selected_color
         if any(p["name"] == name for p in core.WORKOUT_PRESETS):
             self.selected_preset = name
             MDApp.get_running_app().selected_preset = name

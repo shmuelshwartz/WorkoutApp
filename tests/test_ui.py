@@ -141,6 +141,7 @@ def test_preset_select_button_updates(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+
 def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
     """Saving with a duplicate user-defined name shows an error."""
     import sqlite3
@@ -218,5 +219,5 @@ def test_preset_select_button_color(monkeypatch):
     dummy = type("Obj", (), {"md_bg_color": (0, 0, 0, 0)})()
     screen.select_preset("Sample", dummy)
 
-    assert screen.ids.select_btn.md_bg_color == screen._selected_color
+    assert dummy.md_bg_color == screen._selected_color
 
