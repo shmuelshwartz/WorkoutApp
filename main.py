@@ -588,6 +588,7 @@ class ExerciseLibraryScreen(MDScreen):
                 "text": m["name"],
                 "is_user_created": m["is_user_created"],
                 "edit_callback": self.open_edit_metric_popup,
+                "delete_callback": self.confirm_delete_metric,
             })
         self.metric_list.data = data
         if self.loading_dialog:
@@ -683,6 +684,33 @@ class ExerciseLibraryScreen(MDScreen):
         dialog = MDDialog(
             title="Delete Exercise?",
             text=f"Delete {exercise_name}?",
+            buttons=[
+                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                MDRaisedButton(text="Delete", on_release=do_delete),
+            ],
+        )
+        dialog.open()
+
+    def confirm_delete_metric(self, metric_name):
+        dialog = None
+
+        def do_delete(*args):
+            db_path = DEFAULT_DB_PATH
+            try:
+                core.delete_metric_type(metric_name, db_path=db_path, is_user_created=True)
+                app = MDApp.get_running_app()
+                if app:
+                    app.metric_library_version += 1
+            except Exception:
+                pass
+            self.all_metrics = None
+            self.populate()
+            if dialog:
+                dialog.dismiss()
+
+        dialog = MDDialog(
+            title="Delete Metric?",
+            text=f"Delete {metric_name}?",
             buttons=[
                 MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
                 MDRaisedButton(text="Delete", on_release=do_delete),
