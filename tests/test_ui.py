@@ -181,6 +181,7 @@ def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
     assert opened["value"]
     assert screen.name_field.error
 
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_edit_metric_duplicate_name(monkeypatch):
     class DummyExercise:
         def __init__(self):
@@ -203,6 +204,7 @@ def test_edit_metric_duplicate_name(monkeypatch):
     assert not DummyScreen.exercise_obj.updated
     assert popup.input_widgets["name"].error
 
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_preset_select_button_color(monkeypatch):
     """Selecting a preset updates the select button color."""
     from kivy.lang import Builder

@@ -196,9 +196,13 @@ def test_save_preserves_metric_overrides(db_copy):
     # apply override for this metric
     cur.execute(
         """
-        INSERT INTO library_exercise_metric_overrides
-            (exercise_metric_id, input_type, source_type, input_timing, is_required, scope)
-        VALUES (?, 'int', 'manual_text', 'pre_workout', 1, 'set')
+        UPDATE library_exercise_metrics
+           SET input_type = 'int',
+               source_type = 'manual_text',
+               input_timing = 'pre_workout',
+               is_required = 1,
+               scope = 'set'
+         WHERE id = ?
         """,
         (em_id,),
     )
