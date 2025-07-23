@@ -601,6 +601,7 @@ ScreenManager:
 
 <ExerciseSelectionPanel@MDBoxLayout>:
     exercise_list: exercise_list
+    search_field: search_field
     orientation: "vertical"
     md_bg_color: 1, 1, 1, 1
     MDBoxLayout:
@@ -610,10 +611,20 @@ ScreenManager:
             text: "Select Exercises"
             halign: "center"
         MDIconButton:
+            icon: "filter-variant"
+            on_release: root.open_filter_popup()
+        MDIconButton:
             icon: "close"
             theme_text_color: "Custom"
             text_color: 1, 0, 0, 1
             on_release: app.root.get_screen("edit_preset").close_exercise_panel()
+    MDTextField:
+        id: search_field
+        hint_text: "Search exercises"
+        text: root.search_text
+        on_text: root.update_search(self.text)
+        size_hint_y: None
+        height: "40dp"
     ScrollView:
         MDList:
             id: exercise_list

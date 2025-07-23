@@ -16,6 +16,7 @@ if kivy_available:
 
     from kivy.app import App
     from kivy.properties import ObjectProperty
+    import core
 
     from main import (
         RestScreen,
@@ -23,6 +24,7 @@ if kivy_available:
         WorkoutActiveScreen,
         AddMetricPopup,
         EditExerciseScreen,
+        ExerciseSelectionPanel,
     )
     import time
 
@@ -96,3 +98,22 @@ def test_edit_exercise_preset_tab():
     screen.previous_screen = "edit_preset"
     screen.on_pre_enter()
     assert screen.current_tab == "config"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_exercise_selection_panel_filters(monkeypatch):
+    panel = ExerciseSelectionPanel()
+    panel.exercise_list = type("L", (), {"children": [], "clear_widgets": lambda self: self.children.clear(), "add_widget": lambda self, w: self.children.append(w)})()
+
+    monkeypatch.setattr(
+        core,
+        "get_all_exercises",
+        lambda *a, **k: [("Push Ups", False), ("Custom", True)],
+    )
+
+    panel.populate_exercises()
+    assert len(panel.exercise_list.children) == 2
+
+    panel.apply_filter("user")
+    assert len(panel.exercise_list.children) == 1
+    assert panel.exercise_list.children[0].text == "Custom"
