@@ -33,6 +33,7 @@ from kivy.uix.screenmanager import NoTransition
 from pathlib import Path
 import os
 import sys
+import re
 
 # Import core so we can always reference the up-to-date WORKOUT_PRESETS list
 import core
@@ -1345,7 +1346,8 @@ class AddMetricPopup(MDDialog):
                 allowed = string.ascii_letters + " ,"
 
             def _filter(value, from_undo):
-                return "".join(ch for ch in value if ch in allowed)
+                filtered = "".join(ch for ch in value if ch in allowed)
+                return re.sub(r",\s+", ",", filtered)
 
             self.enum_values_field.input_filter = _filter
         if "source_type" in self.input_widgets and "input_type" in self.input_widgets:
@@ -1466,6 +1468,10 @@ class AddMetricPopup(MDDialog):
         except sqlite3.IntegrityError:
             self.input_widgets["name"].error = True
             return
+
+        app = MDApp.get_running_app()
+        if app:
+            app.metric_library_version += 1
 
         self.screen.exercise_obj.add_metric(metric)
         self.screen.populate()
@@ -1613,7 +1619,8 @@ class EditMetricPopup(MDDialog):
                 allowed = string.ascii_letters + " ,"
 
             def _filter(value, from_undo):
-                return "".join(ch for ch in value if ch in allowed)
+                filtered = "".join(ch for ch in value if ch in allowed)
+                return re.sub(r",\s+", ",", filtered)
 
             self.enum_values_field.input_filter = _filter
 
