@@ -218,7 +218,8 @@ ScreenManager:
                 on_kv_post: self.current = root.current_tab
                 Screen:
                     name: "exercises"
-                    FloatLayout:
+                    BoxLayout:
+                        orientation: "vertical"
                         BoxLayout:
                             orientation: "vertical"
                             MDTextField:
@@ -250,18 +251,23 @@ ScreenManager:
                                     size_hint_y: None
                                     height: self.minimum_height
                                     orientation: "vertical"
-                        MDRaisedButton:
-                            text: "Back"
-                            pos_hint: {"x": 0.02, "y": 0.02}
-                            on_release: root.go_back()
-                        MDFloatingActionButton:
-                            icon: "plus"
-                            md_bg_color: app.theme_cls.primary_color
-                            pos_hint: {"right": 0.98, "y": 0.02}
-                            on_release: root.new_exercise()
+                        MDBoxLayout:
+                            size_hint_y: None
+                            height: "56dp"
+                            padding: "10dp"
+                            spacing: "10dp"
+                            MDRaisedButton:
+                                text: "Back"
+                                on_release: root.go_back()
+                            Widget:
+                            MDFloatingActionButton:
+                                icon: "plus"
+                                md_bg_color: app.theme_cls.primary_color
+                                on_release: root.new_exercise()
                 Screen:
                     name: "metrics"
-                    FloatLayout:
+                    BoxLayout:
+                        orientation: "vertical"
                         BoxLayout:
                             orientation: "vertical"
                             MDTextField:
@@ -293,15 +299,19 @@ ScreenManager:
                                     size_hint_y: None
                                     height: self.minimum_height
                                     orientation: "vertical"
-                        MDRaisedButton:
-                            text: "Back"
-                            pos_hint: {"x": 0.02, "y": 0.02}
-                            on_release: root.go_back()
-                        MDFloatingActionButton:
-                            icon: "plus"
-                            md_bg_color: app.theme_cls.primary_color
-                            pos_hint: {"right": 0.98, "y": 0.02}
-                            on_release: root.new_metric()
+                        MDBoxLayout:
+                            size_hint_y: None
+                            height: "56dp"
+                            padding: "10dp"
+                            spacing: "10dp"
+                            MDRaisedButton:
+                                text: "Back"
+                                on_release: root.go_back()
+                            Widget:
+                            MDFloatingActionButton:
+                                icon: "plus"
+                                md_bg_color: app.theme_cls.primary_color
+                                on_release: root.new_metric()
 
 <ProgressScreen@MDScreen>:
     BoxLayout:
