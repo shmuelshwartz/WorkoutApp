@@ -1467,6 +1467,10 @@ class AddMetricPopup(MDDialog):
             self.input_widgets["name"].error = True
             return
 
+        app = MDApp.get_running_app()
+        if app:
+            app.metric_library_version += 1
+
         self.screen.exercise_obj.add_metric(metric)
         self.screen.populate()
         self.screen.save_enabled = self.screen.exercise_obj.is_modified()
