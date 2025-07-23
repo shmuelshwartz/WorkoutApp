@@ -572,6 +572,7 @@ def set_exercise_metric_override(
     exercise_name: str,
     metric_type_name: str,
     *,
+    is_user_created: bool | None = None,
     input_type: str | None = None,
     source_type: str | None = None,
     input_timing: str | None = None,
@@ -579,12 +580,26 @@ def set_exercise_metric_override(
     scope: str | None = None,
     db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
 ) -> None:
-    """Apply an override for ``metric_type_name`` for a specific exercise."""
+    """Apply an override for ``metric_type_name`` for a specific exercise.
+
+    ``is_user_created`` selects between predefined and user-created copies of
+    the exercise.  If ``None`` (the default), the user-created variant will be
+    chosen when it exists.
+    """
 
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id FROM library_exercises WHERE name = ?", (exercise_name,))
+    if is_user_created is None:
+        cursor.execute(
+            "SELECT id FROM library_exercises WHERE name = ? ORDER BY is_user_created DESC LIMIT 1",
+            (exercise_name,),
+        )
+    else:
+        cursor.execute(
+            "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ?",
+            (exercise_name, int(is_user_created)),
+        )
     row = cursor.fetchone()
     if not row:
         conn.close()
