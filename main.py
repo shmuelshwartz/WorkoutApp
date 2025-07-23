@@ -1821,7 +1821,12 @@ class EditMetricTypePopup(MDDialog):
             MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss()),
         ]
         if info_box:
-            wrapper = MDBoxLayout(orientation="vertical", spacing="8dp")
+            wrapper = MDBoxLayout(
+                orientation="vertical",
+                spacing="8dp",
+                size_hint_y=None,
+            )
+            wrapper.bind(minimum_height=wrapper.setter("height"))
             wrapper.add_widget(info_box)
             wrapper.add_widget(layout)
             return wrapper, buttons, "Edit Metric"
