@@ -1063,6 +1063,55 @@ def delete_exercise(
     return True
 
 
+def delete_metric_type(
+    name: str,
+    db_path: Path = DEFAULT_DB_PATH,
+    *,
+    is_user_created: bool = True,
+) -> bool:
+    """Delete ``name`` from the metric types table.
+
+    Only the variant matching ``is_user_created`` will be removed. The
+    function returns ``True`` when a row was deleted.  A ``ValueError`` is
+    raised if the metric type is still referenced by any exercise or preset.
+    """
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id FROM library_metric_types WHERE name = ? AND is_user_created = ?",
+        (name, int(is_user_created)),
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return False
+
+    mt_id = row[0]
+
+    # Check if this metric type is referenced by any exercises or presets
+    cursor.execute(
+        "SELECT 1 FROM library_exercise_metrics WHERE metric_type_id = ? LIMIT 1",
+        (mt_id,),
+    )
+    if cursor.fetchone():
+        conn.close()
+        raise ValueError("Metric type is in use and cannot be deleted")
+
+    cursor.execute(
+        "SELECT 1 FROM preset_metadata WHERE metric_type_id = ? LIMIT 1",
+        (mt_id,),
+    )
+    if cursor.fetchone():
+        conn.close()
+        raise ValueError("Metric type is in use and cannot be deleted")
+
+    cursor.execute("DELETE FROM library_metric_types WHERE id = ?", (mt_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+
 
 class PresetEditor:
     """Helper for creating or editing workout presets in memory."""
