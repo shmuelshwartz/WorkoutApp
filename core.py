@@ -148,16 +148,14 @@ def get_metrics_for_exercise(
         """
         SELECT mt.id,
                mt.name,
-               COALESCE(o.input_type, mt.input_type),
-               COALESCE(o.source_type, mt.source_type),
-               COALESCE(o.input_timing, mt.input_timing),
-               COALESCE(o.is_required, mt.is_required),
-               COALESCE(o.scope, mt.scope),
+               COALESCE(em.input_type, mt.input_type),
+               COALESCE(em.source_type, mt.source_type),
+               COALESCE(em.input_timing, mt.input_timing),
+               COALESCE(em.is_required, mt.is_required),
+               COALESCE(em.scope, mt.scope),
                mt.description
         FROM library_exercise_metrics em
         JOIN library_metric_types mt ON mt.id = em.metric_type_id
-        LEFT JOIN library_exercise_metric_overrides o
-               ON o.exercise_metric_id = em.id
         WHERE em.exercise_id = ?
         ORDER BY em.id
         """,
@@ -664,57 +662,42 @@ def set_exercise_metric_override(
         raise ValueError("Exercise is not associated with the metric")
     em_id = row[0]
 
-    cursor.execute(
-        "SELECT 1 FROM library_exercise_metric_overrides WHERE exercise_metric_id = ?",
-        (em_id,),
-    )
-    exists = cursor.fetchone() is not None
+    updates = []
+    params: list = []
+    if input_type is not None:
+        updates.append("input_type = ?")
+        params.append(input_type)
+    if source_type is not None:
+        updates.append("source_type = ?")
+        params.append(source_type)
+    if input_timing is not None:
+        updates.append("input_timing = ?")
+        params.append(input_timing)
+    if is_required is not None:
+        updates.append("is_required = ?")
+        params.append(int(is_required))
+    if scope is not None:
+        updates.append("scope = ?")
+        params.append(scope)
 
-    if not any(arg is not None for arg in [input_type, source_type, input_timing, is_required, scope]):
-        if exists:
-            cursor.execute(
-                "DELETE FROM library_exercise_metric_overrides WHERE exercise_metric_id = ?",
-                (em_id,),
-            )
-            conn.commit()
-        conn.close()
-        return
-
-    if exists:
-        updates = []
-        params: list = []
-        if input_type is not None:
-            updates.append("input_type = ?")
-            params.append(input_type)
-        if source_type is not None:
-            updates.append("source_type = ?")
-            params.append(source_type)
-        if input_timing is not None:
-            updates.append("input_timing = ?")
-            params.append(input_timing)
-        if is_required is not None:
-            updates.append("is_required = ?")
-            params.append(int(is_required))
-        if scope is not None:
-            updates.append("scope = ?")
-            params.append(scope)
-        if updates:
-            params.append(em_id)
-            cursor.execute(
-                f"UPDATE library_exercise_metric_overrides SET {', '.join(updates)} WHERE exercise_metric_id = ?",
-                params,
-            )
-    else:
+    if not updates:
         cursor.execute(
-            "INSERT INTO library_exercise_metric_overrides (exercise_metric_id, input_type, source_type, input_timing, is_required, scope) VALUES (?, ?, ?, ?, ?, ?)",
-            (
-                em_id,
-                input_type,
-                source_type,
-                input_timing,
-                int(is_required) if is_required is not None else None,
-                scope,
-            ),
+            """
+            UPDATE library_exercise_metrics
+               SET input_type = NULL,
+                   source_type = NULL,
+                   input_timing = NULL,
+                   is_required = NULL,
+                   scope = NULL
+             WHERE id = ?
+            """,
+            (em_id,),
+        )
+    else:
+        params.append(em_id)
+        cursor.execute(
+            f"UPDATE library_exercise_metrics SET {', '.join(updates)} WHERE id = ?",
+            params,
         )
     conn.commit()
     conn.close()
@@ -992,36 +975,40 @@ def save_exercise(exercise: Exercise) -> None:
             continue
         metric_id, source_type = mt_row
         cursor.execute(
-            "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, ?)",
-            (ex_id, metric_id, position),
-        )
-        em_id = cursor.lastrowid
-
-        cursor.execute(
             "SELECT input_type, source_type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
             (metric_id,),
         )
         default_row = cursor.fetchone()
+        in_type = source = timing = req = scope_val = None
         if default_row:
             def_in_type, def_source, def_timing, def_req, def_scope = default_row
-            if (
-                m.get("input_type") != def_in_type
-                or m.get("source_type") != def_source
-                or m.get("input_timing") != def_timing
-                or bool(m.get("is_required")) != bool(def_req)
-                or m.get("scope") != def_scope
-            ):
-                cursor.execute(
-                    "INSERT INTO library_exercise_metric_overrides (exercise_metric_id, input_type, source_type, input_timing, is_required, scope) VALUES (?, ?, ?, ?, ?, ?)",
-                    (
-                        em_id,
-                        m.get("input_type"),
-                        m.get("source_type"),
-                        m.get("input_timing"),
-                        int(m.get("is_required", False)),
-                        m.get("scope"),
-                    ),
-                )
+            if m.get("input_type") != def_in_type:
+                in_type = m.get("input_type")
+            if m.get("source_type") != def_source:
+                source = m.get("source_type")
+            if m.get("input_timing") != def_timing:
+                timing = m.get("input_timing")
+            if bool(m.get("is_required")) != bool(def_req):
+                req = int(m.get("is_required", False))
+            if m.get("scope") != def_scope:
+                scope_val = m.get("scope")
+
+        cursor.execute(
+            """INSERT INTO library_exercise_metrics
+                (exercise_id, metric_type_id, position, input_type, source_type, input_timing, is_required, scope)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                ex_id,
+                metric_id,
+                position,
+                in_type,
+                source,
+                timing,
+                req,
+                scope_val,
+            ),
+        )
+        em_id = cursor.lastrowid
 
         if source_type == "manual_enum" and m.get("values"):
             for idx, val in enumerate(m.get("values", [])):
@@ -1303,38 +1290,32 @@ class PresetEditor:
 
                 if lib_id is not None:
                     cursor.execute(
-                        "SELECT id, metric_type_id, position FROM library_exercise_metrics WHERE exercise_id = ? ORDER BY position",
+                        """
+                        SELECT mt.name,
+                               COALESCE(em.input_type, mt.input_type),
+                               COALESCE(em.source_type, mt.source_type),
+                               COALESCE(em.input_timing, mt.input_timing),
+                               COALESCE(em.is_required, mt.is_required),
+                               COALESCE(em.scope, mt.scope),
+                               em.position,
+                               mt.id
+                          FROM library_exercise_metrics em
+                          JOIN library_metric_types mt ON em.metric_type_id = mt.id
+                         WHERE em.exercise_id = ?
+                         ORDER BY em.position
+                        """,
                         (lib_id,),
                     )
-                    for em_id, mt_id, mpos in cursor.fetchall():
-                        cursor.execute(
-                            "SELECT name, input_type, source_type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
-                            (mt_id,),
-                        )
-                        (mt_name, m_input, m_source, m_timing, m_req, m_scope) = cursor.fetchone()
-                        cursor.execute(
-                            "SELECT input_type, source_type, input_timing, is_required, scope FROM library_exercise_metric_overrides WHERE exercise_metric_id = ?",
-                            (em_id,),
-                        )
-                        override = cursor.fetchone()
-                        if override:
-                            (
-                                o_input,
-                                o_source,
-                                o_timing,
-                                o_req,
-                                o_scope,
-                            ) = override
-                            if o_input is not None:
-                                m_input = o_input
-                            if o_source is not None:
-                                m_source = o_source
-                            if o_timing is not None:
-                                m_timing = o_timing
-                            if o_req is not None:
-                                m_req = o_req
-                            if o_scope is not None:
-                                m_scope = o_scope
+                    for (
+                        mt_name,
+                        m_input,
+                        m_source,
+                        m_timing,
+                        m_req,
+                        m_scope,
+                        mpos,
+                        mt_id,
+                    ) in cursor.fetchall():
                         cursor.execute(
                             """INSERT INTO preset_section_exercise_metrics
                                 (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, position, library_metric_type_id)
