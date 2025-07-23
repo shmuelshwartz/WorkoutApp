@@ -43,10 +43,11 @@ from core import (
     PresetEditor,
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,
+    DEFAULT_DB_PATH,
 )
 
 # Load workout presets from the database at startup
-load_workout_presets(Path(__file__).resolve().parent / "data" / "workout.db")
+load_workout_presets(DEFAULT_DB_PATH)
 import time
 import math
 
@@ -485,7 +486,7 @@ class ExerciseLibraryScreen(MDScreen):
             self.all_exercises is None
             or (app and self.cache_version != getattr(app, "exercise_library_version", 0))
         ):
-            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            db_path = DEFAULT_DB_PATH
             self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
             if app:
                 self.cache_version = app.exercise_library_version
@@ -494,7 +495,7 @@ class ExerciseLibraryScreen(MDScreen):
             self.all_metrics is None
             or (app and self.metric_cache_version != getattr(app, "metric_library_version", 0))
         ):
-            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            db_path = DEFAULT_DB_PATH
             self.all_metrics = core.get_all_metric_types(db_path, include_user_created=True)
             if app:
                 self.metric_cache_version = app.metric_library_version
@@ -529,7 +530,7 @@ class ExerciseLibraryScreen(MDScreen):
             self.all_exercises is None
             or (app and self.cache_version != getattr(app, "exercise_library_version", 0))
         ):
-            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            db_path = DEFAULT_DB_PATH
             self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
             if app:
                 self.cache_version = app.exercise_library_version
@@ -569,7 +570,7 @@ class ExerciseLibraryScreen(MDScreen):
             self.all_metrics is None
             or (app and self.metric_cache_version != getattr(app, "metric_library_version", 0))
         ):
-            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            db_path = DEFAULT_DB_PATH
             self.all_metrics = core.get_all_metric_types(db_path, include_user_created=True)
             if app:
                 self.metric_cache_version = app.metric_library_version
@@ -668,7 +669,7 @@ class ExerciseLibraryScreen(MDScreen):
         dialog = None
 
         def do_delete(*args):
-            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            db_path = DEFAULT_DB_PATH
             try:
                 core.delete_exercise(exercise_name, db_path=db_path, is_user_created=True)
                 app = MDApp.get_running_app()
@@ -1083,7 +1084,7 @@ class ExerciseSelectionPanel(MDBoxLayout):
             self.all_exercises is None
             or (app and self.cache_version != getattr(app, "exercise_library_version", 0))
         ):
-            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            db_path = DEFAULT_DB_PATH
             self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
             if app:
                 self.cache_version = app.exercise_library_version
@@ -1424,7 +1425,7 @@ class AddMetricPopup(MDDialog):
         if values:
             metric["values"] = values
 
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        db_path = DEFAULT_DB_PATH
         try:
             core.add_metric_type(
                 metric["name"],
@@ -1650,7 +1651,7 @@ class EditMetricPopup(MDDialog):
             self.screen.populate()
             self.screen.save_enabled = self.screen.exercise_obj.is_modified()
 
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        db_path = DEFAULT_DB_PATH
         if core.is_metric_type_user_created(self.metric["name"], db_path=db_path):
             dialog = None
 
@@ -1828,7 +1829,7 @@ class EditMetricTypePopup(MDDialog):
             else:
                 data[key] = widget.text
 
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        db_path = DEFAULT_DB_PATH
         if self.metric and self.is_user_created:
             core.update_metric_type(
                 self.metric_name,
@@ -1905,7 +1906,7 @@ class EditExerciseScreen(MDScreen):
         return super().on_pre_enter(*args)
 
     def _load_exercise(self):
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        db_path = DEFAULT_DB_PATH
         self.exercise_obj = core.Exercise(
             self.exercise_name,
             db_path=db_path,
@@ -2058,7 +2059,7 @@ class EditExerciseScreen(MDScreen):
             self.save_enabled = False
             return
 
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        db_path = DEFAULT_DB_PATH
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
         msg = "Save changes to this exercise?"
@@ -2184,7 +2185,7 @@ class WorkoutApp(MDApp):
 
     def init_preset_editor(self):
         """Create or reload the ``PresetEditor`` for the selected preset."""
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        db_path = DEFAULT_DB_PATH
         if self.selected_preset:
             if not self.preset_editor or self.preset_editor.preset_name != self.selected_preset:
                 if self.preset_editor:
