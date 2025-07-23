@@ -2045,7 +2045,8 @@ class EditExerciseScreen(MDScreen):
         dialog = None
 
         def do_save(*args):
-            if (not update_in_preset) or (checkbox and checkbox.active):
+            update_library = (not update_in_preset) or (checkbox and checkbox.active)
+            if update_library:
                 core.save_exercise(self.exercise_obj)
                 if app:
                     app.exercise_library_version += 1
@@ -2056,6 +2057,61 @@ class EditExerciseScreen(MDScreen):
                     sets=self.exercise_sets,
                     rest=self.exercise_rest,
                 )
+                if not update_library:
+                    preset_name = app.preset_editor.preset_name
+                    orig = {m.get("name"): m for m in (self.exercise_obj._original or {}).get("metrics", [])}
+                    current = {m.get("name"): m for m in self.exercise_obj.metrics}
+                    for name, metric in current.items():
+                        old = orig.get(name)
+                        if old is None or any(
+                            metric.get(field) != old.get(field)
+                            for field in ("input_timing", "is_required", "scope")
+                        ):
+                            core.set_section_exercise_metric_override(
+                                preset_name,
+                                self.section_index,
+                                self.exercise_obj.name,
+                                name,
+                                input_timing=metric.get("input_timing"),
+                                is_required=bool(metric.get("is_required")),
+                                scope=metric.get("scope", "set"),
+                            )
+
+                    removed = [name for name in orig if name not in current]
+                    if removed:
+                        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+                        conn = sqlite3.connect(str(db_path))
+                        cur = conn.cursor()
+                        cur.execute("SELECT id FROM preset_presets WHERE name = ?", (preset_name,))
+                        row = cur.fetchone()
+                        if row:
+                            preset_id = row[0]
+                            cur.execute(
+                                "SELECT id FROM preset_sections WHERE preset_id = ? ORDER BY position",
+                                (preset_id,),
+                            )
+                            sections = cur.fetchall()
+                            if 0 <= self.section_index < len(sections):
+                                section_id = sections[self.section_index][0]
+                                cur.execute(
+                                    """SELECT id FROM preset_section_exercises WHERE section_id = ? AND exercise_name = ? ORDER BY position LIMIT 1""",
+                                    (section_id, self.exercise_obj.name),
+                                )
+                                se_row = cur.fetchone()
+                                if se_row:
+                                    se_id = se_row[0]
+                                    for mname in removed:
+                                        cur.execute(
+                                            "DELETE FROM preset_section_exercise_metric_enum_values WHERE section_exercise_metric_id IN (SELECT id FROM preset_section_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ?)",
+                                            (se_id, mname),
+                                        )
+                                        cur.execute(
+                                            "DELETE FROM preset_section_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ?",
+                                            (se_id, mname),
+                                        )
+                                    conn.commit()
+                        conn.close()
+
             self.save_enabled = False
             if dialog:
                 dialog.dismiss()
