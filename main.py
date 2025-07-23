@@ -952,6 +952,13 @@ class ExerciseSelectionPanel(MDBoxLayout):
     """Panel for selecting exercises to add to a preset section."""
 
     exercise_list = ObjectProperty(None)
+    filter_mode = StringProperty("both")
+    filter_dialog = ObjectProperty(None, allownone=True)
+    search_text = StringProperty("")
+    all_exercises = ListProperty(None, allownone=True)
+    cache_version = NumericProperty(-1)
+
+    _search_event = None
 
     def on_open(self):
         self.populate_exercises()
@@ -960,8 +967,32 @@ class ExerciseSelectionPanel(MDBoxLayout):
         if not self.exercise_list:
             return
         self.exercise_list.clear_widgets()
-        for name in core.get_all_exercises():
-            item = OneLineListItem(text=name)
+
+        app = MDApp.get_running_app()
+        if (
+            self.all_exercises is None
+            or (app and self.cache_version != getattr(app, "exercise_library_version", 0))
+        ):
+            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
+            if app:
+                self.cache_version = app.exercise_library_version
+
+        exercises = self.all_exercises or []
+        if self.filter_mode == "user":
+            exercises = [ex for ex in exercises if ex[1]]
+        elif self.filter_mode == "premade":
+            exercises = [ex for ex in exercises if not ex[1]]
+        if self.search_text:
+            s = self.search_text.lower()
+            exercises = [ex for ex in exercises if s in ex[0].lower()]
+
+        for name, is_user in exercises:
+            item = OneLineListItem(
+                text=name,
+                theme_text_color="Custom",
+                text_color=(0.6, 0.2, 0.8, 1) if is_user else (0, 0, 0, 1),
+            )
             item.bind(on_release=lambda inst, n=name: self.select_exercise(n))
             self.exercise_list.add_widget(item)
 
@@ -980,6 +1011,45 @@ class ExerciseSelectionPanel(MDBoxLayout):
     def save_selection(self):
         """No-op kept for API compatibility."""
         pass
+
+    def open_filter_popup(self):
+        list_view = MDList()
+        options = [
+            ("User Created", "user"),
+            ("Premade", "premade"),
+            ("Both", "both"),
+        ]
+        for label, mode in options:
+            item = OneLineListItem(text=label)
+            item.bind(on_release=lambda inst, m=mode: self.apply_filter(m))
+            list_view.add_widget(item)
+        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(200))
+        scroll.add_widget(list_view)
+        close_btn = MDRaisedButton(
+            text="Close", on_release=lambda *a: self.filter_dialog.dismiss()
+        )
+        self.filter_dialog = MDDialog(
+            title="Filter Exercises", type="custom", content_cls=scroll, buttons=[close_btn]
+        )
+        self.filter_dialog.open()
+
+    def update_search(self, text):
+        self.search_text = text
+        if self._search_event:
+            self._search_event.cancel()
+
+        def do_populate(dt):
+            self._search_event = None
+            self.populate_exercises()
+
+        self._search_event = Clock.schedule_once(do_populate, 0.2)
+
+    def apply_filter(self, mode, *args):
+        self.filter_mode = mode
+        if self.filter_dialog:
+            self.filter_dialog.dismiss()
+            self.filter_dialog = None
+        self.populate_exercises()
 
 
 class AddMetricPopup(MDDialog):
