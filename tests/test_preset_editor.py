@@ -171,6 +171,58 @@ def test_save_duplicate_name(db_with_preset):
     editor.close()
 
 
+def test_save_preserves_metric_overrides(db_copy):
+    conn = sqlite3.connect(db_copy)
+    cur = conn.cursor()
+
+    # create a metric type and associate with the exercise
+    cur.execute(
+        """
+        INSERT INTO library_metric_types
+            (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
+        VALUES ('Reps', 'int', 'manual_text', 'post_set', 0, 'set', '', 0)
+        """
+    )
+    mt_id = cur.lastrowid
+    ex_id = cur.execute(
+        "SELECT id FROM library_exercises WHERE name='Push ups'"
+    ).fetchone()[0]
+    cur.execute(
+        "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, 0)",
+        (ex_id, mt_id),
+    )
+    em_id = cur.lastrowid
+
+    # apply override for this metric
+    cur.execute(
+        """
+        INSERT INTO library_exercise_metric_overrides
+            (exercise_metric_id, input_type, source_type, input_timing, is_required, scope)
+        VALUES (?, 'int', 'manual_text', 'pre_workout', 1, 'set')
+        """,
+        (em_id,),
+    )
+    conn.commit()
+    conn.close()
+
+    editor = PresetEditor(db_path=db_copy)
+    editor.preset_name = "Override Preset"
+    editor.add_section("Warmup")
+    editor.add_exercise(0, "Push ups")
+    editor.save()
+
+    conn = sqlite3.connect(db_copy)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT metric_name, input_timing, is_required, scope FROM preset_section_exercise_metrics"
+    )
+    result = cur.fetchone()
+    conn.close()
+    editor.close()
+
+    assert result == ("Reps", "pre_workout", 1, "set")
+
+
 def test_save_missing_exercise_fails(db_copy):
     editor = PresetEditor(db_path=db_copy)
     editor.preset_name = "My Preset"
@@ -180,5 +232,6 @@ def test_save_missing_exercise_fails(db_copy):
     with pytest.raises(ValueError):
         editor.save()
     editor.close()
+
 
 

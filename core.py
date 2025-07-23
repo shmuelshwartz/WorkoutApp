@@ -1303,15 +1303,38 @@ class PresetEditor:
 
                 if lib_id is not None:
                     cursor.execute(
-                        "SELECT metric_type_id, position FROM library_exercise_metrics WHERE exercise_id = ? ORDER BY position",
+                        "SELECT id, metric_type_id, position FROM library_exercise_metrics WHERE exercise_id = ? ORDER BY position",
                         (lib_id,),
                     )
-                    for mt_id, mpos in cursor.fetchall():
+                    for em_id, mt_id, mpos in cursor.fetchall():
                         cursor.execute(
                             "SELECT name, input_type, source_type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
                             (mt_id,),
                         )
                         (mt_name, m_input, m_source, m_timing, m_req, m_scope) = cursor.fetchone()
+                        cursor.execute(
+                            "SELECT input_type, source_type, input_timing, is_required, scope FROM library_exercise_metric_overrides WHERE exercise_metric_id = ?",
+                            (em_id,),
+                        )
+                        override = cursor.fetchone()
+                        if override:
+                            (
+                                o_input,
+                                o_source,
+                                o_timing,
+                                o_req,
+                                o_scope,
+                            ) = override
+                            if o_input is not None:
+                                m_input = o_input
+                            if o_source is not None:
+                                m_source = o_source
+                            if o_timing is not None:
+                                m_timing = o_timing
+                            if o_req is not None:
+                                m_req = o_req
+                            if o_scope is not None:
+                                m_scope = o_scope
                         cursor.execute(
                             """INSERT INTO preset_section_exercise_metrics
                                 (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, position, library_metric_type_id)
