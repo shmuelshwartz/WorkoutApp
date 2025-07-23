@@ -141,6 +141,28 @@ def test_preset_select_button_updates(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_duplicate_name(monkeypatch):
+    class DummyExercise:
+        def __init__(self):
+            self.metrics = [{"name": "Reps"}, {"name": "Weight"}]
+            self.updated = False
+            self.is_user_created = False
+
+        def update_metric(self, *a, **k):
+            self.updated = True
+
+    class DummyScreen:
+        exercise_obj = DummyExercise()
+
+    metric = DummyScreen.exercise_obj.metrics[0]
+    popup = EditMetricPopup(DummyScreen(), metric)
+    popup.input_widgets["name"].text = "Weight"
+    monkeypatch.setattr(core, "is_metric_type_user_created", lambda *a, **k: False)
+    popup.save_metric()
+
+    assert not DummyScreen.exercise_obj.updated
+    assert popup.input_widgets["name"].error
+
 def test_preset_select_button_color(monkeypatch):
     """Selecting a preset updates the select button color."""
     from kivy.lang import Builder
@@ -158,3 +180,4 @@ def test_preset_select_button_color(monkeypatch):
     screen.select_preset("Sample", dummy)
 
     assert screen.ids.select_btn.md_bg_color == screen._selected_color
+
