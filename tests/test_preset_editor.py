@@ -223,3 +223,15 @@ def test_save_preserves_metric_overrides(db_copy):
     assert result == ("Reps", "pre_workout", 1, "set")
 
 
+def test_save_missing_exercise_fails(db_copy):
+    editor = PresetEditor(db_path=db_copy)
+    editor.preset_name = "My Preset"
+    editor.add_section("Warmup")
+    editor.add_exercise(0, "Push ups")
+    editor.sections[0]["exercises"][0]["name"] = "DoesNotExist"
+    with pytest.raises(ValueError):
+        editor.save()
+    editor.close()
+
+
+

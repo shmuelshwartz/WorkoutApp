@@ -9,12 +9,15 @@ DEFAULT_SETS_PER_EXERCISE = 3
 # Default rest duration between sets in seconds
 DEFAULT_REST_DURATION = 120
 
+# Default path to the bundled SQLite database
+DEFAULT_DB_PATH = Path(__file__).resolve().parent / "data" / "workout.db"
+
 # Will hold preset data loaded from the database. Each item is a dict with
 #   {'name': <preset name>,
 #    'exercises': [{'name': <exercise name>, 'sets': <number_of_sets>}, ...]}
 WORKOUT_PRESETS = []
 
-def load_workout_presets(db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db"):
+def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
     """Load workout presets from the SQLite database into WORKOUT_PRESETS."""
     global WORKOUT_PRESETS
 
@@ -43,7 +46,7 @@ def load_workout_presets(db_path: Path = Path(__file__).resolve().parent / "data
 
 
 def get_all_exercises(
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
     *,
     include_user_created: bool = False,
 ) -> list:
@@ -70,7 +73,7 @@ def get_all_exercises(
 
 def get_exercise_details(
     exercise_name: str,
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
     is_user_created: bool | None = None,
 ) -> dict | None:
     """Return details for ``exercise_name``.
@@ -111,7 +114,7 @@ def get_exercise_details(
 
 def get_metrics_for_exercise(
     exercise_name: str,
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
     preset_name: str | None = None,
     is_user_created: bool | None = None,
 ) -> list:
@@ -227,7 +230,7 @@ def get_metrics_for_exercise(
 
 
 def get_all_metric_types(
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
     *,
     include_user_created: bool = False,
 ) -> list:
@@ -304,7 +307,7 @@ def get_all_metric_types(
 
 
 def get_metric_type_schema(
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
 ) -> list:
     """Return column definitions for the ``library_metric_types`` table.
 
@@ -356,7 +359,7 @@ def get_metric_type_schema(
 
 def is_metric_type_user_created(
     metric_type_name: str,
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
 ) -> bool:
     """Return ``True`` if ``metric_type_name`` is marked as user created."""
 
@@ -379,7 +382,7 @@ def add_metric_type(
     scope: str,
     description: str = "",
     is_required: bool = False,
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
 ) -> int:
     """Insert a new metric type and return its ID."""
 
@@ -411,7 +414,7 @@ def add_metric_type(
 def add_metric_to_exercise(
     exercise_name: str,
     metric_type_name: str,
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
 ) -> None:
     """Associate an existing metric type with an exercise."""
 
@@ -447,7 +450,7 @@ def add_metric_to_exercise(
 def remove_metric_from_exercise(
     exercise_name: str,
     metric_type_name: str,
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
 ) -> None:
     """Remove a metric association from an exercise."""
 
@@ -484,7 +487,7 @@ def update_metric_type(
     scope: str | None = None,
     description: str | None = None,
     is_required: bool | None = None,
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
 ) -> None:
     """Update fields of a metric type identified by ``metric_type_name``."""
 
@@ -531,7 +534,7 @@ def set_section_exercise_metric_override(
     input_timing: str,
     is_required: bool = False,
     scope: str = "set",
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
 ) -> None:
     """Apply an override for ``metric_type_name`` for a specific exercise in a preset."""
 
@@ -616,7 +619,7 @@ def set_exercise_metric_override(
     input_timing: str | None = None,
     is_required: bool | None = None,
     scope: str | None = None,
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
 ) -> None:
     """Apply an override for ``metric_type_name`` for a specific exercise.
 
@@ -730,7 +733,7 @@ class WorkoutSession:
     def __init__(
         self,
         preset_name: str,
-        db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+        db_path: Path = DEFAULT_DB_PATH,
         rest_duration: int = DEFAULT_REST_DURATION,
     ):
         """Load ``preset_name`` from ``db_path`` and prepare the session."""
@@ -866,7 +869,7 @@ class Exercise:
         self,
         name: str = "",
         *,
-        db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+        db_path: Path = DEFAULT_DB_PATH,
         is_user_created: bool | None = None,
     ) -> None:
         self.db_path = Path(db_path)
@@ -1036,7 +1039,7 @@ def save_exercise(exercise: Exercise) -> None:
 
 def delete_exercise(
     name: str,
-    db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    db_path: Path = DEFAULT_DB_PATH,
     *,
     is_user_created: bool = True,
 ) -> bool:
@@ -1080,7 +1083,7 @@ class PresetEditor:
     def __init__(
         self,
         preset_name: str | None = None,
-        db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+        db_path: Path = DEFAULT_DB_PATH,
     ):
         """Create the editor and optionally load an existing preset."""
 
@@ -1279,7 +1282,9 @@ class PresetEditor:
                     (ex["name"],),
                 )
                 lr = cursor.fetchone()
-                lib_id = lr[0] if lr else None
+                if lr is None:
+                    raise ValueError(f"Exercise '{ex['name']}' does not exist")
+                lib_id = lr[0]
                 cursor.execute(
                     """INSERT INTO preset_section_exercises
                         (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id, rest_time)

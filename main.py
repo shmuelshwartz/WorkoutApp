@@ -43,10 +43,11 @@ from core import (
     PresetEditor,
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,
+    DEFAULT_DB_PATH,
 )
 
 # Load workout presets from the database at startup
-load_workout_presets(Path(__file__).resolve().parent / "data" / "workout.db")
+load_workout_presets(DEFAULT_DB_PATH)
 import time
 import math
 
@@ -394,6 +395,11 @@ class PresetsScreen(MDScreen):
     selected_item = ObjectProperty(None, allownone=True)
 
     _selected_color = (0, 1, 0, 1)
+    _default_btn_color = ListProperty(None, allownone=True)
+
+    def on_kv_post(self, base_widget):
+        self._default_btn_color = self.ids.select_btn.md_bg_color
+        return super().on_kv_post(base_widget)
 
     def clear_selection(self):
         """Reset any selected preset and remove highlight."""
@@ -401,6 +407,8 @@ class PresetsScreen(MDScreen):
             self.selected_item.md_bg_color = (0, 0, 0, 0)
         self.selected_item = None
         self.selected_preset = ""
+        if self._default_btn_color is not None:
+            self.ids.select_btn.md_bg_color = self._default_btn_color
 
     def on_pre_enter(self, *args):
         self.clear_selection()
@@ -424,12 +432,15 @@ class PresetsScreen(MDScreen):
             self.selected_item = None
             self.selected_preset = ""
             MDApp.get_running_app().selected_preset = ""
+            if self._default_btn_color is not None:
+                self.ids.select_btn.md_bg_color = self._default_btn_color
             return
 
         if self.selected_item:
             self.selected_item.md_bg_color = (0, 0, 0, 0)
         self.selected_item = item
         self.selected_item.md_bg_color = self._selected_color
+        self.ids.select_btn.md_bg_color = self._selected_color
         if any(p["name"] == name for p in core.WORKOUT_PRESETS):
             self.selected_preset = name
             MDApp.get_running_app().selected_preset = name
@@ -475,7 +486,7 @@ class ExerciseLibraryScreen(MDScreen):
             self.all_exercises is None
             or (app and self.cache_version != getattr(app, "exercise_library_version", 0))
         ):
-            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            db_path = DEFAULT_DB_PATH
             self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
             if app:
                 self.cache_version = app.exercise_library_version
@@ -484,7 +495,7 @@ class ExerciseLibraryScreen(MDScreen):
             self.all_metrics is None
             or (app and self.metric_cache_version != getattr(app, "metric_library_version", 0))
         ):
-            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            db_path = DEFAULT_DB_PATH
             self.all_metrics = core.get_all_metric_types(db_path, include_user_created=True)
             if app:
                 self.metric_cache_version = app.metric_library_version
@@ -519,7 +530,7 @@ class ExerciseLibraryScreen(MDScreen):
             self.all_exercises is None
             or (app and self.cache_version != getattr(app, "exercise_library_version", 0))
         ):
-            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            db_path = DEFAULT_DB_PATH
             self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
             if app:
                 self.cache_version = app.exercise_library_version
@@ -559,7 +570,7 @@ class ExerciseLibraryScreen(MDScreen):
             self.all_metrics is None
             or (app and self.metric_cache_version != getattr(app, "metric_library_version", 0))
         ):
-            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            db_path = DEFAULT_DB_PATH
             self.all_metrics = core.get_all_metric_types(db_path, include_user_created=True)
             if app:
                 self.metric_cache_version = app.metric_library_version
@@ -658,7 +669,7 @@ class ExerciseLibraryScreen(MDScreen):
         dialog = None
 
         def do_delete(*args):
-            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            db_path = DEFAULT_DB_PATH
             try:
                 core.delete_exercise(exercise_name, db_path=db_path, is_user_created=True)
                 app = MDApp.get_running_app()
@@ -1073,7 +1084,7 @@ class ExerciseSelectionPanel(MDBoxLayout):
             self.all_exercises is None
             or (app and self.cache_version != getattr(app, "exercise_library_version", 0))
         ):
-            db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+            db_path = DEFAULT_DB_PATH
             self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
             if app:
                 self.cache_version = app.exercise_library_version
@@ -1414,7 +1425,7 @@ class AddMetricPopup(MDDialog):
         if values:
             metric["values"] = values
 
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        db_path = DEFAULT_DB_PATH
         try:
             core.add_metric_type(
                 metric["name"],
@@ -1596,7 +1607,7 @@ class EditMetricPopup(MDDialog):
 
     def save_metric(self, *args):
         """Update the metric on the exercise object with the new values."""
-
+        errors = []
         updates = {}
         for key, widget in self.input_widgets.items():
             if isinstance(widget, MDCheckbox):
@@ -1608,13 +1619,39 @@ class EditMetricPopup(MDDialog):
             text = self.enum_values_field.text.strip()
             updates["values"] = [v.strip() for v in text.split(",") if v.strip()]
 
+        name = updates.get("name", "").strip()
+
+        if not name:
+            errors.append("name")
+
+        existing_names = {
+            m.get("name")
+            for m in self.screen.exercise_obj.metrics
+            if m.get("name") != self.metric.get("name")
+        }
+        if name and name in existing_names:
+            errors.append("name")
+            if hasattr(self.input_widgets["name"], "helper_text"):
+                self.input_widgets["name"].helper_text = "Duplicate name"
+                self.input_widgets["name"].helper_text_mode = "on_error"
+
+        red = (1, 0, 0, 1)
+        for key, widget in self.input_widgets.items():
+            if isinstance(widget, Spinner):
+                widget.text_color = red if key in errors else (1, 1, 1, 1)
+            elif isinstance(widget, MDTextField):
+                widget.error = key in errors
+
+        if errors:
+            return
+
         def apply_updates():
             self.screen.exercise_obj.update_metric(self.metric["name"], **updates)
             self.dismiss()
             self.screen.populate()
             self.screen.save_enabled = self.screen.exercise_obj.is_modified()
 
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        db_path = DEFAULT_DB_PATH
         if core.is_metric_type_user_created(self.metric["name"], db_path=db_path):
             dialog = None
 
@@ -1792,7 +1829,7 @@ class EditMetricTypePopup(MDDialog):
             else:
                 data[key] = widget.text
 
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        db_path = DEFAULT_DB_PATH
         if self.metric and self.is_user_created:
             core.update_metric_type(
                 self.metric_name,
@@ -1869,7 +1906,7 @@ class EditExerciseScreen(MDScreen):
         return super().on_pre_enter(*args)
 
     def _load_exercise(self):
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        db_path = DEFAULT_DB_PATH
         self.exercise_obj = core.Exercise(
             self.exercise_name,
             db_path=db_path,
@@ -2022,7 +2059,7 @@ class EditExerciseScreen(MDScreen):
             self.save_enabled = False
             return
 
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        db_path = DEFAULT_DB_PATH
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
         msg = "Save changes to this exercise?"
@@ -2148,7 +2185,7 @@ class WorkoutApp(MDApp):
 
     def init_preset_editor(self):
         """Create or reload the ``PresetEditor`` for the selected preset."""
-        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+        db_path = DEFAULT_DB_PATH
         if self.selected_preset:
             if not self.preset_editor or self.preset_editor.preset_name != self.selected_preset:
                 if self.preset_editor:
