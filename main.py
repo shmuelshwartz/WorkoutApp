@@ -1485,6 +1485,7 @@ class EditMetricPopup(MDDialog):
                         core.set_exercise_metric_override(
                             self.screen.exercise_obj.name,
                             self.metric["name"],
+                            is_user_created=self.screen.exercise_obj.is_user_created,
                             db_path=db_path,
                         )
                 else:
@@ -1497,6 +1498,7 @@ class EditMetricPopup(MDDialog):
                             input_timing=updates.get("input_timing"),
                             is_required=updates.get("is_required"),
                             scope=updates.get("scope"),
+                            is_user_created=self.screen.exercise_obj.is_user_created,
                             db_path=db_path,
                         )
                 cancel_action()

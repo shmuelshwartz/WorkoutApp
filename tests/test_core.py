@@ -170,3 +170,43 @@ def test_global_update_removes_override(sample_db):
     metrics = core.get_metrics_for_exercise("Bench Press", db_path=sample_db)
     updated = next(m for m in metrics if m["name"] == "Weight")
     assert updated["input_timing"] == "post_workout"
+
+
+def test_override_with_user_flag(sample_db):
+    conn = sqlite3.connect(sample_db)
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO library_exercises (name, description, is_user_created) VALUES ('Bench Press', 'Alt', 1)"
+    )
+    user_ex_id = cur.lastrowid
+    cur.execute(
+        "SELECT metric_type_id, position FROM library_exercise_metrics WHERE exercise_id = 2"
+    )
+    for metric_type_id, pos in cur.fetchall():
+        cur.execute(
+            "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, ?)",
+            (user_ex_id, metric_type_id, pos),
+        )
+    conn.commit()
+    conn.close()
+
+    core.set_exercise_metric_override(
+        "Bench Press",
+        "Weight",
+        input_timing="pre_workout",
+        is_user_created=True,
+        db_path=sample_db,
+    )
+
+    metrics_user = core.get_metrics_for_exercise(
+        "Bench Press", db_path=sample_db, is_user_created=True
+    )
+    user_override = next(m for m in metrics_user if m["name"] == "Weight")
+    assert user_override["input_timing"] == "pre_workout"
+
+    metrics_default = core.get_metrics_for_exercise(
+        "Bench Press", db_path=sample_db, is_user_created=False
+    )
+    default_metric = next(m for m in metrics_default if m["name"] == "Weight")
+    assert default_metric["input_timing"] == "post_set"
+
