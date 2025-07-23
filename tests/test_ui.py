@@ -141,6 +141,45 @@ def test_preset_select_button_updates(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
+    """Saving with a duplicate user-defined name shows an error."""
+    import sqlite3
+    from pathlib import Path
+
+    schema = Path(__file__).resolve().parents[1] / "data" / "workout.sql"
+    db_path = tmp_path / "workout.db"
+    conn = sqlite3.connect(db_path)
+    with open(schema, "r", encoding="utf-8") as fh:
+        conn.executescript(fh.read())
+    conn.close()
+
+    ex = core.Exercise(db_path=db_path)
+    ex.name = "Custom"
+    core.save_exercise(ex)
+
+    screen = EditExerciseScreen()
+    screen.exercise_obj = core.Exercise(db_path=db_path)
+    screen.exercise_obj.name = "Custom"
+    screen.name_field = type("F", (), {"error": False})()
+
+    import sys
+
+    opened = {"value": False}
+
+    class DummyDialog:
+        def __init__(self, *a, **k):
+            pass
+
+        def open(self_inner):
+            opened["value"] = True
+
+    monkeypatch.setattr(sys.modules["main"], "MDDialog", DummyDialog)
+
+    screen.save_exercise()
+
+    assert opened["value"]
+    assert screen.name_field.error
+
 def test_edit_metric_duplicate_name(monkeypatch):
     class DummyExercise:
         def __init__(self):
