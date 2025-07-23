@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS "library_exercises" (
 );
 CREATE TABLE IF NOT EXISTS "library_metric_types" (
 	"id"	INTEGER,
-	"name"	TEXT NOT NULL UNIQUE,
+	"name"	TEXT NOT NULL,
 	"input_type"	TEXT NOT NULL CHECK("input_type" IN ('int', 'float', 'str', 'bool')),
 	"source_type"	TEXT NOT NULL CHECK("source_type" IN ('manual_text', 'manual_enum', 'manual_slider')),
 	"input_timing"	TEXT NOT NULL CHECK("input_timing" IN ('library', 'preset', 'pre_workout', 'post_workout', 'pre_set', 'post_set')),
@@ -113,6 +113,10 @@ JOIN
 JOIN 
     library_metric_types mt ON em.metric_type_id = mt.id;
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_library_exercises_name_user_created" ON "library_exercises" (
+	"name",
+	"is_user_created"
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_library_metric_types_name_user_created" ON "library_metric_types" (
 	"name",
 	"is_user_created"
 );

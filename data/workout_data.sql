@@ -37,4 +37,5 @@ INSERT INTO "library_metric_types" VALUES (4,'RPE','float','manual_slider','post
 INSERT INTO "library_metric_types" VALUES (5,'Progression','str','manual_enum','pre_set',1,'set','Different progressions of an exercise',1);
 INSERT INTO "library_metric_types" VALUES (6,'Test','int','manual_text','preset',0,'session','this is a test ...',1);
 INSERT INTO "library_metric_types" VALUES (7,'Test2','int','manual_text','preset',0,'session','this is to test what happens when I press save',1);
+INSERT INTO "library_metric_types" VALUES (8,'Reps','float','manual_text','post_set',1,'set','Number of repetitions performed per set.',1);
 COMMIT;
