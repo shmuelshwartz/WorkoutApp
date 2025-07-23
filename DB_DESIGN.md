@@ -33,7 +33,7 @@ This is the **central repository** for defining exercises and their default attr
 | Table Name                          | Description                                      |
 |-------------------------------------|--------------------------------------------------|
 | `library_exercises`                 | Master list of exercises (name, description, user-created flag) |
-| `library_exercise_metrics`          | Default metrics for each exercise (e.g., Reps, Weight, Tempo)  |
+| `library_exercise_metrics`          | Default metrics for each exercise (e.g., Reps, Weight, Tempo) with optional per-exercise overrides |
 | `library_metric_types`              | Defines all metric types and their configurations |
 | `library_exercise_enum_values`      | Custom enum values for enum-type metrics         |
 
@@ -43,7 +43,18 @@ This is the **central repository** for defining exercises and their default attr
 
 ### 📝 Metric Overrides (Per-Exercise Customization)
 
-The `library_exercise_metrics` table now supports per-exercise customization of metric definitions. In addition to linking exercises to metric types, it includes optional override fields: `input_type`, `source_type`, `input_timing`, `is_required`, and `scope`. These fields are `NULL` by default, meaning the exercise inherits the global definition from `library_metric_types`. When populated, they allow a specific exercise (e.g., "5k Run") to redefine how a metric behaves compared to the standard (e.g., making "Distance" an enum with a preset value). This enables fine-grained control without affecting other exercises that use the same metric type.
+The `library_exercise_metrics` table directly supports per-exercise customization of metric definitions.  
+It includes optional override fields:  
+
+- `input_type`
+- `source_type`
+- `input_timing`
+- `is_required`
+- `scope`
+
+These fields are `NULL` by default, meaning the exercise inherits the global definition from `library_metric_types`.  
+When populated, they allow a specific exercise (e.g., "5k Run") to redefine how a metric behaves compared to the standard (e.g., making "Distance" an enum with a preset value).  
+This simplifies the schema by removing the need for a separate `library_exercise_metric_overrides` table.
 
 ---
 
@@ -62,8 +73,8 @@ These tables store **workout templates (presets)**, including all their sections
 | `preset_metadata`                           | Key-value pairs for preset-level information                            |
 
 ✅ **Key Idea**:  
-- **Presets are fully self-contained**: All exercise and metric data is copied into the preset at creation time (including enums).
-- **Library exercise references** (such as `library_exercise_id` in `preset_section_exercises`) are for informational purposes only—**no foreign key is enforced**, and deleting a library exercise will not affect any preset data.
+- **Presets are fully self-contained**: All exercise and metric data is copied into the preset at creation time (including enums).  
+- **Library exercise references** (such as `library_exercise_id` in `preset_section_exercises`) are for informational purposes only—**no foreign key is enforced**, and deleting a library exercise will not affect any preset data.  
 - **Edits to presets** only affect that specific preset. Library changes do **not** propagate to existing presets.
 
 ---
@@ -104,10 +115,10 @@ This prevents ambiguity and makes it easy to:
 
 ## 📝 Example: “Bench Press” Metric Flow
 
-| Level         | Table                                 | Action                              |
-|---------------|---------------------------------------|-------------------------------------|
-| Global        | `library_exercise_metrics`            | Defines default: Weight, Reps, Tempo|
-| Preset        | `preset_section_exercise_metrics`     | Copied when adding to preset       |
+| Level          | Table                                 | Action                              |
+|----------------|---------------------------------------|-------------------------------------|
+| Global         | `library_exercise_metrics`            | Defines default: Weight, Reps, Tempo|
+| Preset         | `preset_section_exercise_metrics`     | Copied when adding to preset       |
 | Session (future)| `session_exercise_metrics` (planned) | Tracks actual performed values      |
 
 ---
@@ -141,6 +152,7 @@ This allows extensibility without changing table structure.
 ---
 
 ## 🏋️ Preset Example: “Push Day”
+
 - Preset: Push Day
   - Section: Warm-up
     - Exercise: Shoulder Circles
@@ -157,10 +169,11 @@ Each exercise:
 
 ## 💡 Design Philosophy
 
-✔️ **Separation of Concerns**: Prefixes clarify data ownership  
-✔️ **Snapshotting**: Preset tables store copies of names, descriptions, and metrics  
-✔️ **Shared References**: Global exercise IDs ensure lightweight references for non-changing data  
-✔️ **User Control**: All changes are explicit—no unintended side effects  
+✔️ **Simpler Schema**: Removed `library_exercise_metric_overrides` table.  
+✔️ **Embedded Overrides**: Overrides are stored directly in `library_exercise_metrics` as nullable fields.  
+✔️ **Separation of Concerns**: Prefixes clarify data ownership.  
+✔️ **Snapshotting**: Preset tables continue to store copies of names, descriptions, and metrics.  
+✔️ **User Control**: All changes are explicit—no unintended side effects.
 
 ---
 
@@ -174,4 +187,3 @@ Each exercise:
 | Preset Exercise Metrics | `preset_section_exercise_metrics`            |
 | Preset Enum Values      | `preset_section_exercise_metric_enum_values` |
 | Preset Metadata         | `preset_metadata`                            |
-This schema provides a **modular, maintainable system** for defining workouts with full user flexibility. Prefixes make the schema **self-documenting** and prepare it for future expansion to session-level data (`session_`).
