@@ -1279,7 +1279,9 @@ class PresetEditor:
                     (ex["name"],),
                 )
                 lr = cursor.fetchone()
-                lib_id = lr[0] if lr else None
+                if lr is None:
+                    raise ValueError(f"Exercise '{ex['name']}' does not exist")
+                lib_id = lr[0]
                 cursor.execute(
                     """INSERT INTO preset_section_exercises
                         (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id, rest_time)
