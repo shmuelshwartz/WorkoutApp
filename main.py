@@ -1596,7 +1596,7 @@ class EditMetricPopup(MDDialog):
 
     def save_metric(self, *args):
         """Update the metric on the exercise object with the new values."""
-
+        errors = []
         updates = {}
         for key, widget in self.input_widgets.items():
             if isinstance(widget, MDCheckbox):
@@ -1607,6 +1607,32 @@ class EditMetricPopup(MDDialog):
         if self.enum_values_field.parent is not None:
             text = self.enum_values_field.text.strip()
             updates["values"] = [v.strip() for v in text.split(",") if v.strip()]
+
+        name = updates.get("name", "").strip()
+
+        if not name:
+            errors.append("name")
+
+        existing_names = {
+            m.get("name")
+            for m in self.screen.exercise_obj.metrics
+            if m.get("name") != self.metric.get("name")
+        }
+        if name and name in existing_names:
+            errors.append("name")
+            if hasattr(self.input_widgets["name"], "helper_text"):
+                self.input_widgets["name"].helper_text = "Duplicate name"
+                self.input_widgets["name"].helper_text_mode = "on_error"
+
+        red = (1, 0, 0, 1)
+        for key, widget in self.input_widgets.items():
+            if isinstance(widget, Spinner):
+                widget.text_color = red if key in errors else (1, 1, 1, 1)
+            elif isinstance(widget, MDTextField):
+                widget.error = key in errors
+
+        if errors:
+            return
 
         def apply_updates():
             self.screen.exercise_obj.update_metric(self.metric["name"], **updates)
