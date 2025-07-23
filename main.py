@@ -393,7 +393,17 @@ class PresetsScreen(MDScreen):
     selected_preset = StringProperty("")
     selected_item = ObjectProperty(None, allownone=True)
 
+    _selected_color = (0, 1, 0, 1)
+
+    def clear_selection(self):
+        """Reset any selected preset and remove highlight."""
+        if self.selected_item:
+            self.selected_item.md_bg_color = (0, 0, 0, 0)
+        self.selected_item = None
+        self.selected_preset = ""
+
     def on_pre_enter(self, *args):
+        self.clear_selection()
         self.populate()
         return super().on_pre_enter(*args)
 
@@ -408,10 +418,18 @@ class PresetsScreen(MDScreen):
 
     def select_preset(self, name, item):
         """Select a preset from WORKOUT_PRESETS and highlight item."""
+        if self.selected_item is item:
+            # Toggle off selection if tapping the already selected item
+            item.md_bg_color = (0, 0, 0, 0)
+            self.selected_item = None
+            self.selected_preset = ""
+            MDApp.get_running_app().selected_preset = ""
+            return
+
         if self.selected_item:
             self.selected_item.md_bg_color = (0, 0, 0, 0)
         self.selected_item = item
-        self.selected_item.md_bg_color = MDApp.get_running_app().theme_cls.primary_light
+        self.selected_item.md_bg_color = self._selected_color
         if any(p["name"] == name for p in core.WORKOUT_PRESETS):
             self.selected_preset = name
             MDApp.get_running_app().selected_preset = name
