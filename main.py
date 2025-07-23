@@ -588,6 +588,7 @@ class ExerciseLibraryScreen(MDScreen):
                 "text": m["name"],
                 "is_user_created": m["is_user_created"],
                 "edit_callback": self.open_edit_metric_popup,
+                "delete_callback": self.confirm_delete_metric,
             })
         self.metric_list.data = data
         if self.loading_dialog:
@@ -683,6 +684,33 @@ class ExerciseLibraryScreen(MDScreen):
         dialog = MDDialog(
             title="Delete Exercise?",
             text=f"Delete {exercise_name}?",
+            buttons=[
+                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                MDRaisedButton(text="Delete", on_release=do_delete),
+            ],
+        )
+        dialog.open()
+
+    def confirm_delete_metric(self, metric_name):
+        dialog = None
+
+        def do_delete(*args):
+            db_path = DEFAULT_DB_PATH
+            try:
+                core.delete_metric_type(metric_name, db_path=db_path, is_user_created=True)
+                app = MDApp.get_running_app()
+                if app:
+                    app.metric_library_version += 1
+            except Exception:
+                pass
+            self.all_metrics = None
+            self.populate()
+            if dialog:
+                dialog.dismiss()
+
+        dialog = MDDialog(
+            title="Delete Metric?",
+            text=f"Delete {metric_name}?",
             buttons=[
                 MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
                 MDRaisedButton(text="Delete", on_release=do_delete),
@@ -1684,6 +1712,7 @@ class EditMetricPopup(MDDialog):
                         scope=updates.get("scope"),
                         description=updates.get("description"),
                         is_required=updates.get("is_required"),
+                        is_user_created=self.metric.get("is_user_created"),
                         db_path=db_path,
                     )
                     if metric_saved:
@@ -1741,7 +1770,10 @@ class EditMetricTypePopup(MDDialog):
         self.metric = None
         if metric_name:
             for m in screen.all_metrics or []:
-                if m["name"] == metric_name:
+                if (
+                    m["name"] == metric_name
+                    and m.get("is_user_created", False) == is_user_created
+                ):
                     self.metric = m
                     break
         content, buttons, title = self._build_widgets()
@@ -1850,6 +1882,7 @@ class EditMetricTypePopup(MDDialog):
                 scope=data.get("scope"),
                 description=data.get("description"),
                 is_required=data.get("is_required"),
+                is_user_created=True,
                 db_path=db_path,
             )
         else:

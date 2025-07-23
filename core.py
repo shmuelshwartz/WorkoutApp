@@ -485,17 +485,28 @@ def update_metric_type(
     scope: str | None = None,
     description: str | None = None,
     is_required: bool | None = None,
+    is_user_created: bool | None = None,
     db_path: Path = DEFAULT_DB_PATH,
 ) -> None:
     """Update fields of a metric type identified by ``metric_type_name``."""
 
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM library_metric_types WHERE name = ?", (metric_type_name,))
+    if is_user_created is None:
+        cursor.execute(
+            "SELECT id FROM library_metric_types WHERE name = ? ORDER BY is_user_created DESC LIMIT 1",
+            (metric_type_name,),
+        )
+    else:
+        cursor.execute(
+            "SELECT id FROM library_metric_types WHERE name = ? AND is_user_created = ?",
+            (metric_type_name, int(is_user_created)),
+        )
     row = cursor.fetchone()
     if not row:
         conn.close()
         raise ValueError(f"Metric type '{metric_type_name}' not found")
+    metric_id = row[0]
     updates = []
     params: list = []
     if input_type is not None:
@@ -517,8 +528,11 @@ def update_metric_type(
         updates.append("description = ?")
         params.append(description)
     if updates:
-        params.append(metric_type_name)
-        cursor.execute(f"UPDATE library_metric_types SET {', '.join(updates)} WHERE name = ?", params)
+        params.append(metric_id)
+        cursor.execute(
+            f"UPDATE library_metric_types SET {', '.join(updates)} WHERE id = ?",
+            params,
+        )
         conn.commit()
     conn.close()
 
@@ -1058,6 +1072,55 @@ def delete_exercise(
         raise ValueError("Exercise is in use and cannot be deleted")
 
     cursor.execute("DELETE FROM library_exercises WHERE id = ?", (ex_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def delete_metric_type(
+    name: str,
+    db_path: Path = DEFAULT_DB_PATH,
+    *,
+    is_user_created: bool = True,
+) -> bool:
+    """Delete ``name`` from the metric types table.
+
+    Only the variant matching ``is_user_created`` will be removed. The
+    function returns ``True`` when a row was deleted.  A ``ValueError`` is
+    raised if the metric type is still referenced by any exercise or preset.
+    """
+
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id FROM library_metric_types WHERE name = ? AND is_user_created = ?",
+        (name, int(is_user_created)),
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return False
+
+    mt_id = row[0]
+
+    # Check if this metric type is referenced by any exercises or presets
+    cursor.execute(
+        "SELECT 1 FROM library_exercise_metrics WHERE metric_type_id = ? LIMIT 1",
+        (mt_id,),
+    )
+    if cursor.fetchone():
+        conn.close()
+        raise ValueError("Metric type is in use and cannot be deleted")
+
+    cursor.execute(
+        "SELECT 1 FROM preset_metadata WHERE metric_type_id = ? LIMIT 1",
+        (mt_id,),
+    )
+    if cursor.fetchone():
+        conn.close()
+        raise ValueError("Metric type is in use and cannot be deleted")
+
+    cursor.execute("DELETE FROM library_metric_types WHERE id = ?", (mt_id,))
     conn.commit()
     conn.close()
     return True

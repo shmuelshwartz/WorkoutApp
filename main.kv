@@ -157,6 +157,7 @@ ScreenManager:
     text: ""
     is_user_created: False
     edit_callback: None
+    delete_callback: None
     orientation: "horizontal"
     size_hint_y: None
     height: "56dp"
@@ -179,6 +180,15 @@ ScreenManager:
             font_size: "20sp"
             pos_hint: {"center_y": 0.5}
             on_touch_down: if self.collide_point(*args[1].pos) and root.edit_callback: root.edit_callback(root.name, root.is_user_created)
+        MDIcon:
+            icon: "delete"
+            font_size: "20sp"
+            theme_text_color: "Custom"
+            text_color: 1, 0, 0, 1
+            pos_hint: {"center_y": 0.5}
+            opacity: 1 if root.is_user_created else 0
+            disabled: not root.is_user_created
+            on_touch_down: if self.collide_point(*args[1].pos) and root.delete_callback: root.delete_callback(root.name)
 
 <ExerciseLibraryScreen>:
     exercise_list: exercise_list
@@ -208,86 +218,90 @@ ScreenManager:
                 on_kv_post: self.current = root.current_tab
                 Screen:
                     name: "exercises"
-                    BoxLayout:
-                        orientation: "vertical"
-                        MDTextField:
-                            id: search_field
-                            hint_text: "Search exercises"
-                            text: root.search_text
-                            on_text: root.update_search(self.text)
-                            size_hint_y: None
-                            height: "40dp"
-                        MDBoxLayout:
-                            orientation: "horizontal"
-                            size_hint_y: None
-                            height: self.minimum_height
-                            MDLabel:
-                                text: "Exercise Library - browse all exercises"
-                                halign: "center"
-                                theme_text_color: "Custom"
-                                text_color: 0.2, 0.6, 0.86, 1
-                                size_hint_x: 0.9
-                            MDIconButton:
-                                icon: "filter-variant"
-                                on_release: root.open_filter_popup()
-                        MDRecycleView:
-                            id: exercise_list
-                            viewclass: "ExerciseRow"
-                            RecycleBoxLayout:
-                                default_size: None, dp(56)
-                                default_size_hint: 1, None
+                    FloatLayout:
+                        BoxLayout:
+                            orientation: "vertical"
+                            MDTextField:
+                                id: search_field
+                                hint_text: "Search exercises"
+                                text: root.search_text
+                                on_text: root.update_search(self.text)
+                                size_hint_y: None
+                                height: "40dp"
+                            MDBoxLayout:
+                                orientation: "horizontal"
                                 size_hint_y: None
                                 height: self.minimum_height
-                                orientation: "vertical"
+                                MDLabel:
+                                    text: "Exercise Library - browse all exercises"
+                                    halign: "center"
+                                    theme_text_color: "Custom"
+                                    text_color: 0.2, 0.6, 0.86, 1
+                                    size_hint_x: 0.9
+                                MDIconButton:
+                                    icon: "filter-variant"
+                                    on_release: root.open_filter_popup()
+                            MDRecycleView:
+                                id: exercise_list
+                                viewclass: "ExerciseRow"
+                                RecycleBoxLayout:
+                                    default_size: None, dp(56)
+                                    default_size_hint: 1, None
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                                    orientation: "vertical"
                         MDRaisedButton:
                             text: "Back"
+                            pos_hint: {"x": 0.02, "y": 0.02}
                             on_release: root.go_back()
-                    MDFloatingActionButton:
-                        icon: "plus"
-                        md_bg_color: app.theme_cls.primary_color
-                        pos_hint: {"right": 0.98, "y": 0.02}
-                        on_release: root.new_exercise()
+                        MDFloatingActionButton:
+                            icon: "plus"
+                            md_bg_color: app.theme_cls.primary_color
+                            pos_hint: {"right": 0.98, "y": 0.02}
+                            on_release: root.new_exercise()
                 Screen:
                     name: "metrics"
-                    BoxLayout:
-                        orientation: "vertical"
-                        MDTextField:
-                            id: metric_search_field
-                            hint_text: "Search metrics"
-                            text: root.metric_search_text
-                            on_text: root.update_search(self.text)
-                            size_hint_y: None
-                            height: "40dp"
-                        MDBoxLayout:
-                            orientation: "horizontal"
-                            size_hint_y: None
-                            height: self.minimum_height
-                            MDLabel:
-                                text: "Metric Library - browse all metrics"
-                                halign: "center"
-                                theme_text_color: "Custom"
-                                text_color: 0.2, 0.6, 0.86, 1
-                                size_hint_x: 0.9
-                            MDIconButton:
-                                icon: "filter-variant"
-                                on_release: root.open_filter_popup()
-                        MDRecycleView:
-                            id: metric_list
-                            viewclass: "MetricRow"
-                            RecycleBoxLayout:
-                                default_size: None, dp(56)
-                                default_size_hint: 1, None
+                    FloatLayout:
+                        BoxLayout:
+                            orientation: "vertical"
+                            MDTextField:
+                                id: metric_search_field
+                                hint_text: "Search metrics"
+                                text: root.metric_search_text
+                                on_text: root.update_search(self.text)
+                                size_hint_y: None
+                                height: "40dp"
+                            MDBoxLayout:
+                                orientation: "horizontal"
                                 size_hint_y: None
                                 height: self.minimum_height
-                                orientation: "vertical"
+                                MDLabel:
+                                    text: "Metric Library - browse all metrics"
+                                    halign: "center"
+                                    theme_text_color: "Custom"
+                                    text_color: 0.2, 0.6, 0.86, 1
+                                    size_hint_x: 0.9
+                                MDIconButton:
+                                    icon: "filter-variant"
+                                    on_release: root.open_filter_popup()
+                            MDRecycleView:
+                                id: metric_list
+                                viewclass: "MetricRow"
+                                RecycleBoxLayout:
+                                    default_size: None, dp(56)
+                                    default_size_hint: 1, None
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                                    orientation: "vertical"
                         MDRaisedButton:
                             text: "Back"
+                            pos_hint: {"x": 0.02, "y": 0.02}
                             on_release: root.go_back()
-                    MDFloatingActionButton:
-                        icon: "plus"
-                        md_bg_color: app.theme_cls.primary_color
-                        pos_hint: {"right": 0.98, "y": 0.02}
-                        on_release: root.new_metric()
+                        MDFloatingActionButton:
+                            icon: "plus"
+                            md_bg_color: app.theme_cls.primary_color
+                            pos_hint: {"right": 0.98, "y": 0.02}
+                            on_release: root.new_metric()
 
 <ProgressScreen@MDScreen>:
     BoxLayout:

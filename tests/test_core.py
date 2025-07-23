@@ -210,3 +210,19 @@ def test_override_with_user_flag(sample_db):
     default_metric = next(m for m in metrics_default if m["name"] == "Weight")
     assert default_metric["input_timing"] == "post_set"
 
+
+def test_delete_metric_type(sample_db):
+    metric_id = core.add_metric_type(
+        name="Tempo",
+        input_type="int",
+        source_type="manual_text",
+        input_timing="post_set",
+        scope="set",
+        db_path=sample_db,
+    )
+    assert isinstance(metric_id, int)
+    assert core.delete_metric_type("Tempo", db_path=sample_db, is_user_created=True)
+    metrics = core.get_all_metric_types(sample_db, include_user_created=True)
+    assert all(m["name"] != "Tempo" for m in metrics)
+    assert core.delete_metric_type("Tempo", db_path=sample_db, is_user_created=True) is False
+

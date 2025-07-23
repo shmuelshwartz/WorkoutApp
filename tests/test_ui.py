@@ -204,6 +204,18 @@ def test_edit_metric_duplicate_name(monkeypatch):
     assert not DummyScreen.exercise_obj.updated
     assert popup.input_widgets["name"].error
 
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_type_popup_selects_correct_metric():
+    class DummyScreen:
+        all_metrics = [
+            {"name": "Reps", "is_user_created": False, "description": "orig"},
+            {"name": "Reps", "is_user_created": True, "description": "copy"},
+        ]
+
+    popup = EditMetricTypePopup(DummyScreen(), "Reps", True)
+    assert popup.metric["description"] == "copy"
+
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_preset_select_button_color(monkeypatch):
     """Selecting a preset updates the select button color."""
