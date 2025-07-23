@@ -86,6 +86,17 @@ def test_enum_values_accepts_spaces():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_enum_values_strip_spaces_after_comma():
+    class DummyScreen:
+        exercise_obj = type("obj", (), {"metrics": []})()
+
+    popup = AddMetricPopup(DummyScreen(), mode="new")
+    popup.input_widgets["input_type"].text = "str"
+    filtered = popup.enum_values_field.input_filter("A, B ,  C", False)
+    assert filtered == "A,B,C"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_edit_exercise_default_tab():
     screen = EditExerciseScreen()
     screen.previous_screen = "exercise_library"
