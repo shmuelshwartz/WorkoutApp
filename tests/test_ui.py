@@ -141,8 +141,8 @@ def test_preset_select_button_updates(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_preset_select_button_color(monkeypatch):
-    """Selecting a preset updates the select button color."""
+def test_preset_list_item_color(monkeypatch):
+    """Selecting a preset highlights the chosen list item."""
     from kivy.lang import Builder
     from pathlib import Path
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
@@ -157,4 +157,4 @@ def test_preset_select_button_color(monkeypatch):
     dummy = type("Obj", (), {"md_bg_color": (0, 0, 0, 0)})()
     screen.select_preset("Sample", dummy)
 
-    assert screen.ids.select_btn.md_bg_color == screen._selected_color
+    assert dummy.md_bg_color == screen._selected_color
