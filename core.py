@@ -228,39 +228,77 @@ def get_metrics_for_exercise(
 
 def get_all_metric_types(
     db_path: Path = Path(__file__).resolve().parent / "data" / "workout.db",
+    *,
+    include_user_created: bool = False,
 ) -> list:
-    """Return all metric type definitions from the database."""
+    """Return all metric type definitions from the database.
+
+    If ``include_user_created`` is ``True`` the returned dictionaries include an
+    ``is_user_created`` flag.
+    """
 
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT name, input_type, source_type, input_timing,
-               is_required, scope, description
-        FROM library_metric_types
-        ORDER BY id
-        """
-    )
-    metric_types = [
-        {
-            "name": name,
-            "input_type": input_type,
-            "source_type": source_type,
-            "input_timing": input_timing,
-            "is_required": bool(is_required),
-            "scope": scope,
-            "description": description,
-        }
-        for (
-            name,
-            input_type,
-            source_type,
-            input_timing,
-            is_required,
-            scope,
-            description,
-        ) in cursor.fetchall()
-    ]
+    if include_user_created:
+        cursor.execute(
+            """
+            SELECT name, input_type, source_type, input_timing,
+                   is_required, scope, description, is_user_created
+            FROM library_metric_types
+            ORDER BY id
+            """
+        )
+        metric_types = [
+            {
+                "name": name,
+                "input_type": input_type,
+                "source_type": source_type,
+                "input_timing": input_timing,
+                "is_required": bool(is_required),
+                "scope": scope,
+                "description": description,
+                "is_user_created": bool(flag),
+            }
+            for (
+                name,
+                input_type,
+                source_type,
+                input_timing,
+                is_required,
+                scope,
+                description,
+                flag,
+            ) in cursor.fetchall()
+        ]
+    else:
+        cursor.execute(
+            """
+            SELECT name, input_type, source_type, input_timing,
+                   is_required, scope, description
+            FROM library_metric_types
+            ORDER BY id
+            """
+        )
+        metric_types = [
+            {
+                "name": name,
+                "input_type": input_type,
+                "source_type": source_type,
+                "input_timing": input_timing,
+                "is_required": bool(is_required),
+                "scope": scope,
+                "description": description,
+            }
+            for (
+                name,
+                input_type,
+                source_type,
+                input_timing,
+                is_required,
+                scope,
+                description,
+            ) in cursor.fetchall()
+        ]
     conn.close()
     return metric_types
 
