@@ -2022,9 +2022,46 @@ class EditExerciseScreen(MDScreen):
             self.save_enabled = False
             return
 
+        # ------------------------------------------------------------------
+        # Validation
+        # ------------------------------------------------------------------
+        name = self.exercise_obj.name.strip()
         db_path = Path(__file__).resolve().parent / "data" / "workout.db"
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
+
+        if not name:
+            if self.name_field:
+                self.name_field.error = True
+            conn.close()
+            dialog = MDDialog(
+                title="Error",
+                text="Name cannot be empty",
+                buttons=[MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())],
+            )
+            dialog.open()
+            return
+
+        cursor.execute(
+            "SELECT 1 FROM library_exercises WHERE name = ? AND is_user_created = 1",
+            (name,),
+        )
+        exists = cursor.fetchone()
+        original_name = None
+        if self.exercise_obj._original:
+            original_name = self.exercise_obj._original.get("name")
+        if exists and (original_name != name or not self.exercise_obj.is_user_created):
+            if self.name_field:
+                self.name_field.error = True
+            conn.close()
+            dialog = MDDialog(
+                title="Error",
+                text="Duplicate name",
+                buttons=[MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())],
+            )
+            dialog.open()
+            return
+
         msg = "Save changes to this exercise?"
         if not self.exercise_obj.is_user_created:
             cursor.execute(
