@@ -1684,6 +1684,7 @@ class EditMetricPopup(MDDialog):
                         scope=updates.get("scope"),
                         description=updates.get("description"),
                         is_required=updates.get("is_required"),
+                        is_user_created=self.metric.get("is_user_created"),
                         db_path=db_path,
                     )
                     if metric_saved:
@@ -1741,7 +1742,10 @@ class EditMetricTypePopup(MDDialog):
         self.metric = None
         if metric_name:
             for m in screen.all_metrics or []:
-                if m["name"] == metric_name:
+                if (
+                    m["name"] == metric_name
+                    and m.get("is_user_created", False) == is_user_created
+                ):
                     self.metric = m
                     break
         content, buttons, title = self._build_widgets()
@@ -1850,6 +1854,7 @@ class EditMetricTypePopup(MDDialog):
                 scope=data.get("scope"),
                 description=data.get("description"),
                 is_required=data.get("is_required"),
+                is_user_created=True,
                 db_path=db_path,
             )
         else:
