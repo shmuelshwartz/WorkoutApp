@@ -1053,6 +1053,7 @@ class EditPresetScreen(MDScreen):
             def discard(*args):
                 if dialog:
                     dialog.dismiss()
+                app.init_preset_editor(force_reload=True)
                 if self.manager:
                     self.manager.current = "presets"
 
@@ -2400,14 +2401,17 @@ class WorkoutApp(MDApp):
         return Builder.load_file(str(Path(__file__).with_name("main.kv")))
 
 
-    def init_preset_editor(self):
+    def init_preset_editor(self, force_reload: bool = False):
         """Create or reload the ``PresetEditor`` for the selected preset."""
+
         db_path = DEFAULT_DB_PATH
         if self.selected_preset:
             if not self.preset_editor or self.preset_editor.preset_name != self.selected_preset:
                 if self.preset_editor:
                     self.preset_editor.close()
                 self.preset_editor = PresetEditor(self.selected_preset, db_path)
+            elif force_reload:
+                self.preset_editor.load(self.selected_preset)
         else:
             if self.preset_editor:
                 self.preset_editor.close()
