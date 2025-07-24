@@ -820,6 +820,7 @@ class SectionWidget(MDBoxLayout):
     section_index = NumericProperty(0)
     color = ListProperty([1, 1, 1, 1])
     expanded = BooleanProperty(True)
+    visible = BooleanProperty(True)
 
     def toggle(self):
         self.expanded = not self.expanded
@@ -848,6 +849,17 @@ class SectionWidget(MDBoxLayout):
                     exercise_index=idx,
                 )
             )
+
+    def add_exercise_widget(self, name: str, idx: int) -> None:
+        """Append a single exercise widget to the list."""
+        box = self.ids.exercise_list
+        box.add_widget(
+            SelectedExerciseItem(
+                text=name,
+                section_index=self.section_index,
+                exercise_index=idx,
+            )
+        )
 
     def confirm_delete(self):
         dialog = None
@@ -927,7 +939,7 @@ class EditPresetScreen(MDScreen):
         if self.exercise_panel:
             self.exercise_panel.save_selection()
         self.panel_visible = False
-        self.refresh_sections()
+        self.show_all_sections()
         self.save_enabled = True
 
     def show_only_section(self, index: int):
@@ -935,8 +947,16 @@ class EditPresetScreen(MDScreen):
         if not self.sections_box:
             return
         for child in list(self.sections_box.children):
-            if isinstance(child, SectionWidget) and child.section_index != index:
-                self.sections_box.remove_widget(child)
+            if isinstance(child, SectionWidget):
+                child.visible = child.section_index == index
+
+    def show_all_sections(self):
+        """Make all section widgets visible."""
+        if not self.sections_box:
+            return
+        for child in list(self.sections_box.children):
+            if isinstance(child, SectionWidget):
+                child.visible = True
 
     def add_section(self, name: str | None = None, index: int | None = None):
         """Add a new section to the preset and return the widget."""
@@ -1145,10 +1165,11 @@ class ExerciseSelectionPanel(MDBoxLayout):
         idx = app.editing_section_index
         if app.preset_editor and 0 <= idx < len(app.preset_editor.sections):
             app.preset_editor.add_exercise(idx, name)
+            ex_idx = len(app.preset_editor.sections[idx]["exercises"]) - 1
             edit = app.root.get_screen("edit_preset")
             for widget in edit.sections_box.children:
                 if isinstance(widget, SectionWidget) and widget.section_index == idx:
-                    widget.refresh_exercises()
+                    widget.add_exercise_widget(name, ex_idx)
                     break
 
     def save_selection(self):
