@@ -632,7 +632,7 @@ ScreenManager:
                             text: "Add Section"
                             size_hint_y: None
                             height: "40dp"
-                            on_release: root.add_section()
+                            on_release: app.root.get_screen("edit_preset").add_section()
 
                 Screen:
                     name: "details"
