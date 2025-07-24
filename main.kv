@@ -618,10 +618,9 @@ ScreenManager:
 
                 Screen:
                     name: "sections"
-                    BoxLayout:
-                        orientation: "vertical"
+                    FloatLayout:
                         ScrollView:
-                            size_hint_y: 1
+                            size_hint: 1, 1
                             MDBoxLayout:
                                 orientation: "vertical"
                                 size_hint_y: None
@@ -632,11 +631,11 @@ ScreenManager:
                                     orientation: "vertical"
                                     size_hint_y: None
                                     height: self.minimum_height
-                                MDRaisedButton:
-                                    text: "Add Section"
-                                    size_hint_y: None
-                                    height: "40dp"
-                                    on_release: app.root.get_screen("edit_preset").add_section()
+                        MDFloatingActionButton:
+                            icon: "plus"
+                            md_bg_color: app.theme_cls.primary_color
+                            pos_hint: {"center_x": 0.9, "y": 0.1}
+                            on_release: app.root.get_screen("edit_preset").add_section()
 
 
                 Screen:
