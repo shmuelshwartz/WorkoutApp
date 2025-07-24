@@ -618,7 +618,8 @@ ScreenManager:
 
                 Screen:
                     name: "sections"
-                    FloatLayout:
+                    BoxLayout:
+                        orientation: "vertical"
                         ScrollView:
                             size_hint: 1, 1
                             MDBoxLayout:
@@ -631,11 +632,17 @@ ScreenManager:
                                     orientation: "vertical"
                                     size_hint_y: None
                                     height: self.minimum_height
-                        MDFloatingActionButton:
-                            icon: "plus"
-                            md_bg_color: app.theme_cls.primary_color
-                            pos_hint: {"center_x": 0.9, "y": 0.1}
-                            on_release: app.root.get_screen("edit_preset").add_section()
+                        MDBoxLayout:
+                            orientation: "horizontal"
+                            size_hint_y: None
+                            height: "56dp"
+                            padding: "8dp"
+                            Widget:
+                            MDFloatingActionButton:
+                                icon: "plus"
+                                md_bg_color: app.theme_cls.primary_color
+                                pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                                on_release: app.root.get_screen("edit_preset").add_section()
 
 
                 Screen:
