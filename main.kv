@@ -638,6 +638,7 @@ ScreenManager:
                                     height: "40dp"
                                     on_release: app.root.get_screen("edit_preset").add_section()
 
+
                 Screen:
                     name: "details"
                     on_enter: preset_name.text = root.preset_name
@@ -665,6 +666,7 @@ ScreenManager:
                 spacing: "10dp"
                 MDRaisedButton:
                     text: "Save"
+                    disabled: not root.save_enabled
                     on_release: root.save_preset()
                 MDRaisedButton:
                     text: "Back"
