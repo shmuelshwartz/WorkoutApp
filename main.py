@@ -856,6 +856,7 @@ class SectionWidget(MDBoxLayout):
             if app.root:
                 edit = app.root.get_screen("edit_preset")
                 edit.refresh_sections()
+                edit.save_enabled = True
             if dialog:
                 dialog.dismiss()
 
@@ -947,6 +948,7 @@ class EditPresetScreen(MDScreen):
         section = SectionWidget(section_name=name, color=color, section_index=index)
         self.sections_box.add_widget(section)
         section.refresh_exercises()
+        self.save_enabled = True
         return section
 
     def switch_tab(self, tab: str):
