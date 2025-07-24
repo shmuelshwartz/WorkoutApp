@@ -547,7 +547,8 @@ ScreenManager:
 <SectionWidget>:
     orientation: "vertical"
     size_hint_y: None
-    height: self.minimum_height
+    height: self.minimum_height if root.visible else 0
+    opacity: 1 if root.visible else 0
     md_bg_color: root.color
     padding: "10dp"
     MDBoxLayout:
