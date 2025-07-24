@@ -661,6 +661,7 @@ ScreenManager:
                 spacing: "10dp"
                 MDRaisedButton:
                     text: "Save"
+                    disabled: not root.save_enabled
                     on_release: root.save_preset()
                 MDRaisedButton:
                     text: "Back"
