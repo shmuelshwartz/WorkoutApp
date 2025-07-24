@@ -1200,6 +1200,13 @@ class PresetEditor:
         if 0 <= index < len(self.sections):
             self.sections.pop(index)
 
+    def rename_section(self, index: int, name: str) -> None:
+        """Rename the section at ``index`` to ``name``."""
+
+        if index < 0 or index >= len(self.sections):
+            raise IndexError("Section index out of range")
+        self.sections[index]["name"] = name
+
     def add_exercise(
         self,
         section_index: int,
