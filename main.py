@@ -895,6 +895,7 @@ class EditPresetScreen(MDScreen):
     exercise_panel = ObjectProperty(None)
     current_tab = StringProperty("sections")
     save_enabled = BooleanProperty(False)
+    loading_dialog = ObjectProperty(None, allownone=True)
 
     _colors = [
         (1, 0.9, 0.9, 1),
@@ -914,6 +915,15 @@ class EditPresetScreen(MDScreen):
             self.save_enabled = False
 
     def on_pre_enter(self, *args):
+        if os.environ.get("KIVY_UNITTEST"):
+            self._load_preset()
+        else:
+            self.loading_dialog = LoadingDialog()
+            self.loading_dialog.open()
+            Clock.schedule_once(lambda dt: self._load_preset(), 0)
+        return super().on_pre_enter(*args)
+
+    def _load_preset(self):
         app = MDApp.get_running_app()
         app.init_preset_editor()
         self.preset_name = app.preset_editor.preset_name or "Preset"
@@ -925,7 +935,9 @@ class EditPresetScreen(MDScreen):
             if not app.preset_editor.sections:
                 self.add_section()
         self.update_save_enabled()
-        return super().on_pre_enter(*args)
+        if self.loading_dialog:
+            self.loading_dialog.dismiss()
+            self.loading_dialog = None
 
     def refresh_sections(self):
         """Repopulate the section widgets from the preset editor."""
