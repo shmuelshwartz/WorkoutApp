@@ -822,6 +822,18 @@ class SectionWidget(MDBoxLayout):
     expanded = BooleanProperty(True)
     visible = BooleanProperty(True)
 
+    def on_section_name(self, instance, value):
+        """Update the section name in the preset editor."""
+        app = MDApp.get_running_app()
+        if app and app.preset_editor:
+            try:
+                app.preset_editor.rename_section(self.section_index, value)
+            except IndexError:
+                return
+            edit = app.root.get_screen("edit_preset") if app.root else None
+            if edit:
+                edit.update_save_enabled()
+
     def toggle(self):
         self.expanded = not self.expanded
 
