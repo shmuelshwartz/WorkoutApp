@@ -409,6 +409,9 @@ class PresetsScreen(MDScreen):
             self.selected_item.md_bg_color = (0, 0, 0, 0)
         self.selected_item = None
         self.selected_preset = ""
+        app = MDApp.get_running_app()
+        if app:
+            app.selected_preset = ""
         if self._default_btn_color is not None:
             self.ids.select_btn.md_bg_color = self._default_btn_color
 
@@ -2341,6 +2344,13 @@ class WorkoutApp(MDApp):
             if self.preset_editor:
                 self.preset_editor.close()
             self.preset_editor = PresetEditor(db_path=db_path)
+
+    def start_new_preset(self):
+        """Reset state so the editor loads a blank preset."""
+        if self.preset_editor:
+            self.preset_editor.close()
+            self.preset_editor = None
+        self.selected_preset = ""
 
     def start_workout(self, exercises):
         if exercises:

@@ -91,7 +91,7 @@ ScreenManager:
             on_release: app.root.current = "edit_preset"
         MDRaisedButton:
             text: "New Preset"
-            on_release: app.root.current = "edit_preset"
+            on_release: app.start_new_preset(); app.root.current = "edit_preset"
         MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"
