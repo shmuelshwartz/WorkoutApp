@@ -1245,6 +1245,36 @@ class PresetEditor:
         if rest is not None:
             exercise["rest"] = rest
 
+    def remove_exercise(self, section_index: int, exercise_index: int) -> None:
+        """Remove an exercise from ``section_index`` at ``exercise_index``."""
+
+        if (
+            section_index < 0
+            or section_index >= len(self.sections)
+            or exercise_index < 0
+            or exercise_index >= len(self.sections[section_index]["exercises"])
+        ):
+            raise IndexError("Exercise index out of range")
+
+        self.sections[section_index]["exercises"].pop(exercise_index)
+
+    def move_exercise(self, section_index: int, old_index: int, new_index: int) -> None:
+        """Move an exercise within a section to ``new_index``."""
+
+        if (
+            section_index < 0
+            or section_index >= len(self.sections)
+            or old_index < 0
+            or old_index >= len(self.sections[section_index]["exercises"])
+            or new_index < 0
+            or new_index >= len(self.sections[section_index]["exercises"])
+        ):
+            raise IndexError("Exercise index out of range")
+
+        exercises = self.sections[section_index]["exercises"]
+        ex = exercises.pop(old_index)
+        exercises.insert(new_index, ex)
+
     def to_dict(self) -> dict:
         """Return the preset data as a dictionary."""
 

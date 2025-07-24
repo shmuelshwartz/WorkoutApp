@@ -254,4 +254,19 @@ def test_is_modified_tracking(db_copy):
     editor.close()
 
 
+def test_remove_exercise_and_save(db_with_preset):
+    editor = PresetEditor("Test Preset", db_path=db_with_preset)
+    editor.remove_exercise(0, 0)
+    assert editor.sections[0]["exercises"] == []
+    assert editor.is_modified() is True
+    editor.save()
+    conn = sqlite3.connect(db_with_preset)
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM preset_section_exercises")
+    count = cur.fetchone()[0]
+    conn.close()
+    editor.close()
+    assert count == 0
+
+
 

@@ -1081,30 +1081,54 @@ class SelectedExerciseItem(MDBoxLayout):
         app.root.current = "edit_exercise"
 
     def move_up(self):
-        parent = self.parent
-        if not parent:
+        app = MDApp.get_running_app()
+        if not app or not app.preset_editor:
             return
-        idx = parent.children.index(self)
-        if idx < len(parent.children) - 1:
-            parent.remove_widget(self)
-            parent.add_widget(self, index=idx + 1)
+        if self.exercise_index <= 0:
+            return
+        app.preset_editor.move_exercise(
+            self.section_index, self.exercise_index, self.exercise_index - 1
+        )
+        edit = app.root.get_screen("edit_preset") if app.root else None
+        if edit:
+            for widget in edit.sections_box.children:
+                if isinstance(widget, SectionWidget) and widget.section_index == self.section_index:
+                    widget.refresh_exercises()
+                    break
+            edit.update_save_enabled()
 
     def move_down(self):
-        parent = self.parent
-        if not parent:
+        app = MDApp.get_running_app()
+        if not app or not app.preset_editor:
             return
-        idx = parent.children.index(self)
-        if idx > 0:
-            parent.remove_widget(self)
-            parent.add_widget(self, index=idx - 1)
+        sec = app.preset_editor.sections[self.section_index]
+        if self.exercise_index >= len(sec["exercises"]) - 1:
+            return
+        app.preset_editor.move_exercise(
+            self.section_index, self.exercise_index, self.exercise_index + 1
+        )
+        edit = app.root.get_screen("edit_preset") if app.root else None
+        if edit:
+            for widget in edit.sections_box.children:
+                if isinstance(widget, SectionWidget) and widget.section_index == self.section_index:
+                    widget.refresh_exercises()
+                    break
+            edit.update_save_enabled()
 
     def remove_self(self):
         dialog = None
 
         def do_delete(*args):
-            parent = self.parent
-            if parent:
-                parent.remove_widget(self)
+            app = MDApp.get_running_app()
+            if app and app.preset_editor:
+                app.preset_editor.remove_exercise(self.section_index, self.exercise_index)
+                edit = app.root.get_screen("edit_preset") if app.root else None
+                if edit:
+                    for widget in edit.sections_box.children:
+                        if isinstance(widget, SectionWidget) and widget.section_index == self.section_index:
+                            widget.refresh_exercises()
+                            break
+                    edit.update_save_enabled()
             if dialog:
                 dialog.dismiss()
 
