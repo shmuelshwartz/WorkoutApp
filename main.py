@@ -871,7 +871,7 @@ class SectionWidget(MDBoxLayout):
             if app.root:
                 edit = app.root.get_screen("edit_preset")
                 edit.refresh_sections()
-                edit.save_enabled = True
+                edit.update_save_enabled()
             if dialog:
                 dialog.dismiss()
 
@@ -905,11 +905,18 @@ class EditPresetScreen(MDScreen):
         (1, 0.9, 1, 1),
     ]
 
+    def update_save_enabled(self):
+        """Refresh ``save_enabled`` based on preset modifications."""
+        app = MDApp.get_running_app()
+        if app and app.preset_editor:
+            self.save_enabled = app.preset_editor.is_modified()
+        else:
+            self.save_enabled = False
+
     def on_pre_enter(self, *args):
         app = MDApp.get_running_app()
         app.init_preset_editor()
         self.preset_name = app.preset_editor.preset_name or "Preset"
-        self.save_enabled = False
         self.current_tab = "sections"
         if self.sections_box:
             self.sections_box.clear_widgets()
@@ -917,6 +924,7 @@ class EditPresetScreen(MDScreen):
                 self.add_section(sec["name"], index=idx)
             if not app.preset_editor.sections:
                 self.add_section()
+        self.update_save_enabled()
         return super().on_pre_enter(*args)
 
     def refresh_sections(self):
@@ -940,7 +948,7 @@ class EditPresetScreen(MDScreen):
             self.exercise_panel.save_selection()
         self.panel_visible = False
         self.show_all_sections()
-        self.save_enabled = True
+        self.update_save_enabled()
 
     def show_only_section(self, index: int):
         """Hide all sections except the one with ``index``."""
@@ -971,7 +979,7 @@ class EditPresetScreen(MDScreen):
         section = SectionWidget(section_name=name, color=color, section_index=index)
         self.sections_box.add_widget(section)
         section.refresh_exercises()
-        self.save_enabled = True
+        self.update_save_enabled()
         return section
 
     def switch_tab(self, tab: str):
@@ -985,7 +993,7 @@ class EditPresetScreen(MDScreen):
         app = MDApp.get_running_app()
         if app.preset_editor:
             app.preset_editor.preset_name = name
-        self.save_enabled = True
+        self.update_save_enabled()
 
     def save_preset(self):
         app = MDApp.get_running_app()
@@ -1171,6 +1179,7 @@ class ExerciseSelectionPanel(MDBoxLayout):
                 if isinstance(widget, SectionWidget) and widget.section_index == idx:
                     widget.add_exercise_widget(name, ex_idx)
                     break
+            edit.update_save_enabled()
 
     def save_selection(self):
         """No-op kept for API compatibility."""
