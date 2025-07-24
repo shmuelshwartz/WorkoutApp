@@ -97,6 +97,29 @@ def test_enum_values_strip_spaces_after_comma():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_add_metric_popup_filters_scope(monkeypatch):
+    class DummyScreen:
+        exercise_obj = type("obj", (), {"metrics": []})()
+
+    metrics = [
+        {"name": "Session", "scope": "session"},
+        {"name": "Section", "scope": "section"},
+        {"name": "Exercise", "scope": "exercise"},
+        {"name": "Set", "scope": "set"},
+    ]
+
+    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+
+    popup = AddMetricPopup(DummyScreen(), mode="select")
+    list_view = popup.content_cls.children[0]
+    names = {child.text for child in list_view.children}
+
+    assert "Session" not in names
+    assert "Section" not in names
+    assert {"Exercise", "Set"}.issubset(names)
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_edit_exercise_default_tab():
     screen = EditExerciseScreen()
     screen.previous_screen = "exercise_library"

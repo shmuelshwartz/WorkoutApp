@@ -1296,7 +1296,12 @@ class AddMetricPopup(MDDialog):
     def _build_select_widgets(self):
         metrics = core.get_all_metric_types()
         existing = {m.get("name") for m in self.screen.exercise_obj.metrics}
-        metrics = [m for m in metrics if m["name"] not in existing]
+        metrics = [
+            m
+            for m in metrics
+            if m["name"] not in existing
+            and m.get("scope") in ("set", "exercise")
+        ]
         list_view = MDList()
         for m in metrics:
             item = OneLineListItem(text=m["name"])
