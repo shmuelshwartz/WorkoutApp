@@ -238,4 +238,20 @@ def test_save_missing_exercise_fails(db_copy):
     editor.close()
 
 
+def test_is_modified_tracking(db_copy):
+    editor = PresetEditor(db_path=db_copy)
+    # New editor should not be marked as modified
+    assert editor.is_modified() is False
+
+    editor.preset_name = "My Preset"
+    assert editor.is_modified() is True
+
+    editor.mark_saved()
+    assert editor.is_modified() is False
+
+    editor.add_section("Warmup")
+    assert editor.is_modified() is True
+    editor.close()
+
+
 

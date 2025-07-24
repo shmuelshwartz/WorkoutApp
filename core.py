@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 import time
 import re
+import copy
 
 # Number of sets each exercise defaults to when starting a workout
 DEFAULT_SETS_PER_EXERCISE = 3
@@ -1247,7 +1248,7 @@ class PresetEditor:
     def to_dict(self) -> dict:
         """Return the preset data as a dictionary."""
 
-        return {"name": self.preset_name, "sections": self.sections}
+        return copy.deepcopy({"name": self.preset_name, "sections": self.sections})
 
     def close(self) -> None:
         self.conn.close()
