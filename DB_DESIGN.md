@@ -35,7 +35,6 @@ This is the **central repository** for defining exercises and their default attr
 | `library_exercises`                 | Master list of exercises (name, description, user-created flag) |
 | `library_exercise_metrics`          | Default metrics for each exercise (e.g., Reps, Weight, Tempo) with optional per-exercise overrides |
 | `library_metric_types`              | Defines all metric types and their configurations |
-| `library_exercise_enum_values`      | Custom enum values for enum-type metrics         |
 
 ✅ **Key Idea**:  
 - These tables are **shared across all presets and sessions** via `exercise_id`.  
@@ -139,15 +138,16 @@ This allows extensibility without changing table structure.
 
 ## 📦 Exercise Enums
 
-`library_exercise_enum_values` supports enum-based metric values:  
+Enum values for enum-type metrics are now stored directly in the `enum_values_json` field on relevant tables:
+
+- `library_metric_types.enum_values_json` — defines global/default enums for a metric type
+- `library_exercise_metrics.enum_values_json` — allows per-exercise overrides of enum values
+- `preset_section_exercise_metrics.enum_values_json` — enums copied/snapshotted into each preset
 
 📌 Example:  
-- Metric: Machine  
-- Exercise: Bench Press  
-- Values:
-  - Flat Barbell Bench
-  - Incline Smith Machine
-  - Hammer Strength Chest Press
+- Table: `library_exercise_metrics`
+- Field: `enum_values_json`
+- Value: `["Flat Barbell Bench", "Incline Smith Machine", "Hammer Strength Chest Press"]`
 
 ---
 
@@ -181,7 +181,7 @@ Each exercise:
 
 | Feature                 | Table(s)                                     |
 |-------------------------|-----------------------------------------------|
-| Global Exercises        | `library_exercises`, `library_exercise_metrics`, `library_metric_types`, `library_exercise_enum_values` |
+| Global Exercises        | `library_exercises`, `library_exercise_metrics`, `library_metric_types` |
 | Presets & Sections      | `preset_presets`, `preset_sections`          |
 | Preset Exercises        | `preset_section_exercises`                   |
 | Preset Exercise Metrics | `preset_section_exercise_metrics`            |
