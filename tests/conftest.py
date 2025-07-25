@@ -57,15 +57,6 @@ def sample_db(tmp_path: Path) -> Path:
     pushup_id = conn.execute("SELECT id FROM library_exercises WHERE name='Push-up'").fetchone()[0]
     bench_id = conn.execute("SELECT id FROM library_exercises WHERE name='Bench Press'").fetchone()[0]
 
-    # enum values for Machine metric (linked to Bench Press)
-    conn.execute(
-        "INSERT INTO library_exercise_enum_values (metric_type_id, exercise_id, value, position) VALUES (?, ?, 'A', 0)",
-        (machine_id, bench_id),
-    )
-    conn.execute(
-        "INSERT INTO library_exercise_enum_values (metric_type_id, exercise_id, value, position) VALUES (?, ?, 'B', 1)",
-        (machine_id, bench_id),
-    )
 
     # associate metrics with exercises
     conn.execute(
@@ -82,8 +73,8 @@ def sample_db(tmp_path: Path) -> Path:
         (bench_id, weight_id),
     )
     conn.execute(
-        "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (?, ?, 2)",
-        (bench_id, machine_id),
+        "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position, enum_values_json) VALUES (?, ?, 2, ?)",
+        (bench_id, machine_id, '["A","B"]'),
     )
 
     # preset
@@ -152,10 +143,10 @@ def sample_db(tmp_path: Path) -> Path:
     conn.execute(
         """
         INSERT INTO preset_section_exercise_metrics
-            (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
-        VALUES (?, 'Machine', 'str', 'manual_enum', 'pre_workout', 0, 'exercise', ?)
+            (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
+        VALUES (?, 'Machine', 'str', 'manual_enum', 'pre_workout', 0, 'exercise', ?, ?)
         """,
-        (bench_se_id, machine_id),
+        (bench_se_id, '["A","B"]', machine_id),
     )
 
     conn.commit()

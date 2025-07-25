@@ -89,7 +89,7 @@ def sample_db(tmp_db: Path) -> Path:
 def test_get_metric_type_schema(tmp_db: Path):
     fields = core.get_metric_type_schema(db_path=tmp_db)
     names = {f["name"] for f in fields}
-    assert names == {"name", "input_type", "source_type", "input_timing", "is_required", "scope", "description"}
+    assert names == {"name", "input_type", "source_type", "input_timing", "is_required", "scope", "description", "enum_values_json"}
     input_type_opts = next(f["options"] for f in fields if f["name"] == "input_type")
     assert set(input_type_opts) == {"int", "float", "str", "bool"}
 
