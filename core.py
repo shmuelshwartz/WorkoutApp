@@ -3,6 +3,7 @@ from pathlib import Path
 import time
 import re
 import copy
+import json
 
 # Number of sets each exercise defaults to when starting a workout
 DEFAULT_SETS_PER_EXERCISE = 3
@@ -154,6 +155,7 @@ def get_metrics_for_exercise(
                COALESCE(em.input_timing, mt.input_timing),
                COALESCE(em.is_required, mt.is_required),
                COALESCE(em.scope, mt.scope),
+               COALESCE(em.enum_values_json, mt.enum_values_json),
                mt.description
         FROM library_exercise_metrics em
         JOIN library_metric_types mt ON mt.id = em.metric_type_id
@@ -172,20 +174,15 @@ def get_metrics_for_exercise(
         input_timing,
         is_required,
         scope,
+        enum_json,
         description,
     ) in cursor.fetchall():
         values = []
-        if source_type == "manual_enum":
-            cursor.execute(
-                """
-                SELECT value
-                FROM library_exercise_enum_values
-                WHERE metric_type_id = ? AND exercise_id = ?
-                ORDER BY position
-                """,
-                (metric_id, exercise_id),
-            )
-            values = [v[0] for v in cursor.fetchall()]
+        if source_type == "manual_enum" and enum_json:
+            try:
+                values = json.loads(enum_json)
+            except Exception:
+                values = []
         metrics.append(
             {
                 "name": name,
@@ -972,10 +969,6 @@ def save_exercise(exercise: Exercise) -> None:
             (exercise.description, ex_id),
         )
         cursor.execute("DELETE FROM library_exercise_metrics WHERE exercise_id = ?", (ex_id,))
-        cursor.execute(
-            "DELETE FROM library_exercise_enum_values WHERE exercise_id = ?",
-            (ex_id,),
-        )
     else:
         cursor.execute(
             "INSERT INTO library_exercises (name, description, is_user_created) VALUES (?, ?, 1)",
@@ -1010,8 +1003,8 @@ def save_exercise(exercise: Exercise) -> None:
 
         cursor.execute(
             """INSERT INTO library_exercise_metrics
-                (exercise_id, metric_type_id, position, input_type, source_type, input_timing, is_required, scope)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (exercise_id, metric_type_id, position, input_type, source_type, input_timing, is_required, scope, enum_values_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 ex_id,
                 metric_id,
@@ -1021,16 +1014,9 @@ def save_exercise(exercise: Exercise) -> None:
                 timing,
                 req,
                 scope_val,
+                json.dumps(m.get("values")) if m.get("values") and (m.get("source_type") or source_type) == "manual_enum" else None,
             ),
         )
-        em_id = cursor.lastrowid
-
-        if source_type == "manual_enum" and m.get("values"):
-            for idx, val in enumerate(m.get("values", [])):
-                cursor.execute(
-                    "INSERT INTO library_exercise_enum_values (metric_type_id, exercise_id, value, position) VALUES (?, ?, ?, ?)",
-                    (metric_id, ex_id, val, idx),
-                )
 
     conn.commit()
     conn.close()
@@ -1332,10 +1318,6 @@ class PresetEditor:
                 ex_ids = [r[0] for r in cursor.fetchall()]
                 for eid in ex_ids:
                     cursor.execute(
-                        "DELETE FROM preset_section_exercise_metric_enum_values WHERE section_exercise_metric_id IN (SELECT id FROM preset_section_exercise_metrics WHERE section_exercise_id = ?)",
-                        (eid,),
-                    )
-                    cursor.execute(
                         "DELETE FROM preset_section_exercise_metrics WHERE section_exercise_id = ?",
                         (eid,),
                     )
@@ -1398,6 +1380,7 @@ class PresetEditor:
                                COALESCE(em.input_timing, mt.input_timing),
                                COALESCE(em.is_required, mt.is_required),
                                COALESCE(em.scope, mt.scope),
+                               COALESCE(em.enum_values_json, mt.enum_values_json),
                                em.position,
                                mt.id
                           FROM library_exercise_metrics em
@@ -1414,13 +1397,14 @@ class PresetEditor:
                         m_timing,
                         m_req,
                         m_scope,
+                        m_enum_json,
                         mpos,
                         mt_id,
                     ) in cursor.fetchall():
                         cursor.execute(
                             """INSERT INTO preset_section_exercise_metrics
-                                (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, position, library_metric_type_id)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                             (
                                 se_id,
                                 mt_name,
@@ -1429,21 +1413,11 @@ class PresetEditor:
                                 m_timing,
                                 m_req,
                                 m_scope,
+                                m_enum_json,
                                 mpos,
                                 mt_id,
                             ),
                         )
-                        sem_id = cursor.lastrowid
-                        if m_source == "manual_enum":
-                            cursor.execute(
-                                "SELECT value, position FROM library_exercise_enum_values WHERE metric_type_id = ? AND exercise_id = ? ORDER BY position",
-                                (mt_id, lib_id),
-                            )
-                            for val, vpos in cursor.fetchall():
-                                cursor.execute(
-                                    "INSERT INTO preset_section_exercise_metric_enum_values (section_exercise_metric_id, value, position) VALUES (?, ?, ?)",
-                                    (sem_id, val, vpos),
-                                )
 
         self.conn.commit()
         self.mark_saved()
