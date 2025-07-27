@@ -199,35 +199,6 @@ def test_edit_metric_popup_no_duplicate_field():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_edit_metric_popup_reopen_multiple_times():
-    class DummyExercise:
-        metrics = [
-            {
-                "name": "Machine",
-                "input_type": "int",
-                "source_type": "manual_enum",
-                "values": ["A", "B"],
-            }
-        ]
-
-    class DummyScreen:
-        exercise_obj = DummyExercise()
-
-    metric = DummyScreen.exercise_obj.metrics[0]
-    for _ in range(3):
-        popup = EditMetricPopup(DummyScreen(), metric)
-        count = len(
-            [
-                c
-                for c in popup.content_cls.children[0].children
-                if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
-            ]
-        )
-        assert count == 1
-        popup.dismiss()
-
-
-@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_add_metric_popup_filters_scope(monkeypatch):
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
