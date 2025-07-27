@@ -5,23 +5,22 @@ CREATE TABLE IF NOT EXISTS "library_exercise_metrics" (
 	"metric_type_id"	INTEGER NOT NULL,
 	"position"	INTEGER DEFAULT 0,
 	"input_type"	TEXT,
-        "library_exercise_id"   INTEGER,
 	"source_type"	TEXT,
 	"input_timing"	TEXT,
 	"is_required"	BOOLEAN,
 	"scope"	TEXT,
 	"enum_values_json"	TEXT,
-        "deleted" INTEGER DEFAULT 0,
-        PRIMARY KEY("id" AUTOINCREMENT),
-        FOREIGN KEY("exercise_id") REFERENCES "library_exercises"("id"),
-        FOREIGN KEY("metric_type_id") REFERENCES "library_metric_types"("id")
+	"deleted"	INTEGER DEFAULT 0,
+	PRIMARY KEY("id" AUTOINCREMENT),
+	FOREIGN KEY("exercise_id") REFERENCES "library_exercises"("id") ON DELETE CASCADE,
+	FOREIGN KEY("metric_type_id") REFERENCES "library_metric_types"("id") ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS "library_exercises" (
 	"id"	INTEGER,
 	"name"	TEXT NOT NULL,
 	"description"	TEXT,
 	"is_user_created"	BOOLEAN NOT NULL DEFAULT 0,
-        "deleted" INTEGER DEFAULT 0,
+	"deleted"	INTEGER DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 CREATE TABLE IF NOT EXISTS "library_metric_types" (
@@ -34,8 +33,8 @@ CREATE TABLE IF NOT EXISTS "library_metric_types" (
 	"scope"	TEXT NOT NULL CHECK("scope" IN ('session', 'section', 'exercise', 'set')),
 	"description"	TEXT,
 	"is_user_created"	BOOLEAN NOT NULL DEFAULT 0,
-        "deleted" INTEGER DEFAULT 0,
 	"enum_values_json"	TEXT,
+	"deleted"	INTEGER DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 CREATE TABLE IF NOT EXISTS "preset_metadata" (
@@ -43,15 +42,15 @@ CREATE TABLE IF NOT EXISTS "preset_metadata" (
 	"preset_id"	INTEGER NOT NULL,
 	"metric_type_id"	INTEGER NOT NULL,
 	"value"	TEXT NOT NULL,
-        "deleted" INTEGER DEFAULT 0,
+	"deleted"	INTEGER DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("metric_type_id") REFERENCES "library_metric_types"("id"),
-	FOREIGN KEY("preset_id") REFERENCES "preset_presets"("id")
+	FOREIGN KEY("metric_type_id") REFERENCES "library_metric_types"("id") ON DELETE CASCADE,
+	FOREIGN KEY("preset_id") REFERENCES "preset_presets"("id") ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS "preset_presets" (
 	"id"	INTEGER,
 	"name"	TEXT NOT NULL,
-        "deleted" INTEGER DEFAULT 0,
+	"deleted"	INTEGER DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 CREATE TABLE IF NOT EXISTS "preset_section_exercise_metrics" (
@@ -66,9 +65,9 @@ CREATE TABLE IF NOT EXISTS "preset_section_exercise_metrics" (
 	"position"	INTEGER NOT NULL DEFAULT 0,
 	"library_metric_type_id"	INTEGER,
 	"enum_values_json"	TEXT,
-        "deleted" INTEGER DEFAULT 0,
+	"deleted"	INTEGER DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("section_exercise_id") REFERENCES "preset_section_exercises"("id")
+	FOREIGN KEY("section_exercise_id") REFERENCES "preset_section_exercises"("id") ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS "preset_section_exercises" (
 	"id"	INTEGER,
@@ -77,35 +76,34 @@ CREATE TABLE IF NOT EXISTS "preset_section_exercises" (
 	"exercise_description"	TEXT,
 	"position"	INTEGER NOT NULL,
 	"number_of_sets"	INTEGER NOT NULL DEFAULT 1,
-        "library_exercise_id"   INTEGER,
-        "deleted" INTEGER DEFAULT 0,
+	"library_exercise_id"	INTEGER,
 	"rest_time"	INTEGER NOT NULL DEFAULT 120,
+	"deleted"	INTEGER DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("section_id") REFERENCES "preset_sections"("id")
+	FOREIGN KEY("section_id") REFERENCES "preset_sections"("id") ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS "preset_sections" (
 	"id"	INTEGER,
 	"preset_id"	INTEGER NOT NULL,
 	"name"	TEXT NOT NULL,
 	"position"	INTEGER NOT NULL,
-        "deleted" INTEGER DEFAULT 0,
+	"deleted"	INTEGER DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT),
-	FOREIGN KEY("preset_id") REFERENCES "preset_presets"("id")
+	FOREIGN KEY("preset_id") REFERENCES "preset_presets"("id") ON DELETE CASCADE
 );
 CREATE VIEW library_view_exercise_metrics AS
-SELECT
+SELECT 
     em.id AS exercise_metric_id,
     em.exercise_id,
     e.name AS exercise_name,
     em.metric_type_id,
     mt.name AS metric_type_name
-FROM
+FROM 
     library_exercise_metrics em
-JOIN
+JOIN 
     library_exercises e ON em.exercise_id = e.id
-JOIN
-    library_metric_types mt ON em.metric_type_id = mt.id
-WHERE em.deleted = 0 AND e.deleted = 0 AND mt.deleted = 0;
+JOIN 
+    library_metric_types mt ON em.metric_type_id = mt.id;
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_library_exercises_name_user_created" ON "library_exercises" (
 	"name",
 	"is_user_created"
