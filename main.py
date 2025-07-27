@@ -1821,11 +1821,11 @@ class EditMetricPopup(MDDialog):
 
         def update_enum_visibility(*args):
             show = self.input_widgets["source_type"].text == "manual_enum"
-            has_parent = self.enum_values_field.parent is not None
-            if show and not has_parent:
+            parent = self.enum_values_field.parent
+            if parent is not None:
+                parent.remove_widget(self.enum_values_field)
+            if show:
                 form.add_widget(self.enum_values_field)
-            elif not show and has_parent:
-                form.remove_widget(self.enum_values_field)
 
         def update_enum_filter(*args):
             input_type = self.input_widgets["input_type"].text
@@ -1843,10 +1843,10 @@ class EditMetricPopup(MDDialog):
             self.enum_values_field.input_filter = _filter
 
         if "source_type" in self.input_widgets and "input_type" in self.input_widgets:
-            self.input_widgets["input_type"].bind(text=lambda *a: update_enum_filter())
-            self.input_widgets["source_type"].bind(
-                text=lambda *a: update_enum_visibility()
-            )
+            self._enum_filter_cb = lambda *a: update_enum_filter()
+            self._enum_visibility_cb = lambda *a: update_enum_visibility()
+            self.input_widgets["input_type"].bind(text=self._enum_filter_cb)
+            self.input_widgets["source_type"].bind(text=self._enum_visibility_cb)
             update_enum_visibility()
             update_enum_filter()
 
@@ -1983,6 +1983,13 @@ class EditMetricPopup(MDDialog):
             dialog.open()
         else:
             apply_updates()
+
+    def dismiss(self, *args, **kwargs):
+        if hasattr(self, "_enum_visibility_cb") and "source_type" in self.input_widgets:
+            self.input_widgets["source_type"].unbind(text=self._enum_visibility_cb)
+        if hasattr(self, "_enum_filter_cb") and "input_type" in self.input_widgets:
+            self.input_widgets["input_type"].unbind(text=self._enum_filter_cb)
+        return super().dismiss(*args, **kwargs)
 
 
 class EditMetricTypePopup(MDDialog):
