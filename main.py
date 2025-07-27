@@ -1445,7 +1445,6 @@ class AddMetricPopup(MDDialog):
         )
         self.enum_values_field.hint_text_font_size = "12sp"
         enable_auto_resize(self.enum_values_field)
-        form.add_widget(self.enum_values_field)
 
         # Helper that toggles visibility based on ``source_type``.
 
@@ -1706,7 +1705,6 @@ class EditMetricPopup(MDDialog):
         )
         self.enum_values_field.hint_text_font_size = "12sp"
         enable_auto_resize(self.enum_values_field)
-        form.add_widget(self.enum_values_field)
 
         # populate values
         for key, widget in self.input_widgets.items():
@@ -1723,6 +1721,8 @@ class EditMetricPopup(MDDialog):
 
         # populate enum values
         if self.metric.get("source_type") == "manual_enum":
+            if self.enum_values_field.parent is None:
+                form.add_widget(self.enum_values_field)
             values = ",".join(self.metric.get("values", []))
             self.enum_values_field.text = values
         else:
