@@ -23,6 +23,8 @@ if kivy_available:
         MetricInputScreen,
         WorkoutActiveScreen,
         AddMetricPopup,
+        EditMetricPopup,
+        EditMetricTypePopup,
         EditExerciseScreen,
         ExerciseSelectionPanel,
         PresetsScreen,
@@ -156,6 +158,44 @@ def test_edit_metric_popup_has_single_enum_field():
         c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
     ]
     assert len(enum_fields) == 1
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_popup_no_duplicate_field():
+    class DummyExercise:
+        metrics = [
+            {
+                "name": "Machine",
+                "input_type": "int",
+                "source_type": "manual_enum",
+                "values": ["A", "B"],
+            }
+        ]
+
+    class DummyScreen:
+        exercise_obj = DummyExercise()
+
+    metric = DummyScreen.exercise_obj.metrics[0]
+    popup1 = EditMetricPopup(DummyScreen(), metric)
+    count1 = len(
+        [
+            c
+            for c in popup1.content_cls.children[0].children
+            if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+        ]
+    )
+    popup1.dismiss()
+
+    popup2 = EditMetricPopup(DummyScreen(), metric)
+    count2 = len(
+        [
+            c
+            for c in popup2.content_cls.children[0].children
+            if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+        ]
+    )
+    assert count1 == 1
+    assert count2 == 1
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
@@ -363,6 +403,31 @@ def test_edit_metric_type_popup_selects_correct_metric():
     popup = EditMetricTypePopup(DummyScreen(), "Reps", True)
     assert popup.metric["description"] == "copy"
 
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_type_popup_enum_field_visibility():
+    class DummyScreen:
+        all_metrics = [
+            {
+                "name": "Speed",
+                "input_type": "int",
+                "source_type": "manual_text",
+                "is_user_created": True,
+            }
+        ]
+
+    popup = EditMetricTypePopup(DummyScreen(), "Speed", True)
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 0
+    popup.input_widgets["source_type"].text = "manual_enum"
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 1
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_preset_select_button_color(monkeypatch):

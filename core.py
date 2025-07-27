@@ -385,6 +385,7 @@ def add_metric_type(
     scope: str,
     description: str = "",
     is_required: bool = False,
+    enum_values: list[str] | None = None,
     db_path: Path = DEFAULT_DB_PATH,
 ) -> int:
     """Insert a new metric type and return its ID."""
@@ -395,8 +396,9 @@ def add_metric_type(
         """
         INSERT INTO library_metric_types
             (name, input_type, source_type, input_timing,
-             is_required, scope, description, is_user_created)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+             is_required, scope, description, is_user_created,
+             enum_values_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
         """,
         (
             name,
@@ -406,6 +408,7 @@ def add_metric_type(
             int(is_required),
             scope,
             description,
+            json.dumps(enum_values) if enum_values is not None else None,
         ),
     )
     metric_id = cursor.lastrowid
@@ -502,6 +505,7 @@ def update_metric_type(
     scope: str | None = None,
     description: str | None = None,
     is_required: bool | None = None,
+    enum_values: list[str] | None = None,
     is_user_created: bool | None = None,
     db_path: Path = DEFAULT_DB_PATH,
 ) -> None:
@@ -544,6 +548,9 @@ def update_metric_type(
     if description is not None:
         updates.append("description = ?")
         params.append(description)
+    if enum_values is not None:
+        updates.append("enum_values_json = ?")
+        params.append(json.dumps(enum_values))
     if updates:
         params.append(metric_id)
         cursor.execute(
