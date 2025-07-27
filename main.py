@@ -34,6 +34,7 @@ from pathlib import Path
 import os
 import sys
 import re
+import json
 
 # Import core so we can always reference the up-to-date WORKOUT_PRESETS list
 import core
@@ -1450,16 +1451,11 @@ class AddMetricPopup(MDDialog):
 
         def update_enum_visibility(*args):
             show = self.input_widgets["source_type"].text == "manual_enum"
-            if show:
-                if self.enum_values_field.parent is None:
-                    form.add_widget(self.enum_values_field)
-                self.enum_values_field.opacity = 1
-                # self.enum_values_field.height = default_height
-            else:
-                if self.enum_values_field.parent is not None:
-                    form.remove_widget(self.enum_values_field)
-                # self.enum_values_field.opacity = 0
-                # self.enum_values_field.height = 0
+            has_parent = self.enum_values_field.parent is not None
+            if show and not has_parent:
+                form.add_widget(self.enum_values_field)
+            elif not show and has_parent:
+                form.remove_widget(self.enum_values_field)
 
         def update_enum_filter(*args):
             input_type = self.input_widgets["input_type"].text
@@ -1588,6 +1584,7 @@ class AddMetricPopup(MDDialog):
                 metric["scope"],
                 metric.get("description", ""),
                 metric.get("is_required", False),
+                metric.get("values"),
                 db_path=db_path,
             )
         except sqlite3.IntegrityError:
@@ -1731,12 +1728,11 @@ class EditMetricPopup(MDDialog):
 
         def update_enum_visibility(*args):
             show = self.input_widgets["source_type"].text == "manual_enum"
-            if show:
-                if self.enum_values_field.parent is None:
-                    form.add_widget(self.enum_values_field)
-            else:
-                if self.enum_values_field.parent is not None:
-                    form.remove_widget(self.enum_values_field)
+            has_parent = self.enum_values_field.parent is not None
+            if show and not has_parent:
+                form.add_widget(self.enum_values_field)
+            elif not show and has_parent:
+                form.remove_widget(self.enum_values_field)
 
         def update_enum_filter(*args):
             input_type = self.input_widgets["input_type"].text
@@ -1958,6 +1954,16 @@ class EditMetricTypePopup(MDDialog):
                 form.add_widget(widget)
             self.input_widgets[name] = widget
 
+        # Text box for enum values. Only shown for manual enum metrics
+        self.enum_values_field = MDTextField(
+            hint_text="Enum Values (comma separated)",
+            size_hint_y=None,
+            height=default_height,
+            multiline=True,
+        )
+        self.enum_values_field.hint_text_font_size = "12sp"
+        enable_auto_resize(self.enum_values_field)
+
         if self.metric:
             for key, widget in self.input_widgets.items():
                 if key not in self.metric:
@@ -1970,6 +1976,49 @@ class EditMetricTypePopup(MDDialog):
                         widget.text = val
                 else:
                     widget.text = str(val)
+
+        # show enum values if current metric uses manual_enum
+        if self.metric and self.metric.get("source_type") == "manual_enum":
+            if self.enum_values_field.parent is None:
+                form.add_widget(self.enum_values_field)
+            values = []
+            if "values" in self.metric and self.metric["values"]:
+                values = self.metric["values"]
+            elif self.metric.get("enum_values_json"):
+                try:
+                    values = json.loads(self.metric["enum_values_json"])
+                except Exception:
+                    values = []
+            self.enum_values_field.text = ",".join(values)
+
+        def update_enum_visibility(*args):
+            show = self.input_widgets["source_type"].text == "manual_enum"
+            has_parent = self.enum_values_field.parent is not None
+            if show and not has_parent:
+                form.add_widget(self.enum_values_field)
+            elif not show and has_parent:
+                form.remove_widget(self.enum_values_field)
+
+        def update_enum_filter(*args):
+            input_type = self.input_widgets["input_type"].text
+            if input_type == "int":
+                allowed = string.digits + ","
+            elif input_type == "float":
+                allowed = string.digits + ".,"
+            else:
+                allowed = string.ascii_letters + " ,"
+
+            def _filter(value, from_undo):
+                filtered = "".join(ch for ch in value if ch in allowed)
+                return re.sub(r",\s+", ",", filtered)
+
+            self.enum_values_field.input_filter = _filter
+
+        if "source_type" in self.input_widgets and "input_type" in self.input_widgets:
+            self.input_widgets["input_type"].bind(text=lambda *a: update_enum_filter())
+            self.input_widgets["source_type"].bind(text=lambda *a: update_enum_visibility())
+            update_enum_visibility()
+            update_enum_filter()
 
         layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
         info_box = None
@@ -2008,6 +2057,12 @@ class EditMetricTypePopup(MDDialog):
             else:
                 data[key] = widget.text
 
+        enum_values = None
+        if self.enum_values_field.parent is not None:
+            text = self.enum_values_field.text.strip()
+            if text:
+                enum_values = [v.strip() for v in text.split(",") if v.strip()]
+
         db_path = DEFAULT_DB_PATH
         if self.metric and self.is_user_created:
             core.update_metric_type(
@@ -2018,6 +2073,7 @@ class EditMetricTypePopup(MDDialog):
                 scope=data.get("scope"),
                 description=data.get("description"),
                 is_required=data.get("is_required"),
+                enum_values=enum_values,
                 is_user_created=True,
                 db_path=db_path,
             )
@@ -2031,6 +2087,7 @@ class EditMetricTypePopup(MDDialog):
                     data.get("scope"),
                     data.get("description", ""),
                     data.get("is_required", False),
+                    enum_values,
                     db_path=db_path,
                 )
             except sqlite3.IntegrityError:
