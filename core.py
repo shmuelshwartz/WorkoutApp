@@ -247,7 +247,8 @@ def get_all_metric_types(
         cursor.execute(
             """
             SELECT name, input_type, source_type, input_timing,
-                   is_required, scope, description, is_user_created
+                   is_required, scope, description, is_user_created,
+                   enum_values_json
             FROM library_metric_types
             WHERE deleted = 0
             ORDER BY id
@@ -263,6 +264,7 @@ def get_all_metric_types(
                 "scope": scope,
                 "description": description,
                 "is_user_created": bool(flag),
+                "enum_values_json": enum_json,
             }
             for (
                 name,
@@ -273,13 +275,14 @@ def get_all_metric_types(
                 scope,
                 description,
                 flag,
+                enum_json,
             ) in cursor.fetchall()
         ]
     else:
         cursor.execute(
             """
             SELECT name, input_type, source_type, input_timing,
-                   is_required, scope, description
+                   is_required, scope, description, enum_values_json
             FROM library_metric_types
             WHERE deleted = 0
             ORDER BY id
@@ -294,6 +297,7 @@ def get_all_metric_types(
                 "is_required": bool(is_required),
                 "scope": scope,
                 "description": description,
+                "enum_values_json": enum_json,
             }
             for (
                 name,
@@ -303,6 +307,7 @@ def get_all_metric_types(
                 is_required,
                 scope,
                 description,
+                enum_json,
             ) in cursor.fetchall()
         ]
     conn.close()

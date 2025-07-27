@@ -429,6 +429,23 @@ def test_edit_metric_type_popup_enum_field_visibility():
     ]
     assert len(enum_fields) == 1
 
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_type_popup_loads_enum_values():
+    class DummyScreen:
+        all_metrics = [
+            {
+                "name": "Side",
+                "input_type": "str",
+                "source_type": "manual_enum",
+                "is_user_created": True,
+                "enum_values_json": "[\"Left\", \"Right\", \"None\"]",
+            }
+        ]
+
+    popup = EditMetricTypePopup(DummyScreen(), "Side", True)
+    assert popup.enum_values_field.text == "Left, Right, None"
+
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_preset_select_button_color(monkeypatch):
     """Selecting a preset updates the select button color."""
