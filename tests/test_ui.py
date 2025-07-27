@@ -106,6 +106,12 @@ def test_add_metric_popup_has_single_enum_field():
     enum_fields = [
         c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
     ]
+    assert len(enum_fields) == 0
+    popup.input_widgets["source_type"].text = "manual_enum"
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
     assert len(enum_fields) == 1
 
 
@@ -130,6 +136,18 @@ def test_edit_metric_popup_has_single_enum_field():
 
     metric = DummyScreen.exercise_obj.metrics[0]
     popup = EditMetricPopup(DummyScreen(), metric)
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 1
+    popup.input_widgets["source_type"].text = "manual_text"
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 0
+    popup.input_widgets["source_type"].text = "manual_enum"
     children = popup.content_cls.children[0].children
     enum_fields = [
         c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
