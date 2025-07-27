@@ -97,6 +97,47 @@ def test_enum_values_strip_spaces_after_comma():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_add_metric_popup_has_single_enum_field():
+    class DummyScreen:
+        exercise_obj = type("obj", (), {"metrics": []})()
+
+    popup = AddMetricPopup(DummyScreen(), mode="new")
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 1
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_popup_has_single_enum_field():
+    class DummyExercise:
+        metrics = [
+            {
+                "name": "Machine",
+                "input_type": "int",
+                "source_type": "manual_enum",
+                "values": ["A", "B"],
+            }
+        ]
+        updated = False
+
+        def update_metric(self, *a, **k):
+            self.updated = True
+
+    class DummyScreen:
+        exercise_obj = DummyExercise()
+
+    metric = DummyScreen.exercise_obj.metrics[0]
+    popup = EditMetricPopup(DummyScreen(), metric)
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 1
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_add_metric_popup_filters_scope(monkeypatch):
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
