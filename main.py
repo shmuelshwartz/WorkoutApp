@@ -2280,15 +2280,27 @@ class EditMetricTypePopup(MDDialog):
         layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
         info_box = None
         if self.metric and not self.is_user_created:
-            info_box = MDLabel(
-                text="Built-in metric. Saving will create a copy.",
-                halign="center",
-            )
+            has_copy = False
+            if self.screen and self.metric_name:
+                for m in self.screen.all_metrics or []:
+                    if m.get("name") == self.metric_name and m.get("is_user_created"):
+                        has_copy = True
+                        break
+            if has_copy:
+                msg = (
+                    "Built-in metric. Saving will overwrite your existing user copy."
+                )
+            else:
+                msg = (
+                    "Built-in metric. Saving will create a user copy you can edit."
+                )
+            info_box = MDLabel(text=msg, halign="center")
         elif self.metric and self.is_user_created:
-            info_box = MDLabel(
-                text="Saving will update all exercises using this metric.",
-                halign="center",
+            msg = (
+                "Changes here update the metric defaults. Exercises using this "
+                "metric without overrides will reflect the changes."
             )
+            info_box = MDLabel(text=msg, halign="center")
         layout.add_widget(form)
         buttons = [
             MDRaisedButton(text="Save", on_release=self.save_metric),
