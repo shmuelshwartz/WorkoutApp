@@ -145,7 +145,9 @@ def test_save_new_preset(db_copy):
     assert cur.fetchone()[0] == "My Preset"
     cur.execute("SELECT name FROM preset_sections")
     assert cur.fetchone()[0] == "Warmup"
-    cur.execute("SELECT exercise_name, number_of_sets, rest_time FROM preset_section_exercises")
+    cur.execute(
+        "SELECT exercise_name, number_of_sets, rest_time FROM preset_section_exercises WHERE deleted = 0"
+    )
     assert cur.fetchone() == ("Push ups", 4, 120)
     conn.close()
     editor.close()
@@ -157,7 +159,9 @@ def test_save_existing_preset(db_with_preset):
     editor.save()
     conn = sqlite3.connect(db_with_preset)
     cur = conn.cursor()
-    cur.execute("SELECT number_of_sets, rest_time FROM preset_section_exercises")
+    cur.execute(
+        "SELECT number_of_sets, rest_time FROM preset_section_exercises WHERE deleted = 0"
+    )
     assert cur.fetchone() == (5, 120)
     conn.close()
     editor.close()
@@ -218,7 +222,7 @@ def test_save_preserves_metric_overrides(db_copy):
     conn = sqlite3.connect(db_copy)
     cur = conn.cursor()
     cur.execute(
-        "SELECT metric_name, input_timing, is_required, scope FROM preset_section_exercise_metrics"
+        "SELECT metric_name, input_timing, is_required, scope FROM preset_section_exercise_metrics WHERE deleted = 0"
     )
     result = cur.fetchone()
     conn.close()
@@ -262,7 +266,7 @@ def test_remove_exercise_and_save(db_with_preset):
     editor.save()
     conn = sqlite3.connect(db_with_preset)
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM preset_section_exercises")
+    cur.execute("SELECT COUNT(*) FROM preset_section_exercises WHERE deleted = 0")
     count = cur.fetchone()[0]
     conn.close()
     editor.close()
