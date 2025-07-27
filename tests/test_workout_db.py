@@ -125,11 +125,15 @@ def test_add_and_remove_metric_from_exercise(sample_db: Path):
     core.add_metric_to_exercise("Bench Press", "Reps", db_path=sample_db)
     conn = sqlite3.connect(sample_db)
     cur = conn.cursor()
-    cur.execute("""SELECT COUNT(*) FROM library_exercise_metrics em JOIN library_exercises e ON em.exercise_id = e.id JOIN library_metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps'""")
+    cur.execute(
+        """SELECT COUNT(*) FROM library_exercise_metrics em JOIN library_exercises e ON em.exercise_id = e.id JOIN library_metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps' AND em.deleted = 0 AND e.deleted = 0 AND mt.deleted = 0"""
+    )
     count = cur.fetchone()[0]
     assert count == 1
     core.remove_metric_from_exercise("Bench Press", "Reps", db_path=sample_db)
-    cur.execute("""SELECT COUNT(*) FROM library_exercise_metrics em JOIN library_exercises e ON em.exercise_id = e.id JOIN library_metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps'""")
+    cur.execute(
+        """SELECT COUNT(*) FROM library_exercise_metrics em JOIN library_exercises e ON em.exercise_id = e.id JOIN library_metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps' AND em.deleted = 0 AND e.deleted = 0 AND mt.deleted = 0"""
+    )
     count = cur.fetchone()[0]
     conn.close()
     assert count == 0
