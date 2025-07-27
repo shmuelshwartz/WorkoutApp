@@ -19,15 +19,14 @@ DEFAULT_DB_PATH = Path(__file__).resolve().parent / "data" / "workout.db"
 #    'exercises': [{'name': <exercise name>, 'sets': <number_of_sets>}, ...]}
 WORKOUT_PRESETS = []
 
+
 def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
     """Load workout presets from the SQLite database into WORKOUT_PRESETS."""
     global WORKOUT_PRESETS
 
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT id, name FROM preset_presets WHERE deleted = 0 ORDER BY id"
-    )
+    cursor.execute("SELECT id, name FROM preset_presets WHERE deleted = 0 ORDER BY id")
     presets = []
     for preset_id, preset_name in cursor.fetchall():
         cursor.execute(
@@ -41,7 +40,8 @@ def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
             (preset_id,),
         )
         exercises = [
-            {"name": row[0], "sets": row[1], "rest": row[2]} for row in cursor.fetchall()
+            {"name": row[0], "sets": row[1], "rest": row[2]}
+            for row in cursor.fetchall()
         ]
         presets.append({"name": preset_name, "exercises": exercises})
     conn.close()
@@ -360,7 +360,7 @@ def get_metric_type_schema(
             re.DOTALL,
         )
         if chk:
-            opts = [opt.strip().strip("'\"") for opt in chk.group(1).split(',')]
+            opts = [opt.strip().strip("'\"") for opt in chk.group(1).split(",")]
             field["options"] = opts
     return fields
 
@@ -575,6 +575,7 @@ def set_section_exercise_metric_override(
     input_timing: str,
     is_required: bool = False,
     scope: str = "set",
+    enum_values: list[str] | None = None,
     db_path: Path = DEFAULT_DB_PATH,
 ) -> None:
     """Apply an override for ``metric_type_name`` for a specific exercise in a preset."""
@@ -582,7 +583,9 @@ def set_section_exercise_metric_override(
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id FROM preset_presets WHERE name = ? AND deleted = 0", (preset_name,))
+    cursor.execute(
+        "SELECT id FROM preset_presets WHERE name = ? AND deleted = 0", (preset_name,)
+    )
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -590,7 +593,8 @@ def set_section_exercise_metric_override(
     preset_id = row[0]
 
     cursor.execute(
-        "SELECT id FROM preset_sections WHERE preset_id = ? AND deleted = 0 ORDER BY position", (preset_id,)
+        "SELECT id FROM preset_sections WHERE preset_id = ? AND deleted = 0 ORDER BY position",
+        (preset_id,),
     )
     sections = cursor.fetchall()
     if section_index < 0 or section_index >= len(sections):
@@ -624,16 +628,22 @@ def set_section_exercise_metric_override(
     )
     row = cursor.fetchone()
     if row:
+        updates = ["input_timing = ?", "is_required = ?", "scope = ?"]
+        params = [input_timing, int(is_required), scope]
+        if enum_values is not None:
+            updates.append("enum_values_json = ?")
+            params.append(json.dumps(enum_values))
+        params.append(row[0])
         cursor.execute(
-            "UPDATE preset_section_exercise_metrics SET input_timing = ?, is_required = ?, scope = ? WHERE id = ?",
-            (input_timing, int(is_required), scope, row[0]),
+            f"UPDATE preset_section_exercise_metrics SET {', '.join(updates)} WHERE id = ?",
+            params,
         )
     else:
         cursor.execute(
             """
             INSERT INTO preset_section_exercise_metrics
-                (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 se_id,
@@ -643,6 +653,7 @@ def set_section_exercise_metric_override(
                 input_timing,
                 int(is_required),
                 scope,
+                json.dumps(enum_values) if enum_values is not None else None,
                 metric_type_id,
             ),
         )
@@ -660,6 +671,7 @@ def set_exercise_metric_override(
     input_timing: str | None = None,
     is_required: bool | None = None,
     scope: str | None = None,
+    enum_values: list[str] | None = None,
     db_path: Path = DEFAULT_DB_PATH,
 ) -> None:
     """Apply an override for ``metric_type_name`` for a specific exercise.
@@ -725,6 +737,9 @@ def set_exercise_metric_override(
     if scope is not None:
         updates.append("scope = ?")
         params.append(scope)
+    if enum_values is not None:
+        updates.append("enum_values_json = ?")
+        params.append(json.dumps(enum_values))
 
     if not updates:
         cursor.execute(
@@ -734,7 +749,8 @@ def set_exercise_metric_override(
                    source_type = NULL,
                    input_timing = NULL,
                    is_required = NULL,
-                   scope = NULL
+                   scope = NULL,
+                   enum_values_json = NULL
              WHERE id = ?
             """,
             (em_id,),
@@ -774,7 +790,11 @@ class WorkoutSession:
             raise ValueError(f"Preset '{preset_name}' not found")
 
         self.exercises = [
-            {"name": ex["name"], "sets": ex.get("sets", DEFAULT_SETS_PER_EXERCISE), "results": []}
+            {
+                "name": ex["name"],
+                "sets": ex.get("sets", DEFAULT_SETS_PER_EXERCISE),
+                "results": [],
+            }
             for ex in preset["exercises"]
         ]
 
@@ -840,11 +860,9 @@ class WorkoutSession:
         ex["results"].append(metrics)
         self.current_set += 1
 
-
         if self.current_set >= ex["sets"]:
             self.current_set = 0
             self.current_exercise += 1
-
 
         if self.current_exercise >= len(self.exercises):
             self.end_time = time.time()
@@ -879,7 +897,7 @@ class WorkoutSession:
         lines.append(f"Duration: {m}m {s}s")
         for ex in self.exercises:
             lines.append(f"\n{ex['name']}")
-            for idx, metrics in enumerate(ex['results'], 1):
+            for idx, metrics in enumerate(ex["results"], 1):
                 metrics_text = ", ".join(f"{k}: {v}" for k, v in metrics.items())
                 lines.append(f"  Set {idx}: {metrics_text}")
         return "\n".join(lines)
@@ -922,7 +940,9 @@ class Exercise:
             self.description = details.get("description", "")
             self.is_user_created = details.get("is_user_created", True)
         else:
-            self.is_user_created = bool(is_user_created) if is_user_created is not None else True
+            self.is_user_created = (
+                bool(is_user_created) if is_user_created is not None else True
+            )
         self.metrics = get_metrics_for_exercise(
             name,
             db_path=self.db_path,
@@ -1014,7 +1034,10 @@ def save_exercise(exercise: Exercise) -> None:
         ex_id = cursor.lastrowid
 
     for position, m in enumerate(exercise.metrics):
-        cursor.execute("SELECT id, source_type FROM library_metric_types WHERE name = ?", (m["name"],))
+        cursor.execute(
+            "SELECT id, source_type FROM library_metric_types WHERE name = ?",
+            (m["name"],),
+        )
         mt_row = cursor.fetchone()
         if not mt_row:
             continue
@@ -1051,7 +1074,12 @@ def save_exercise(exercise: Exercise) -> None:
                 timing,
                 req,
                 scope_val,
-                json.dumps(m.get("values")) if m.get("values") and (m.get("source_type") or source_type) == "manual_enum" else None,
+                (
+                    json.dumps(m.get("values"))
+                    if m.get("values")
+                    and (m.get("source_type") or source_type) == "manual_enum"
+                    else None
+                ),
             ),
         )
 
@@ -1160,7 +1188,6 @@ def delete_metric_type(
     return True
 
 
-
 class PresetEditor:
     """Helper for creating or editing workout presets in memory."""
 
@@ -1256,7 +1283,9 @@ class PresetEditor:
             raise IndexError("Section index out of range")
 
         cursor = self.conn.cursor()
-        cursor.execute("SELECT 1 FROM library_exercises WHERE name = ?", (exercise_name,))
+        cursor.execute(
+            "SELECT 1 FROM library_exercises WHERE name = ?", (exercise_name,)
+        )
         if cursor.fetchone() is None:
             raise ValueError(f"Exercise '{exercise_name}' does not exist")
 
@@ -1350,7 +1379,10 @@ class PresetEditor:
             raise ValueError("Preset name cannot be empty")
 
         cursor = self.conn.cursor()
-        cursor.execute("SELECT id FROM preset_presets WHERE name = ? AND deleted = 0", (self.preset_name,))
+        cursor.execute(
+            "SELECT id FROM preset_presets WHERE name = ? AND deleted = 0",
+            (self.preset_name,),
+        )
         row = cursor.fetchone()
         if row and (self._preset_id is None or row[0] != self._preset_id):
             raise ValueError("A preset with that name already exists")

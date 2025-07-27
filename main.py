@@ -1905,7 +1905,128 @@ class EditMetricPopup(MDDialog):
             self.screen.save_enabled = self.screen.exercise_obj.is_modified()
 
         db_path = DEFAULT_DB_PATH
-        if core.is_metric_type_user_created(self.metric["name"], db_path=db_path):
+        app = MDApp.get_running_app()
+        from_preset = (
+            app
+            and app.preset_editor
+            and self.screen.section_index >= 0
+            and self.screen.exercise_index >= 0
+        )
+
+        if from_preset:
+            dialog = None
+
+            def cancel_action(*a):
+                if dialog:
+                    dialog.dismiss()
+
+            cb_type = MDCheckbox(
+                group="apply", size_hint=(None, None), height="40dp", width="40dp"
+            )
+            cb_ex = MDCheckbox(
+                group="apply", size_hint=(None, None), height="40dp", width="40dp"
+            )
+            cb_preset = MDCheckbox(
+                group="apply",
+                size_hint=(None, None),
+                height="40dp",
+                width="40dp",
+                active=True,
+            )
+            row1 = MDBoxLayout(
+                orientation="horizontal", spacing="8dp", size_hint_y=None, height="40dp"
+            )
+            row1.add_widget(cb_type)
+            row1.add_widget(MDLabel(text="Set as default metric type", halign="left"))
+            row2 = MDBoxLayout(
+                orientation="horizontal", spacing="8dp", size_hint_y=None, height="40dp"
+            )
+            row2.add_widget(cb_ex)
+            row2.add_widget(
+                MDLabel(text="Apply to all instances of this exercise", halign="left")
+            )
+            row3 = MDBoxLayout(
+                orientation="horizontal", spacing="8dp", size_hint_y=None, height="40dp"
+            )
+            row3.add_widget(cb_preset)
+            row3.add_widget(MDLabel(text="Apply only to this preset", halign="left"))
+            content = MDBoxLayout(
+                orientation="vertical", spacing="8dp", size_hint_y=None
+            )
+            content.add_widget(row1)
+            content.add_widget(row2)
+            content.add_widget(row3)
+
+            def on_save(*a):
+                metric_saved = self.screen.exercise_obj.had_metric(self.metric["name"])
+                if cb_type.active:
+                    core.update_metric_type(
+                        self.metric["name"],
+                        input_type=updates.get("input_type"),
+                        source_type=updates.get("source_type"),
+                        input_timing=updates.get("input_timing"),
+                        scope=updates.get("scope"),
+                        description=updates.get("description"),
+                        is_required=updates.get("is_required"),
+                        enum_values=updates.get("values"),
+                        db_path=db_path,
+                    )
+                    if metric_saved:
+                        core.set_exercise_metric_override(
+                            self.screen.exercise_obj.name,
+                            self.metric["name"],
+                            is_user_created=self.screen.exercise_obj.is_user_created,
+                            db_path=db_path,
+                        )
+                elif cb_ex.active:
+                    if metric_saved:
+                        core.set_exercise_metric_override(
+                            self.screen.exercise_obj.name,
+                            self.metric["name"],
+                            input_type=updates.get("input_type"),
+                            source_type=updates.get("source_type"),
+                            input_timing=updates.get("input_timing"),
+                            is_required=updates.get("is_required"),
+                            scope=updates.get("scope"),
+                            enum_values=updates.get("values"),
+                            is_user_created=self.screen.exercise_obj.is_user_created,
+                            db_path=db_path,
+                        )
+                else:
+                    preset_name = app.preset_editor.preset_name if app else ""
+                    core.set_section_exercise_metric_override(
+                        preset_name,
+                        self.screen.section_index,
+                        self.screen.exercise_obj.name,
+                        self.metric["name"],
+                        input_timing=updates.get("input_timing"),
+                        is_required=bool(updates.get("is_required")),
+                        scope=updates.get("scope", "set"),
+                        enum_values=updates.get("values"),
+                        db_path=db_path,
+                    )
+                cancel_action()
+                apply_updates()
+
+            dialog = MDDialog(
+                title="Save Metric",
+                type="custom",
+                content_cls=content,
+                buttons=[
+                    MDRaisedButton(text="Cancel", on_release=cancel_action),
+                    MDRaisedButton(text="Save", on_release=on_save),
+                ],
+            )
+
+            def _on_open(instance):
+                if hasattr(instance, "ids") and "buttons" in instance.ids:
+                    instance.ids.buttons.orientation = (
+                        "vertical" if Window.width < dp(400) else "horizontal"
+                    )
+
+            dialog.bind(on_open=_on_open)
+            dialog.open()
+        elif core.is_metric_type_user_created(self.metric["name"], db_path=db_path):
             dialog = None
 
             def cancel_action(*a):
@@ -2150,7 +2271,9 @@ class EditMetricTypePopup(MDDialog):
 
         if "source_type" in self.input_widgets and "input_type" in self.input_widgets:
             self.input_widgets["input_type"].bind(text=lambda *a: update_enum_filter())
-            self.input_widgets["source_type"].bind(text=lambda *a: update_enum_visibility())
+            self.input_widgets["source_type"].bind(
+                text=lambda *a: update_enum_visibility()
+            )
             update_enum_visibility()
             update_enum_filter()
 
