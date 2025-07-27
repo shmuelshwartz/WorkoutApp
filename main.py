@@ -872,6 +872,30 @@ class SectionWidget(MDBoxLayout):
                 )
             )
 
+    def _update_indices(self) -> None:
+        """Update ``exercise_index`` on child widgets to match their order."""
+        box = self.ids.exercise_list
+        for idx, child in enumerate(reversed(box.children)):
+            if isinstance(child, SelectedExerciseItem):
+                child.exercise_index = idx
+
+    def move_exercise_widget(self, old_index: int, new_index: int) -> None:
+        """Reorder displayed exercise widgets without rebuilding them."""
+        box = self.ids.exercise_list
+        children = list(reversed(box.children))
+        if (
+            old_index < 0
+            or new_index < 0
+            or old_index >= len(children)
+            or new_index >= len(children)
+        ):
+            return
+        widget = children[old_index]
+        box.remove_widget(widget)
+        insert_pos = len(box.children) - new_index
+        box.add_widget(widget, index=insert_pos)
+        self._update_indices()
+
     def add_exercise_widget(self, name: str, idx: int) -> None:
         """Append a single exercise widget to the list."""
         box = self.ids.exercise_list
@@ -1128,7 +1152,7 @@ class SelectedExerciseItem(MDBoxLayout):
         if edit:
             for widget in edit.sections_box.children:
                 if isinstance(widget, SectionWidget) and widget.section_index == self.section_index:
-                    widget.refresh_exercises()
+                    widget.move_exercise_widget(self.exercise_index, self.exercise_index - 1)
                     break
             edit.update_save_enabled()
 
@@ -1146,7 +1170,7 @@ class SelectedExerciseItem(MDBoxLayout):
         if edit:
             for widget in edit.sections_box.children:
                 if isinstance(widget, SectionWidget) and widget.section_index == self.section_index:
-                    widget.refresh_exercises()
+                    widget.move_exercise_widget(self.exercise_index, self.exercise_index + 1)
                     break
             edit.update_save_enabled()
 
