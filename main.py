@@ -1813,7 +1813,7 @@ class EditMetricPopup(MDDialog):
         if self.metric.get("source_type") == "manual_enum":
             if self.enum_values_field.parent is None:
                 form.add_widget(self.enum_values_field)
-            values = ",".join(self.metric.get("values", []))
+            values = ", ".join(self.metric.get("values", []))
             self.enum_values_field.text = values
         else:
             if self.enum_values_field.parent is not None:
@@ -2123,7 +2123,7 @@ class EditMetricTypePopup(MDDialog):
                     values = json.loads(self.metric["enum_values_json"])
                 except Exception:
                     values = []
-            self.enum_values_field.text = ",".join(values)
+            self.enum_values_field.text = ", ".join(values)
 
         def update_enum_visibility(*args):
             show = self.input_widgets["source_type"].text == "manual_enum"
