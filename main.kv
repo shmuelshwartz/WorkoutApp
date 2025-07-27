@@ -798,12 +798,25 @@ ScreenManager:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: root.exercise_name if root.exercise_name else "Edit Exercise"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-            size_hint_y:0.1
+        MDBoxLayout:
+            size_hint_y: 0.1
+            orientation: "horizontal"
+            spacing: "10dp"
+            MDIconButton:
+                icon: "chevron-left"
+                opacity: 1 if root.section_index >= 0 else 0
+                disabled: not root.can_go_prev()
+                on_release: root.go_prev_exercise()
+            MDLabel:
+                text: root.exercise_name if root.exercise_name else "Edit Exercise"
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: 0.2, 0.6, 0.86, 1
+            MDIconButton:
+                icon: "chevron-right"
+                opacity: 1 if root.section_index >= 0 else 0
+                disabled: not root.can_go_next()
+                on_release: root.go_next_exercise()
         MDBoxLayout:
             size_hint_y: None
             height: "40dp"

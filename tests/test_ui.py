@@ -5,8 +5,8 @@ import pytest
 os.environ["KIVY_WINDOW"] = "mock"
 # Skip tests entirely if Kivy (and KivyMD) are not installed
 kivy_available = (
-    importlib.util.find_spec("kivy") is not None and
-    importlib.util.find_spec("kivymd") is not None
+    importlib.util.find_spec("kivy") is not None
+    and importlib.util.find_spec("kivymd") is not None
 )
 
 if kivy_available:
@@ -36,7 +36,6 @@ if kivy_available:
 
         def property(self, name, default=None):  # pragma: no cover - simple shim
             return ObjectProperty(None)
-
 
     @pytest.fixture(autouse=True)
     def _provide_app(monkeypatch):
@@ -104,7 +103,9 @@ def test_add_metric_popup_has_single_enum_field():
     popup = AddMetricPopup(DummyScreen(), mode="new")
     children = popup.content_cls.children[0].children
     enum_fields = [
-        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+        c
+        for c in children
+        if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
     ]
     assert len(enum_fields) == 0
     popup.input_widgets["source_type"].text = "manual_enum"
@@ -138,7 +139,9 @@ def test_edit_metric_popup_has_single_enum_field():
     popup = EditMetricPopup(DummyScreen(), metric)
     children = popup.content_cls.children[0].children
     enum_fields = [
-        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+        c
+        for c in children
+        if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
     ]
     assert len(enum_fields) == 1
     popup.input_widgets["source_type"].text = "manual_text"
@@ -195,9 +198,59 @@ def test_edit_exercise_preset_tab():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_exercise_navigation_flags(monkeypatch):
+    app = _DummyApp()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {"sections": [{"name": "S1", "exercises": [{"name": "a"}, {"name": "b"}]}]},
+    )()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+    screen = EditExerciseScreen()
+    screen.section_index = 0
+    screen.exercise_index = 0
+    assert not screen.can_go_prev()
+    assert screen.can_go_next()
+    screen.exercise_index = 1
+    assert screen.can_go_prev()
+    assert not screen.can_go_next()
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_exercise_go_next(monkeypatch):
+    app = _DummyApp()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {"sections": [{"name": "S1", "exercises": [{"name": "a"}, {"name": "b"}]}]},
+    )()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+    screen = EditExerciseScreen()
+    screen.section_index = 0
+    screen.exercise_index = 0
+    screen.save_enabled = False
+    called = {"idx": None}
+
+    def nav(idx):
+        called["idx"] = idx
+
+    screen._navigate_to = nav
+    screen.go_next_exercise()
+    assert called["idx"] == 1
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_exercise_selection_panel_filters(monkeypatch):
     panel = ExerciseSelectionPanel()
-    panel.exercise_list = type("L", (), {"children": [], "clear_widgets": lambda self: self.children.clear(), "add_widget": lambda self, w: self.children.append(w)})()
+    panel.exercise_list = type(
+        "L",
+        (),
+        {
+            "children": [],
+            "clear_widgets": lambda self: self.children.clear(),
+            "add_widget": lambda self, w: self.children.append(w),
+        },
+    )()
 
     monkeypatch.setattr(
         core,
@@ -218,6 +271,7 @@ def test_preset_select_button_updates(monkeypatch):
     """Selecting a preset updates the select button text."""
     from kivy.lang import Builder
     from pathlib import Path
+
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     monkeypatch.setattr(
@@ -234,7 +288,6 @@ def test_preset_select_button_updates(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-
 def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
     """Saving with a duplicate user-defined name shows an error."""
     import sqlite3
@@ -274,6 +327,7 @@ def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
     assert opened["value"]
     assert screen.name_field.error
 
+
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_edit_metric_duplicate_name(monkeypatch):
     class DummyExercise:
@@ -309,11 +363,13 @@ def test_edit_metric_type_popup_selects_correct_metric():
     popup = EditMetricTypePopup(DummyScreen(), "Reps", True)
     assert popup.metric["description"] == "copy"
 
+
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_preset_select_button_color(monkeypatch):
     """Selecting a preset updates the select button color."""
     from kivy.lang import Builder
     from pathlib import Path
+
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     monkeypatch.setattr(
@@ -326,7 +382,11 @@ def test_preset_select_button_color(monkeypatch):
     dummy = type(
         "Obj",
         (),
-        {"md_bg_color": (0, 0, 0, 0), "theme_text_color": "Primary", "text_color": (0, 0, 0, 1)},
+        {
+            "md_bg_color": (0, 0, 0, 0),
+            "theme_text_color": "Primary",
+            "text_color": (0, 0, 0, 1),
+        },
     )()
     screen.select_preset("Sample", dummy)
 
@@ -338,6 +398,7 @@ def test_preset_selected_text_color_and_clear(monkeypatch):
     """Selecting a preset changes text color and is cleared on leave."""
     from kivy.lang import Builder
     from pathlib import Path
+
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     monkeypatch.setattr(
@@ -350,7 +411,11 @@ def test_preset_selected_text_color_and_clear(monkeypatch):
     dummy = type(
         "Obj",
         (),
-        {"md_bg_color": (0, 0, 0, 0), "theme_text_color": "Primary", "text_color": (0, 0, 0, 1)},
+        {
+            "md_bg_color": (0, 0, 0, 0),
+            "theme_text_color": "Primary",
+            "text_color": (0, 0, 0, 1),
+        },
     )()
     screen.select_preset("Sample", dummy)
 
@@ -361,4 +426,3 @@ def test_preset_selected_text_color_and_clear(monkeypatch):
 
     assert dummy.theme_text_color == "Primary"
     assert screen.selected_item is None
-
