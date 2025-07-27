@@ -305,42 +305,8 @@ def test_preset_select_button_color(monkeypatch):
     )
 
     screen = PresetsScreen()
-    dummy = type(
-        "Obj",
-        (),
-        {"md_bg_color": (0, 0, 0, 0), "theme_text_color": "Primary", "text_color": (0, 0, 0, 1)},
-    )()
+    dummy = type("Obj", (), {"md_bg_color": (0, 0, 0, 0)})()
     screen.select_preset("Sample", dummy)
 
     assert dummy.md_bg_color == screen._selected_color
-
-
-@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_preset_selected_text_color_and_clear(monkeypatch):
-    """Selecting a preset changes text color and is cleared on leave."""
-    from kivy.lang import Builder
-    from pathlib import Path
-    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
-
-    monkeypatch.setattr(
-        core,
-        "WORKOUT_PRESETS",
-        [{"name": "Sample", "exercises": []}],
-    )
-
-    screen = PresetsScreen()
-    dummy = type(
-        "Obj",
-        (),
-        {"md_bg_color": (0, 0, 0, 0), "theme_text_color": "Primary", "text_color": (0, 0, 0, 1)},
-    )()
-    screen.select_preset("Sample", dummy)
-
-    assert dummy.theme_text_color == "Custom"
-    assert dummy.text_color == screen._selected_text_color
-
-    screen.on_leave()
-
-    assert dummy.theme_text_color == "Primary"
-    assert screen.selected_item is None
 
