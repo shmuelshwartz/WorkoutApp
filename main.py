@@ -1372,9 +1372,6 @@ class AddMetricPopup(MDDialog):
 
         for field in schema:
             name = field["name"]
-            if name == "enum_values_json":
-                # handled separately via ``enum_values_field``
-                continue
             options = field.get("options")
             if name == "is_required":
                 row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
@@ -1638,9 +1635,6 @@ class EditMetricPopup(MDDialog):
 
         for field in schema:
             name = field["name"]
-            if name == "enum_values_json":
-                # handled separately below
-                continue
             options = field.get("options")
             if name == "is_required":
                 row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
