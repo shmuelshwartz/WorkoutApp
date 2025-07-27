@@ -961,6 +961,16 @@ class EditPresetScreen(MDScreen):
             self.save_enabled = False
 
     def on_pre_enter(self, *args):
+        app = MDApp.get_running_app()
+        if app and app.editing_exercise_index >= 0:
+            self.preset_name = app.preset_editor.preset_name or "Preset"
+            self.current_tab = "sections"
+            self.refresh_sections()
+            self.update_save_enabled()
+            app.editing_section_index = -1
+            app.editing_exercise_index = -1
+            return super().on_pre_enter(*args)
+
         if os.environ.get("KIVY_UNITTEST"):
             self._load_preset()
         else:
