@@ -24,6 +24,7 @@ from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.card import MDSeparator
 from kivymd.uix.dialog import MDDialog
+
 try:
     from kivymd.uix.spinner import MDSpinner
 except Exception:  # pragma: no cover - fallback for tests without kivymd
@@ -57,7 +58,7 @@ from kivy.core.window import Window
 import string
 import sqlite3
 
-if os.name == 'nt' or sys.platform.startswith('win'):
+if os.name == "nt" or sys.platform.startswith("win"):
     Window.size = (280, 280 * (20 / 9))
 
 # Order of fields for metric editing popups
@@ -70,7 +71,6 @@ METRIC_FIELD_ORDER = [
     "scope",
     "is_required",
 ]
-
 
 
 class LoadingDialog(MDDialog):
@@ -124,8 +124,6 @@ class WorkoutActiveScreen(MDScreen):
         self.elapsed = time.time() - self.start_time
         minutes, seconds = divmod(int(self.elapsed), 60)
         self.formatted_time = f"{minutes:02d}:{seconds:02d}"
-
-
 
 
 class RestScreen(MDScreen):
@@ -289,11 +287,15 @@ class MetricInputScreen(MDScreen):
             all_metrics = get_metrics_for_exercise(
                 curr_ex, preset_name=app.workout_session.preset_name
             )
-            prev_metrics = [m for m in all_metrics if m.get("input_timing") == "post_set"]
+            prev_metrics = [
+                m for m in all_metrics if m.get("input_timing") == "post_set"
+            ]
 
             upcoming_ex = app.workout_session.upcoming_exercise_name()
             next_all = (
-                get_metrics_for_exercise(upcoming_ex, preset_name=app.workout_session.preset_name)
+                get_metrics_for_exercise(
+                    upcoming_ex, preset_name=app.workout_session.preset_name
+                )
                 if upcoming_ex
                 else []
             )
@@ -328,7 +330,10 @@ class MetricInputScreen(MDScreen):
 
             if source_type == "manual_slider":
                 widget = MDSlider(min=0, max=1, value=0)
-                widget.bind(on_touch_down=self.on_slider_touch_down, on_touch_up=self.on_slider_touch_up)
+                widget.bind(
+                    on_touch_down=self.on_slider_touch_down,
+                    on_touch_up=self.on_slider_touch_up,
+                )
             elif source_type == "manual_enum":
                 widget = Spinner(text=values[0] if values else "", values=values)
             else:  # manual_text
@@ -389,6 +394,7 @@ class MetricInputScreen(MDScreen):
         elif self.manager:
             self.manager.current = "rest"
 
+
 class PresetsScreen(MDScreen):
     """Screen to select a workout preset."""
 
@@ -433,7 +439,11 @@ class PresetsScreen(MDScreen):
         self.preset_list.clear_widgets()
         for preset in core.WORKOUT_PRESETS:
             item = OneLineListItem(text=preset["name"])
-            item.bind(on_release=lambda inst, name=preset["name"]: self.select_preset(name, inst))
+            item.bind(
+                on_release=lambda inst, name=preset["name"]: self.select_preset(
+                    name, inst
+                )
+            )
             self.preset_list.add_widget(item)
 
     def select_preset(self, name, item):
@@ -492,24 +502,26 @@ class ExerciseLibraryScreen(MDScreen):
     _search_event = None
     _metric_search_event = None
 
-
     def on_pre_enter(self, *args):
         app = MDApp.get_running_app()
-        if (
-            self.all_exercises is None
-            or (app and self.cache_version != getattr(app, "exercise_library_version", 0))
+        if self.all_exercises is None or (
+            app and self.cache_version != getattr(app, "exercise_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
+            self.all_exercises = core.get_all_exercises(
+                db_path, include_user_created=True
+            )
             if app:
                 self.cache_version = app.exercise_library_version
 
-        if (
-            self.all_metrics is None
-            or (app and self.metric_cache_version != getattr(app, "metric_library_version", 0))
+        if self.all_metrics is None or (
+            app
+            and self.metric_cache_version != getattr(app, "metric_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_metrics = core.get_all_metric_types(db_path, include_user_created=True)
+            self.all_metrics = core.get_all_metric_types(
+                db_path, include_user_created=True
+            )
             if app:
                 self.metric_cache_version = app.metric_library_version
 
@@ -539,12 +551,13 @@ class ExerciseLibraryScreen(MDScreen):
             return
         self.exercise_list.data = []
         app = MDApp.get_running_app()
-        if (
-            self.all_exercises is None
-            or (app and self.cache_version != getattr(app, "exercise_library_version", 0))
+        if self.all_exercises is None or (
+            app and self.cache_version != getattr(app, "exercise_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
+            self.all_exercises = core.get_all_exercises(
+                db_path, include_user_created=True
+            )
             if app:
                 self.cache_version = app.exercise_library_version
         exercises = self.all_exercises or []
@@ -559,13 +572,15 @@ class ExerciseLibraryScreen(MDScreen):
             exercises = [ex for ex in exercises if s in ex[0].lower()]
         data = []
         for name, is_user in exercises:
-            data.append({
-                "name": name,
-                "text": name,
-                "is_user_created": is_user,
-                "edit_callback": self.open_edit_exercise_popup,
-                "delete_callback": self.confirm_delete_exercise,
-            })
+            data.append(
+                {
+                    "name": name,
+                    "text": name,
+                    "is_user_created": is_user,
+                    "edit_callback": self.open_edit_exercise_popup,
+                    "delete_callback": self.confirm_delete_exercise,
+                }
+            )
         self.exercise_list.data = data
         if self.loading_dialog:
             self.loading_dialog.dismiss()
@@ -579,12 +594,14 @@ class ExerciseLibraryScreen(MDScreen):
             return
         self.metric_list.data = []
         app = MDApp.get_running_app()
-        if (
-            self.all_metrics is None
-            or (app and self.metric_cache_version != getattr(app, "metric_library_version", 0))
+        if self.all_metrics is None or (
+            app
+            and self.metric_cache_version != getattr(app, "metric_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_metrics = core.get_all_metric_types(db_path, include_user_created=True)
+            self.all_metrics = core.get_all_metric_types(
+                db_path, include_user_created=True
+            )
             if app:
                 self.metric_cache_version = app.metric_library_version
         metrics = self.all_metrics or []
@@ -598,18 +615,19 @@ class ExerciseLibraryScreen(MDScreen):
             metrics = [m for m in metrics if s in m["name"].lower()]
         data = []
         for m in metrics:
-            data.append({
-                "name": m["name"],
-                "text": m["name"],
-                "is_user_created": m["is_user_created"],
-                "edit_callback": self.open_edit_metric_popup,
-                "delete_callback": self.confirm_delete_metric,
-            })
+            data.append(
+                {
+                    "name": m["name"],
+                    "text": m["name"],
+                    "is_user_created": m["is_user_created"],
+                    "edit_callback": self.open_edit_metric_popup,
+                    "delete_callback": self.confirm_delete_metric,
+                }
+            )
         self.metric_list.data = data
         if self.loading_dialog:
             self.loading_dialog.dismiss()
             self.loading_dialog = None
-
 
     def open_filter_popup(self):
         list_view = MDList()
@@ -627,7 +645,9 @@ class ExerciseLibraryScreen(MDScreen):
         close_btn = MDRaisedButton(
             text="Close", on_release=lambda *a: self.filter_dialog.dismiss()
         )
-        title = "Filter Exercises" if self.current_tab == "exercises" else "Filter Metrics"
+        title = (
+            "Filter Exercises" if self.current_tab == "exercises" else "Filter Metrics"
+        )
         self.filter_dialog = MDDialog(
             title=title, type="custom", content_cls=scroll, buttons=[close_btn]
         )
@@ -685,7 +705,9 @@ class ExerciseLibraryScreen(MDScreen):
         def do_delete(*args):
             db_path = DEFAULT_DB_PATH
             try:
-                core.delete_exercise(exercise_name, db_path=db_path, is_user_created=True)
+                core.delete_exercise(
+                    exercise_name, db_path=db_path, is_user_created=True
+                )
                 app = MDApp.get_running_app()
                 if app:
                     app.exercise_library_version += 1
@@ -712,7 +734,9 @@ class ExerciseLibraryScreen(MDScreen):
         def do_delete(*args):
             db_path = DEFAULT_DB_PATH
             try:
-                core.delete_metric_type(metric_name, db_path=db_path, is_user_created=True)
+                core.delete_metric_type(
+                    metric_name, db_path=db_path, is_user_created=True
+                )
                 app = MDApp.get_running_app()
                 if app:
                     app.metric_library_version += 1
@@ -781,7 +805,9 @@ class PresetOverviewScreen(MDScreen):
         app = MDApp.get_running_app()
         preset_name = app.selected_preset
         self.preset_label.text = (
-            preset_name if preset_name else "Preset Overview - summary of the chosen preset"
+            preset_name
+            if preset_name
+            else "Preset Overview - summary of the chosen preset"
         )
         for p in core.WORKOUT_PRESETS:
             if p["name"] == preset_name:
@@ -864,7 +890,9 @@ class SectionWidget(MDBoxLayout):
             return
         box = self.ids.exercise_list
         box.clear_widgets()
-        for idx, ex in enumerate(app.preset_editor.sections[self.section_index]["exercises"]):
+        for idx, ex in enumerate(
+            app.preset_editor.sections[self.section_index]["exercises"]
+        ):
             box.add_widget(
                 SelectedExerciseItem(
                     text=ex["name"],
@@ -962,6 +990,16 @@ class EditPresetScreen(MDScreen):
             self.save_enabled = False
 
     def on_pre_enter(self, *args):
+        app = MDApp.get_running_app()
+        if app and app.editing_exercise_index >= 0:
+            self.preset_name = app.preset_editor.preset_name or "Preset"
+            self.current_tab = "sections"
+            self.refresh_sections()
+            self.update_save_enabled()
+            app.editing_section_index = -1
+            app.editing_exercise_index = -1
+            return super().on_pre_enter(*args)
+
         if os.environ.get("KIVY_UNITTEST"):
             self._load_preset()
         else:
@@ -1063,7 +1101,13 @@ class EditPresetScreen(MDScreen):
             # Validate before confirmation to show immediate error
             app.preset_editor.save()
         except ValueError as exc:
-            dialog = MDDialog(title="Error", text=str(exc), buttons=[MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())])
+            dialog = MDDialog(
+                title="Error",
+                text=str(exc),
+                buttons=[
+                    MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())
+                ],
+            )
             dialog.open()
             return
 
@@ -1079,7 +1123,15 @@ class EditPresetScreen(MDScreen):
                 if self.manager:
                     self.manager.current = "presets"
             except Exception as err:
-                err_dialog = MDDialog(title="Error", text=str(err), buttons=[MDRaisedButton(text="OK", on_release=lambda *a: err_dialog.dismiss())])
+                err_dialog = MDDialog(
+                    title="Error",
+                    text=str(err),
+                    buttons=[
+                        MDRaisedButton(
+                            text="OK", on_release=lambda *a: err_dialog.dismiss()
+                        )
+                    ],
+                )
                 err_dialog.open()
 
         dialog = MDDialog(
@@ -1108,7 +1160,9 @@ class EditPresetScreen(MDScreen):
                 title="Discard Changes?",
                 text="You have unsaved changes. Discard them?",
                 buttons=[
-                    MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                    MDRaisedButton(
+                        text="Cancel", on_release=lambda *a: dialog.dismiss()
+                    ),
                     MDRaisedButton(text="Discard", on_release=discard),
                 ],
             )
@@ -1116,7 +1170,6 @@ class EditPresetScreen(MDScreen):
         else:
             if self.manager:
                 self.manager.current = "presets"
-
 
 
 class SelectedExerciseItem(MDBoxLayout):
@@ -1152,8 +1205,13 @@ class SelectedExerciseItem(MDBoxLayout):
         edit = app.root.get_screen("edit_preset") if app.root else None
         if edit:
             for widget in edit.sections_box.children:
-                if isinstance(widget, SectionWidget) and widget.section_index == self.section_index:
-                    widget.move_exercise_widget(self.exercise_index, self.exercise_index - 1)
+                if (
+                    isinstance(widget, SectionWidget)
+                    and widget.section_index == self.section_index
+                ):
+                    widget.move_exercise_widget(
+                        self.exercise_index, self.exercise_index - 1
+                    )
                     break
             edit.update_save_enabled()
 
@@ -1170,8 +1228,13 @@ class SelectedExerciseItem(MDBoxLayout):
         edit = app.root.get_screen("edit_preset") if app.root else None
         if edit:
             for widget in edit.sections_box.children:
-                if isinstance(widget, SectionWidget) and widget.section_index == self.section_index:
-                    widget.move_exercise_widget(self.exercise_index, self.exercise_index + 1)
+                if (
+                    isinstance(widget, SectionWidget)
+                    and widget.section_index == self.section_index
+                ):
+                    widget.move_exercise_widget(
+                        self.exercise_index, self.exercise_index + 1
+                    )
                     break
             edit.update_save_enabled()
 
@@ -1181,11 +1244,16 @@ class SelectedExerciseItem(MDBoxLayout):
         def do_delete(*args):
             app = MDApp.get_running_app()
             if app and app.preset_editor:
-                app.preset_editor.remove_exercise(self.section_index, self.exercise_index)
+                app.preset_editor.remove_exercise(
+                    self.section_index, self.exercise_index
+                )
                 edit = app.root.get_screen("edit_preset") if app.root else None
                 if edit:
                     for widget in edit.sections_box.children:
-                        if isinstance(widget, SectionWidget) and widget.section_index == self.section_index:
+                        if (
+                            isinstance(widget, SectionWidget)
+                            and widget.section_index == self.section_index
+                        ):
                             widget.refresh_exercises()
                             break
                     edit.update_save_enabled()
@@ -1224,12 +1292,13 @@ class ExerciseSelectionPanel(MDBoxLayout):
         self.exercise_list.clear_widgets()
 
         app = MDApp.get_running_app()
-        if (
-            self.all_exercises is None
-            or (app and self.cache_version != getattr(app, "exercise_library_version", 0))
+        if self.all_exercises is None or (
+            app and self.cache_version != getattr(app, "exercise_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(db_path, include_user_created=True)
+            self.all_exercises = core.get_all_exercises(
+                db_path, include_user_created=True
+            )
             if app:
                 self.cache_version = app.exercise_library_version
 
@@ -1286,7 +1355,10 @@ class ExerciseSelectionPanel(MDBoxLayout):
             text="Close", on_release=lambda *a: self.filter_dialog.dismiss()
         )
         self.filter_dialog = MDDialog(
-            title="Filter Exercises", type="custom", content_cls=scroll, buttons=[close_btn]
+            title="Filter Exercises",
+            type="custom",
+            content_cls=scroll,
+            buttons=[close_btn],
         )
         self.filter_dialog.open()
 
@@ -1312,7 +1384,7 @@ class ExerciseSelectionPanel(MDBoxLayout):
 class AddMetricPopup(MDDialog):
     """Popup dialog for choosing an action, selecting metrics or creating a new one."""
 
-    def __init__(self, screen: 'EditExerciseScreen', mode: str = "select", **kwargs):
+    def __init__(self, screen: "EditExerciseScreen", mode: str = "select", **kwargs):
         self.screen = screen
         self.mode = mode
 
@@ -1323,7 +1395,9 @@ class AddMetricPopup(MDDialog):
         else:  # initial choice
             content, buttons, title = self._build_choice_widgets()
 
-        super().__init__(title=title, type="custom", content_cls=content, buttons=buttons, **kwargs)
+        super().__init__(
+            title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
+        )
 
     # ------------------------------------------------------------------
     # Building widgets for both modes
@@ -1334,8 +1408,7 @@ class AddMetricPopup(MDDialog):
         metrics = [
             m
             for m in metrics
-            if m["name"] not in existing
-            and m.get("scope") in ("set", "exercise")
+            if m["name"] not in existing and m.get("scope") in ("set", "exercise")
         ]
         list_view = MDList()
         for m in metrics:
@@ -1346,7 +1419,9 @@ class AddMetricPopup(MDDialog):
         scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
         scroll.add_widget(list_view)
 
-        new_btn = MDRaisedButton(text="New Metric", on_release=self.show_new_metric_form)
+        new_btn = MDRaisedButton(
+            text="New Metric", on_release=self.show_new_metric_form
+        )
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
         buttons = [new_btn, cancel_btn]
         return scroll, buttons, "Select Metric"
@@ -1384,14 +1459,8 @@ class AddMetricPopup(MDDialog):
         else:
             order_map = {field["name"]: field for field in schema}
             schema = [
-                order_map[name]
-                for name in METRIC_FIELD_ORDER
-                if name in order_map
-            ] + [
-                field
-                for field in schema
-                if field["name"] not in METRIC_FIELD_ORDER
-            ]
+                order_map[name] for name in METRIC_FIELD_ORDER if name in order_map
+            ] + [field for field in schema if field["name"] not in METRIC_FIELD_ORDER]
 
         form = MDBoxLayout(
             orientation="vertical",
@@ -1402,7 +1471,9 @@ class AddMetricPopup(MDDialog):
 
         def enable_auto_resize(text_field: MDTextField):
             text_field.bind(
-                text=lambda inst, val: setattr(inst, "height", max(default_height, inst.minimum_height))
+                text=lambda inst, val: setattr(
+                    inst, "height", max(default_height, inst.minimum_height)
+                )
             )
 
         for field in schema:
@@ -1412,13 +1483,20 @@ class AddMetricPopup(MDDialog):
                 continue
             options = field.get("options")
             if name == "is_required":
-                row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
+                row = MDBoxLayout(
+                    orientation="horizontal", size_hint_y=None, height="40dp"
+                )
                 widget = MDCheckbox(size_hint_y=None, height=default_height)
                 row.add_widget(widget)
                 row.add_widget(MDLabel(text="Required"))
                 form.add_widget(row)
             elif options:
-                widget = Spinner(text=options[0], values=options, size_hint_y=None, height=default_height)
+                widget = Spinner(
+                    text=options[0],
+                    values=options,
+                    size_hint_y=None,
+                    height=default_height,
+                )
                 form.add_widget(widget)
             else:
                 # Older versions of KivyMD do not accept the
@@ -1471,9 +1549,12 @@ class AddMetricPopup(MDDialog):
                 return re.sub(r",\s+", ",", filtered)
 
             self.enum_values_field.input_filter = _filter
+
         if "source_type" in self.input_widgets and "input_type" in self.input_widgets:
             self.input_widgets["input_type"].bind(text=lambda *a: update_enum_filter())
-            self.input_widgets["source_type"].bind(text=lambda *a: update_enum_visibility())
+            self.input_widgets["source_type"].bind(
+                text=lambda *a: update_enum_visibility()
+            )
             update_enum_visibility()
             update_enum_filter()
 
@@ -1488,7 +1569,9 @@ class AddMetricPopup(MDDialog):
     def _build_choice_widgets(self):
         label = MDLabel(text="Choose an option", halign="center")
         add_btn = MDRaisedButton(text="Add Metric", on_release=self.show_metric_list)
-        new_btn = MDRaisedButton(text="New Metric", on_release=self.show_new_metric_form)
+        new_btn = MDRaisedButton(
+            text="New Metric", on_release=self.show_new_metric_form
+        )
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
         content = MDBoxLayout(orientation="vertical", spacing="8dp")
         content.add_widget(label)
@@ -1604,11 +1687,13 @@ class AddMetricPopup(MDDialog):
 class EditMetricPopup(MDDialog):
     """Popup for editing an existing metric."""
 
-    def __init__(self, screen: 'EditExerciseScreen', metric: dict, **kwargs):
+    def __init__(self, screen: "EditExerciseScreen", metric: dict, **kwargs):
         self.screen = screen
         self.metric = metric
         content, buttons, title = self._build_widgets()
-        super().__init__(title=title, type="custom", content_cls=content, buttons=buttons, **kwargs)
+        super().__init__(
+            title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
+        )
 
     def _build_widgets(self):
         default_height = dp(48)
@@ -1643,14 +1728,8 @@ class EditMetricPopup(MDDialog):
         else:
             order_map = {field["name"]: field for field in schema}
             schema = [
-                order_map[name]
-                for name in METRIC_FIELD_ORDER
-                if name in order_map
-            ] + [
-                field
-                for field in schema
-                if field["name"] not in METRIC_FIELD_ORDER
-            ]
+                order_map[name] for name in METRIC_FIELD_ORDER if name in order_map
+            ] + [field for field in schema if field["name"] not in METRIC_FIELD_ORDER]
 
         form = MDBoxLayout(
             orientation="vertical",
@@ -1673,13 +1752,20 @@ class EditMetricPopup(MDDialog):
                 continue
             options = field.get("options")
             if name == "is_required":
-                row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
+                row = MDBoxLayout(
+                    orientation="horizontal", size_hint_y=None, height="40dp"
+                )
                 widget = MDCheckbox(size_hint_y=None, height=default_height)
                 row.add_widget(widget)
                 row.add_widget(MDLabel(text="Required"))
                 form.add_widget(row)
             elif options:
-                widget = Spinner(text=options[0], values=options, size_hint_y=None, height=default_height)
+                widget = Spinner(
+                    text=options[0],
+                    values=options,
+                    size_hint_y=None,
+                    height=default_height,
+                )
                 form.add_widget(widget)
             else:
                 widget = MDTextField(
@@ -1751,7 +1837,9 @@ class EditMetricPopup(MDDialog):
 
         if "source_type" in self.input_widgets and "input_type" in self.input_widgets:
             self.input_widgets["input_type"].bind(text=lambda *a: update_enum_filter())
-            self.input_widgets["source_type"].bind(text=lambda *a: update_enum_visibility())
+            self.input_widgets["source_type"].bind(
+                text=lambda *a: update_enum_visibility()
+            )
             update_enum_visibility()
             update_enum_filter()
 
@@ -1832,9 +1920,7 @@ class EditMetricPopup(MDDialog):
             content.add_widget(label)
 
             def on_save(*a):
-                metric_saved = self.screen.exercise_obj.had_metric(
-                    self.metric["name"]
-                )
+                metric_saved = self.screen.exercise_obj.had_metric(self.metric["name"])
                 if checkbox.active:
                     core.update_metric_type(
                         self.metric["name"],
@@ -1895,7 +1981,13 @@ class EditMetricPopup(MDDialog):
 class EditMetricTypePopup(MDDialog):
     """Popup for editing or creating metric types from the library."""
 
-    def __init__(self, screen: 'ExerciseLibraryScreen', metric_name: str | None, is_user_created: bool, **kwargs):
+    def __init__(
+        self,
+        screen: "ExerciseLibraryScreen",
+        metric_name: str | None,
+        is_user_created: bool,
+        **kwargs,
+    ):
         self.screen = screen
         self.metric_name = metric_name
         self.is_user_created = is_user_created
@@ -1909,7 +2001,9 @@ class EditMetricTypePopup(MDDialog):
                     self.metric = m
                     break
         content, buttons, title = self._build_widgets()
-        super().__init__(title=title, type="custom", content_cls=content, buttons=buttons, **kwargs)
+        super().__init__(
+            title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
+        )
 
     def _build_widgets(self):
         default_height = dp(48)
@@ -1920,35 +2014,65 @@ class EditMetricTypePopup(MDDialog):
                 {"name": "name"},
                 {"name": "description"},
                 {"name": "input_type", "options": ["int", "float", "str", "bool"]},
-                {"name": "source_type", "options": ["manual_text", "manual_enum", "manual_slider"]},
-                {"name": "input_timing", "options": ["preset", "pre_workout", "post_workout", "pre_set", "post_set"]},
+                {
+                    "name": "source_type",
+                    "options": ["manual_text", "manual_enum", "manual_slider"],
+                },
+                {
+                    "name": "input_timing",
+                    "options": [
+                        "preset",
+                        "pre_workout",
+                        "post_workout",
+                        "pre_set",
+                        "post_set",
+                    ],
+                },
                 {"name": "scope", "options": ["session", "section", "exercise", "set"]},
                 {"name": "is_required"},
             ]
         else:
             order_map = {field["name"]: field for field in schema}
-            schema = [order_map[name] for name in METRIC_FIELD_ORDER if name in order_map] + [field for field in schema if field["name"] not in METRIC_FIELD_ORDER]
+            schema = [
+                order_map[name] for name in METRIC_FIELD_ORDER if name in order_map
+            ] + [field for field in schema if field["name"] not in METRIC_FIELD_ORDER]
 
         form = MDBoxLayout(orientation="vertical", spacing="8dp", size_hint_y=None)
         form.bind(minimum_height=form.setter("height"))
 
         def enable_auto_resize(text_field: MDTextField):
-            text_field.bind(text=lambda inst, val: setattr(inst, "height", max(default_height, inst.minimum_height)))
+            text_field.bind(
+                text=lambda inst, val: setattr(
+                    inst, "height", max(default_height, inst.minimum_height)
+                )
+            )
 
         for field in schema:
             name = field["name"]
             options = field.get("options")
             if name == "is_required":
-                row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
+                row = MDBoxLayout(
+                    orientation="horizontal", size_hint_y=None, height="40dp"
+                )
                 widget = MDCheckbox(size_hint_y=None, height=default_height)
                 row.add_widget(widget)
                 row.add_widget(MDLabel(text="Required"))
                 form.add_widget(row)
             elif options:
-                widget = Spinner(text=options[0], values=options, size_hint_y=None, height=default_height)
+                widget = Spinner(
+                    text=options[0],
+                    values=options,
+                    size_hint_y=None,
+                    height=default_height,
+                )
                 form.add_widget(widget)
             else:
-                widget = MDTextField(hint_text=name.replace("_", " ").title(), size_hint_y=None, height=default_height, multiline=True)
+                widget = MDTextField(
+                    hint_text=name.replace("_", " ").title(),
+                    size_hint_y=None,
+                    height=default_height,
+                    multiline=True,
+                )
                 widget.hint_text_font_size = "12sp"
                 enable_auto_resize(widget)
                 form.add_widget(widget)
@@ -2103,7 +2227,6 @@ class EditMetricTypePopup(MDDialog):
         self.dismiss()
 
 
-
 class EditExerciseScreen(MDScreen):
     """Screen for editing an individual exercise within a preset."""
 
@@ -2122,6 +2245,7 @@ class EditExerciseScreen(MDScreen):
     loading_dialog = ObjectProperty(None, allownone=True)
     exercise_sets = NumericProperty(DEFAULT_SETS_PER_EXERCISE)
     exercise_rest = NumericProperty(DEFAULT_REST_DURATION)
+    section_length = NumericProperty(0)
 
     def switch_tab(self, tab: str):
         """Switch between available tabs."""
@@ -2129,6 +2253,70 @@ class EditExerciseScreen(MDScreen):
             self.current_tab = tab
             if "exercise_tabs" in self.ids:
                 self.ids.exercise_tabs.current = tab
+
+    def can_go_prev(self) -> bool:
+        app = MDApp.get_running_app()
+        if (
+            not app
+            or not app.preset_editor
+            or self.section_index < 0
+            or self.exercise_index <= 0
+        ):
+            return False
+        return True
+
+    def can_go_next(self) -> bool:
+        app = MDApp.get_running_app()
+        if not app or not app.preset_editor or self.section_index < 0:
+            return False
+        sec = app.preset_editor.sections[self.section_index]
+        return self.exercise_index < len(sec["exercises"]) - 1
+
+    def _navigate_to(self, new_index: int) -> None:
+        app = MDApp.get_running_app()
+        if not app or not app.preset_editor or self.section_index < 0:
+            return
+        sec = app.preset_editor.sections[self.section_index]
+        if new_index < 0 or new_index >= len(sec["exercises"]):
+            return
+        self.exercise_index = new_index
+        self.exercise_name = sec["exercises"][new_index]["name"]
+        self._load_exercise()
+
+    def _confirm_navigation(self, new_index: int) -> None:
+        dialog = None
+
+        def do_nav(*args):
+            if dialog:
+                dialog.dismiss()
+            self._navigate_to(new_index)
+
+        dialog = MDDialog(
+            title="Discard Changes?",
+            text="You have unsaved changes. Discard them?",
+            buttons=[
+                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                MDRaisedButton(text="Discard", on_release=do_nav),
+            ],
+        )
+        dialog.open()
+
+    def go_prev_exercise(self) -> None:
+        if not self.can_go_prev():
+            return
+        if self.save_enabled:
+            self._confirm_navigation(self.exercise_index - 1)
+        else:
+            self._navigate_to(self.exercise_index - 1)
+
+    def go_next_exercise(self) -> None:
+        if not self.can_go_next():
+            return
+        if self.save_enabled:
+            self._confirm_navigation(self.exercise_index + 1)
+        else:
+            self._navigate_to(self.exercise_index + 1)
+
     def on_pre_enter(self, *args):
         if self.previous_screen == "edit_preset":
             self.switch_tab("config")
@@ -2154,12 +2342,17 @@ class EditExerciseScreen(MDScreen):
         self.exercise_description = self.exercise_obj.description
         if self.section_index >= 0 and self.exercise_index >= 0:
             app = MDApp.get_running_app()
-            if app.preset_editor and self.section_index < len(app.preset_editor.sections):
+            if app.preset_editor and self.section_index < len(
+                app.preset_editor.sections
+            ):
                 exercises = app.preset_editor.sections[self.section_index]["exercises"]
+                self.section_length = len(exercises)
                 if self.exercise_index < len(exercises):
                     ex = exercises[self.exercise_index]
                     self.exercise_sets = ex.get("sets", DEFAULT_SETS_PER_EXERCISE)
                     self.exercise_rest = ex.get("rest", DEFAULT_REST_DURATION)
+            else:
+                self.section_length = 0
         self.save_enabled = False
         self.populate()
         if self.loading_dialog:
@@ -2180,7 +2373,9 @@ class EditExerciseScreen(MDScreen):
             lbl = MDLabel(text=m.get("name", ""), halign="left")
             row.add_widget(lbl)
             edit_btn = MDIconButton(icon="pencil")
-            edit_btn.bind(on_release=lambda inst, metric=m: self.open_edit_metric_popup(metric))
+            edit_btn.bind(
+                on_release=lambda inst, metric=m: self.open_edit_metric_popup(metric)
+            )
             row.add_widget(edit_btn)
             remove_btn = MDIconButton(
                 icon="delete",
@@ -2188,7 +2383,9 @@ class EditExerciseScreen(MDScreen):
                 text_color=(1, 0, 0, 1),
             )
             remove_btn.bind(
-                on_release=lambda inst, name=m.get("name", ""): self.confirm_remove_metric(name)
+                on_release=lambda inst, name=m.get(
+                    "name", ""
+                ): self.confirm_remove_metric(name)
             )
             row.add_widget(remove_btn)
             self.metrics_list.add_widget(row)
@@ -2313,7 +2510,9 @@ class EditExerciseScreen(MDScreen):
             dialog = MDDialog(
                 title="Error",
                 text="Name cannot be empty",
-                buttons=[MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())],
+                buttons=[
+                    MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())
+                ],
             )
             dialog.open()
             return
@@ -2333,7 +2532,9 @@ class EditExerciseScreen(MDScreen):
             dialog = MDDialog(
                 title="Error",
                 text="Duplicate name",
-                buttons=[MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())],
+                buttons=[
+                    MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())
+                ],
             )
             dialog.open()
             return
@@ -2346,13 +2547,9 @@ class EditExerciseScreen(MDScreen):
             )
             exists = cursor.fetchone()
             if exists:
-                msg = (
-                    f"A user-defined copy of {self.exercise_obj.name} exists and will be overwritten."
-                )
+                msg = f"A user-defined copy of {self.exercise_obj.name} exists and will be overwritten."
             else:
-                msg = (
-                    f"{self.exercise_obj.name} is predefined. A user-defined copy will be created."
-                )
+                msg = f"{self.exercise_obj.name} is predefined. A user-defined copy will be created."
         conn.close()
 
         dialog = None
@@ -2372,7 +2569,10 @@ class EditExerciseScreen(MDScreen):
                 )
                 if not update_library:
                     preset_name = app.preset_editor.preset_name
-                    orig = {m.get("name"): m for m in (self.exercise_obj._original or {}).get("metrics", [])}
+                    orig = {
+                        m.get("name"): m
+                        for m in (self.exercise_obj._original or {}).get("metrics", [])
+                    }
                     current = {m.get("name"): m for m in self.exercise_obj.metrics}
                     for name, metric in current.items():
                         old = orig.get(name)
@@ -2392,10 +2592,15 @@ class EditExerciseScreen(MDScreen):
 
                     removed = [name for name in orig if name not in current]
                     if removed:
-                        db_path = Path(__file__).resolve().parent / "data" / "workout.db"
+                        db_path = (
+                            Path(__file__).resolve().parent / "data" / "workout.db"
+                        )
                         conn = sqlite3.connect(str(db_path))
                         cur = conn.cursor()
-                        cur.execute("SELECT id FROM preset_presets WHERE name = ?", (preset_name,))
+                        cur.execute(
+                            "SELECT id FROM preset_presets WHERE name = ?",
+                            (preset_name,),
+                        )
                         row = cur.fetchone()
                         if row:
                             preset_id = row[0]
@@ -2456,7 +2661,9 @@ class EditExerciseScreen(MDScreen):
                 text=msg,
                 content_cls=content,
                 buttons=[
-                    MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                    MDRaisedButton(
+                        text="Cancel", on_release=lambda *a: dialog.dismiss()
+                    ),
                     MDRaisedButton(text="Save", on_release=do_save),
                 ],
             )
@@ -2466,7 +2673,9 @@ class EditExerciseScreen(MDScreen):
                 title="Confirm Save",
                 text=msg,
                 buttons=[
-                    MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
+                    MDRaisedButton(
+                        text="Cancel", on_release=lambda *a: dialog.dismiss()
+                    ),
                     MDRaisedButton(text="Save", on_release=do_save),
                 ],
             )
@@ -2498,6 +2707,7 @@ class EditExerciseScreen(MDScreen):
             if self.manager:
                 self.manager.current = self.previous_screen
 
+
 class WorkoutApp(MDApp):
     workout_session = None
     selected_preset = ""
@@ -2514,13 +2724,15 @@ class WorkoutApp(MDApp):
     def build(self):
         return Builder.load_file(str(Path(__file__).with_name("main.kv")))
 
-
     def init_preset_editor(self, force_reload: bool = False):
         """Create or reload the ``PresetEditor`` for the selected preset."""
 
         db_path = DEFAULT_DB_PATH
         if self.selected_preset:
-            if not self.preset_editor or self.preset_editor.preset_name != self.selected_preset:
+            if (
+                not self.preset_editor
+                or self.preset_editor.preset_name != self.selected_preset
+            ):
                 if self.preset_editor:
                     self.preset_editor.close()
                 self.preset_editor = PresetEditor(self.selected_preset, db_path)
