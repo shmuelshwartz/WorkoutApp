@@ -993,7 +993,14 @@ class EditPresetScreen(MDScreen):
         if app and app.editing_exercise_index >= 0:
             self.preset_name = app.preset_editor.preset_name or "Preset"
             self.current_tab = "sections"
-            self.refresh_sections()
+            if self.sections_box:
+                for widget in self.sections_box.children:
+                    if (
+                        isinstance(widget, SectionWidget)
+                        and widget.section_index == app.editing_section_index
+                    ):
+                        widget.refresh_exercises()
+                        break
             self.update_save_enabled()
             app.editing_section_index = -1
             app.editing_exercise_index = -1
