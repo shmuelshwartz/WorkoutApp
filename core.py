@@ -1203,6 +1203,7 @@ class PresetEditor:
 
         self.preset_name: str = preset_name or ""
         self.sections: list[dict] = []
+        self.metadata: dict[str, str] = {}
         self._preset_id: int | None = None
         self._original: dict | None = None
 
@@ -1231,6 +1232,7 @@ class PresetEditor:
 
         self.preset_name = preset_name
         self.sections.clear()
+        self.metadata.clear()
 
         for section_id, name in cursor.fetchall():
             cursor.execute(
@@ -1247,6 +1249,28 @@ class PresetEditor:
                 for ex_name, sets, rest in cursor.fetchall()
             ]
             self.sections.append({"name": name, "exercises": exercises})
+
+        cursor.execute(
+            """
+            SELECT mt.name, pm.value, mt.input_type
+              FROM preset_metadata pm
+              JOIN library_metric_types mt ON mt.id = pm.metric_type_id
+             WHERE pm.preset_id = ? AND pm.deleted = 0 AND mt.deleted = 0
+            """,
+            (preset_id,),
+        )
+        for name, value, input_type in cursor.fetchall():
+            if input_type == "int":
+                try:
+                    value = int(value)
+                except Exception:
+                    value = 0
+            elif input_type == "float":
+                try:
+                    value = float(value)
+                except Exception:
+                    value = 0.0
+            self.metadata[name] = value
 
         self._preset_id = preset_id
         self._original = self.to_dict()
@@ -1350,7 +1374,9 @@ class PresetEditor:
     def to_dict(self) -> dict:
         """Return the preset data as a dictionary."""
 
-        return copy.deepcopy({"name": self.preset_name, "sections": self.sections})
+        return copy.deepcopy(
+            {"name": self.preset_name, "sections": self.sections, "metadata": self.metadata}
+        )
 
     def close(self) -> None:
         self.conn.close()
@@ -1503,9 +1529,27 @@ class PresetEditor:
                                 m_scope,
                                 m_enum_json,
                                 mpos,
-                                mt_id,
+                        mt_id,
                             ),
                         )
+
+        cursor.execute(
+            "UPDATE preset_metadata SET deleted = 1 WHERE preset_id = ?",
+            (preset_id,),
+        )
+        for name, value in self.metadata.items():
+            cursor.execute(
+                "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0",
+                (name,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                continue
+            mt_id = row[0]
+            cursor.execute(
+                "INSERT INTO preset_metadata (preset_id, metric_type_id, value) VALUES (?, ?, ?)",
+                (preset_id, mt_id, str(value)),
+            )
 
         self.conn.commit()
         self.mark_saved()

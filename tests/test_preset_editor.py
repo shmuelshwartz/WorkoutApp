@@ -111,6 +111,7 @@ def test_to_dict_after_modifications(db_copy):
                 ],
             }
         ],
+        "metadata": {},
     }
     assert editor.to_dict() == expected
     editor.close()

@@ -968,9 +968,12 @@ class EditPresetScreen(MDScreen):
     sections_box = ObjectProperty(None)
     panel_visible = BooleanProperty(False)
     exercise_panel = ObjectProperty(None)
+    details_box = ObjectProperty(None)
     current_tab = StringProperty("sections")
     save_enabled = BooleanProperty(False)
     loading_dialog = ObjectProperty(None, allownone=True)
+
+    preset_metric_widgets: dict = {}
 
     _colors = [
         (1, 0.9, 0.9, 1),
@@ -1090,6 +1093,8 @@ class EditPresetScreen(MDScreen):
         """Switch between the sections and details tabs."""
         if tab in ("sections", "details"):
             self.current_tab = tab
+            if tab == "details":
+                self.populate_details()
 
     def update_preset_name(self, name: str):
         """Update the preset name in the editor."""
@@ -1098,6 +1103,87 @@ class EditPresetScreen(MDScreen):
         if app.preset_editor:
             app.preset_editor.preset_name = name
         self.update_save_enabled()
+
+    def populate_details(self):
+        if not self.details_box:
+            return
+        self.ids.preset_name.text = self.preset_name
+        for child in list(self.details_box.children):
+            if getattr(child, "id", "") != "preset_name":
+                self.details_box.remove_widget(child)
+
+        self.preset_metric_widgets = {}
+        metrics = [m for m in core.get_all_metric_types() if m.get("scope") == "preset"]
+        app = MDApp.get_running_app()
+        values = app.preset_editor.metadata if app and app.preset_editor else {}
+
+        for m in metrics:
+            name = m.get("name")
+            input_type = m.get("input_type")
+            source_type = m.get("source_type")
+            enum_json = m.get("enum_values_json")
+            enum_vals = []
+            if source_type == "manual_enum" and enum_json:
+                try:
+                    enum_vals = json.loads(enum_json)
+                except Exception:
+                    enum_vals = []
+
+            row = MDBoxLayout(size_hint_y=None, height="40dp")
+            row.add_widget(MDLabel(text=name, size_hint_x=0.4))
+
+            if source_type == "manual_slider":
+                widget = MDSlider(min=0, max=1, value=float(values.get(name, 0)))
+            elif source_type == "manual_enum":
+                default = str(values.get(name, enum_vals[0] if enum_vals else ""))
+                widget = Spinner(text=default, values=enum_vals)
+            elif input_type == "bool":
+                widget = MDCheckbox(active=bool(values.get(name)))
+            else:
+                input_filter = None
+                if input_type == "int":
+                    input_filter = "int"
+                elif input_type == "float":
+                    input_filter = "float"
+                widget = MDTextField(text=str(values.get(name, "")), multiline=False, input_filter=input_filter)
+
+            self.preset_metric_widgets[name] = widget
+
+            def _on_change(instance, *a, metric=name, it=input_type):
+                val = None
+                if isinstance(instance, MDTextField):
+                    val = instance.text
+                elif isinstance(instance, MDSlider):
+                    val = instance.value
+                elif isinstance(instance, Spinner):
+                    val = instance.text
+                elif isinstance(instance, MDCheckbox):
+                    val = instance.active
+                if it == "int":
+                    try:
+                        val = int(val)
+                    except Exception:
+                        val = 0
+                elif it == "float":
+                    try:
+                        val = float(val)
+                    except Exception:
+                        val = 0.0
+                if app and app.preset_editor is not None:
+                    app.preset_editor.metadata[metric] = val
+                self.update_save_enabled()
+
+            if isinstance(widget, MDTextField):
+                widget.bind(text=_on_change)
+            elif isinstance(widget, MDSlider):
+                widget.bind(value=_on_change)
+            elif isinstance(widget, Spinner):
+                widget.bind(text=_on_change)
+            elif isinstance(widget, MDCheckbox):
+                widget.bind(active=_on_change)
+
+            row.add_widget(widget)
+            self.details_box.add_widget(row)
 
     def save_preset(self):
         app = MDApp.get_running_app()
