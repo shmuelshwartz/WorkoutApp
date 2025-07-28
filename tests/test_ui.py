@@ -28,6 +28,7 @@ if kivy_available:
         EditExerciseScreen,
         ExerciseSelectionPanel,
         PresetsScreen,
+        EditPresetScreen,
     )
     import time
 
@@ -508,3 +509,28 @@ def test_preset_selected_text_color_and_clear(monkeypatch):
 
     assert dummy.theme_text_color == "Primary"
     assert screen.selected_item is None
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_preset_populate_details(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    metrics = [
+        {"name": "Focus", "input_type": "str", "source_type": "manual_text", "scope": "preset", "enum_values_json": None},
+        {"name": "Level", "input_type": "int", "source_type": "manual_text", "scope": "preset", "enum_values_json": None},
+    ]
+
+    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+
+    app = _DummyApp()
+    app.preset_editor = type("PE", (), {"metadata": {"Focus": "Legs", "Level": 2}, "is_modified": lambda self=None: False})()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+
+    screen = EditPresetScreen()
+    screen.populate_details()
+
+    assert set(screen.preset_metric_widgets.keys()) == {"Focus", "Level"}
+    assert screen.preset_metric_widgets["Focus"].text == "Legs"

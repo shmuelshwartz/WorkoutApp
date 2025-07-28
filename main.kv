@@ -587,6 +587,7 @@ ScreenManager:
 <EditPresetScreen>:
     sections_box: sections_box
     exercise_panel: exercise_panel
+    details_box: details_box
     panel_visible: False
     on_current_tab: edit_tabs.current = self.current_tab
     FloatLayout:
@@ -649,12 +650,13 @@ ScreenManager:
 
                 Screen:
                     name: "details"
-                    on_enter: preset_name.text = root.preset_name
+                    on_enter: root.populate_details()
                     BoxLayout:
                         orientation: "vertical"
                         ScrollView:
                             do_scroll_x: False
                             MDBoxLayout:
+                                id: details_box
                                 orientation: "vertical"
                                 size_hint_y: None
                                 height: self.minimum_height
