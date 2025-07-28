@@ -1185,6 +1185,10 @@ class EditPresetScreen(MDScreen):
             row.add_widget(widget)
             self.details_box.add_widget(row)
 
+        # Ensure the preset name remains visible when entering the tab
+        if "details_scroll" in self.ids:
+            self.ids.details_scroll.scroll_y = 1
+
     def save_preset(self):
         app = MDApp.get_running_app()
         if not app.preset_editor:
