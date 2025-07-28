@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS "library_exercise_metrics" (
 	"source_type"	TEXT,
 	"input_timing"	TEXT,
 	"is_required"	BOOLEAN,
-        "scope" TEXT CHECK("scope" IS NULL OR "scope" IN ('preset', 'session', 'section', 'exercise', 'set')),
+	"scope"	TEXT CHECK("scope" IS NULL OR "scope" IN ('preset', 'session', 'section', 'exercise', 'set')),
 	"enum_values_json"	TEXT,
 	"deleted"	INTEGER DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT),
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS "preset_section_exercise_metrics" (
 	"source_type"	TEXT NOT NULL,
 	"input_timing"	TEXT NOT NULL,
 	"is_required"	BOOLEAN NOT NULL DEFAULT 0,
-        "scope" TEXT CHECK("scope" IS NULL OR "scope" IN ('preset', 'session', 'section', 'exercise', 'set')),
+	"scope"	TEXT CHECK("scope" IS NULL OR "scope" IN ('preset', 'session', 'section', 'exercise', 'set')),
 	"position"	INTEGER NOT NULL DEFAULT 0,
 	"library_metric_type_id"	INTEGER,
 	"enum_values_json"	TEXT,
@@ -92,18 +92,18 @@ CREATE TABLE IF NOT EXISTS "preset_sections" (
 	FOREIGN KEY("preset_id") REFERENCES "preset_presets"("id") ON DELETE CASCADE
 );
 CREATE VIEW library_view_exercise_metrics AS
-SELECT 
-    em.id AS exercise_metric_id,
-    em.exercise_id,
-    e.name AS exercise_name,
-    em.metric_type_id,
-    mt.name AS metric_type_name
-FROM 
-    library_exercise_metrics em
-JOIN 
-    library_exercises e ON em.exercise_id = e.id
-JOIN 
-    library_metric_types mt ON em.metric_type_id = mt.id;
+    SELECT
+        em.id AS exercise_metric_id,
+        em.exercise_id,
+        e.name AS exercise_name,
+        em.metric_type_id,
+        mt.name AS metric_type_name
+    FROM
+        library_exercise_metrics em
+    JOIN
+        library_exercises e ON em.exercise_id = e.id
+    JOIN
+        library_metric_types mt ON em.metric_type_id = mt.id;
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_library_exercises_name_user_created" ON "library_exercises" (
 	"name",
 	"is_user_created"
