@@ -111,9 +111,12 @@ INSERT INTO "library_metric_types" VALUES (14,'Power Rating','float','manual_sli
 INSERT INTO "library_metric_types" VALUES (15,'False Grip','bool','manual_text','pre_set',0,'set','',1,NULL,0);
 INSERT INTO "library_metric_types" VALUES (16,'Grip Type','str','manual_enum','pre_set',0,'set','',1,'["Pronated","Supinated","Neutral"]',0);
 INSERT INTO "library_metric_types" VALUES (17,'Hand Distance from Wall','float','manual_text','pre_set',1,'set','Distance measured in mm between the wall and the hand.',1,NULL,0);
-INSERT INTO "library_metric_types" VALUES (18,'Day Number','str','manual_enum','preset',1,'session','',1,NULL,0);
+INSERT INTO "library_metric_types" VALUES (18,'Day Number','int','manual_text','pre_workout',1,'session','The longest phase in your training plan, typically spanning several months and focused on your overall goal.',1,NULL,0);
 INSERT INTO "library_metric_types" VALUES (19,'Test','str','manual_text','library',0,'session','',1,NULL,1);
 INSERT INTO "library_metric_types" VALUES (20,'Reps','int','manual_text','post_set',1,'set','Number of repetitions performed per set.',1,NULL,0);
+INSERT INTO "library_metric_types" VALUES (21,'Macrocycle','int','manual_text','pre_workout',0,'session','The longest phase in your training plan, typically spanning several months and focused on your overall goal.',1,NULL,0);
+INSERT INTO "library_metric_types" VALUES (22,'Mesocycle','int','manual_text','pre_workout',0,'session','A cycle within the macrocycle designed to develop targeted physical qualities.',1,NULL,0);
+INSERT INTO "library_metric_types" VALUES (23,'Microcycle','int','manual_text','pre_workout',0,'session','The smallest structural unit within a mesocycle, typically one week long, used to organize training sessions.',1,NULL,0);
 INSERT INTO "preset_presets" VALUES (1,'Day 1',0);
 INSERT INTO "preset_section_exercise_metrics" VALUES (222,103,'Reps','int','manual_text','post_set',1,'set',0,1,NULL,1);
 INSERT INTO "preset_section_exercise_metrics" VALUES (223,103,'Performing Side','str','manual_enum','pre_set',1,'set',1,9,'["Right","Left"]',1);
