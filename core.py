@@ -32,7 +32,7 @@ def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
         cursor.execute(
             """
             SELECT se.exercise_name, se.number_of_sets, se.rest_time
-            FROM preset_sections s
+            FROM preset_preset_sections s
             JOIN preset_section_exercises se ON se.section_id = s.id
             WHERE s.preset_id = ? AND s.deleted = 0 AND se.deleted = 0
             ORDER BY s.position, se.position
@@ -205,9 +205,9 @@ def get_metrics_for_exercise(
         cursor.execute(
             """
             SELECT sem.metric_name, sem.input_timing, sem.is_required, sem.scope
-            FROM preset_section_exercise_metrics sem
+            FROM preset_exercise_metrics sem
             JOIN preset_section_exercises se ON sem.section_exercise_id = se.id
-            JOIN preset_sections s ON se.section_id = s.id
+            JOIN preset_preset_sections s ON se.section_id = s.id
             JOIN preset_presets p ON s.preset_id = p.id
             WHERE p.name = ? AND se.exercise_name = ?
               AND sem.deleted = 0 AND se.deleted = 0 AND s.deleted = 0 AND p.deleted = 0
@@ -593,7 +593,7 @@ def set_section_exercise_metric_override(
     preset_id = row[0]
 
     cursor.execute(
-        "SELECT id FROM preset_sections WHERE preset_id = ? AND deleted = 0 ORDER BY position",
+        "SELECT id FROM preset_preset_sections WHERE preset_id = ? AND deleted = 0 ORDER BY position",
         (preset_id,),
     )
     sections = cursor.fetchall()
@@ -623,7 +623,7 @@ def set_section_exercise_metric_override(
     se_id = row[0]
 
     cursor.execute(
-        "SELECT id FROM preset_section_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ? AND deleted = 0",
+        "SELECT id FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ? AND deleted = 0",
         (se_id, metric_type_name),
     )
     row = cursor.fetchone()
@@ -635,13 +635,13 @@ def set_section_exercise_metric_override(
             params.append(json.dumps(enum_values))
         params.append(row[0])
         cursor.execute(
-            f"UPDATE preset_section_exercise_metrics SET {', '.join(updates)} WHERE id = ?",
+            f"UPDATE preset_exercise_metrics SET {', '.join(updates)} WHERE id = ?",
             params,
         )
     else:
         cursor.execute(
             """
-            INSERT INTO preset_section_exercise_metrics
+            INSERT INTO preset_exercise_metrics
                 (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
@@ -1172,7 +1172,7 @@ def delete_metric_type(
         raise ValueError("Metric type is in use and cannot be deleted")
 
     cursor.execute(
-        "SELECT 1 FROM preset_metadata WHERE metric_type_id = ? AND deleted = 0 LIMIT 1",
+        "SELECT 1 FROM preset_preset_metrics WHERE metric_type_id = ? AND deleted = 0 LIMIT 1",
         (mt_id,),
     )
     if cursor.fetchone():
@@ -1226,7 +1226,7 @@ class PresetEditor:
 
         preset_id = row[0]
         cursor.execute(
-            "SELECT id, name FROM preset_sections WHERE preset_id = ? AND deleted = 0 ORDER BY position",
+            "SELECT id, name FROM preset_preset_sections WHERE preset_id = ? AND deleted = 0 ORDER BY position",
             (preset_id,),
         )
 
@@ -1253,7 +1253,7 @@ class PresetEditor:
         cursor.execute(
             """
             SELECT mt.name, pm.value, mt.input_type
-              FROM preset_metadata pm
+              FROM preset_preset_metrics pm
               JOIN library_metric_types mt ON mt.id = pm.metric_type_id
              WHERE pm.preset_id = ? AND pm.deleted = 0 AND mt.deleted = 0
             """,
@@ -1417,7 +1417,7 @@ class PresetEditor:
             preset_id = row[0]
             self._preset_id = preset_id
             cursor.execute(
-                "SELECT id FROM preset_sections WHERE preset_id = ? AND deleted = 0",
+                "SELECT id FROM preset_preset_sections WHERE preset_id = ? AND deleted = 0",
                 (preset_id,),
             )
             sec_ids = [r[0] for r in cursor.fetchall()]
@@ -1429,15 +1429,15 @@ class PresetEditor:
                 ex_ids = [r[0] for r in cursor.fetchall()]
                 for eid in ex_ids:
                     cursor.execute(
-                        "UPDATE preset_section_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
+                    "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
                         (eid,),
                     )
-                cursor.execute(
-                    "UPDATE preset_section_exercises SET deleted = 1 WHERE section_id = ?",
-                    (sid,),
-                )
             cursor.execute(
-                "UPDATE preset_sections SET deleted = 1 WHERE preset_id = ?",
+                "UPDATE preset_section_exercises SET deleted = 1 WHERE section_id = ?",
+                (sid,),
+            )
+            cursor.execute(
+                "UPDATE preset_preset_sections SET deleted = 1 WHERE preset_id = ?",
                 (preset_id,),
             )
             cursor.execute(
@@ -1454,7 +1454,7 @@ class PresetEditor:
 
         for sec_pos, sec in enumerate(self.sections):
             cursor.execute(
-                "INSERT INTO preset_sections (preset_id, name, position) VALUES (?, ?, ?)",
+                "INSERT INTO preset_preset_sections (preset_id, name, position) VALUES (?, ?, ?)",
                 (preset_id, sec.get("name", f"Section {sec_pos + 1}"), sec_pos),
             )
             section_id = cursor.lastrowid
@@ -1516,7 +1516,7 @@ class PresetEditor:
                         mt_id,
                     ) in cursor.fetchall():
                         cursor.execute(
-                            """INSERT INTO preset_section_exercise_metrics
+                            """INSERT INTO preset_exercise_metrics
                                 (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id)
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                             (
@@ -1534,7 +1534,7 @@ class PresetEditor:
                         )
 
         cursor.execute(
-            "UPDATE preset_metadata SET deleted = 1 WHERE preset_id = ?",
+            "UPDATE preset_preset_metrics SET deleted = 1 WHERE preset_id = ?",
             (preset_id,),
         )
         for name, value in self.metadata.items():
@@ -1547,7 +1547,7 @@ class PresetEditor:
                 continue
             mt_id = row[0]
             cursor.execute(
-                "INSERT INTO preset_metadata (preset_id, metric_type_id, value) VALUES (?, ?, ?)",
+                "INSERT INTO preset_preset_metrics (preset_id, metric_type_id, value) VALUES (?, ?, ?)",
                 (preset_id, mt_id, str(value)),
             )
 
