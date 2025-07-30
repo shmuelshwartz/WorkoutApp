@@ -334,7 +334,7 @@ def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
     import sqlite3
     from pathlib import Path
 
-    schema = Path(__file__).resolve().parents[1] / "data" / "workout.sql"
+    schema = Path(__file__).resolve().parents[1] / "data" / "workout_schema.sql"
     db_path = tmp_path / "workout.db"
     conn = sqlite3.connect(db_path)
     with open(schema, "r", encoding="utf-8") as fh:
