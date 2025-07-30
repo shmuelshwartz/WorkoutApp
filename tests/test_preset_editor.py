@@ -168,6 +168,22 @@ def test_save_existing_preset(db_with_preset):
     editor.close()
 
 
+def test_rename_section_does_not_create_deleted_rows(db_with_preset):
+    editor = PresetEditor("Test Preset", db_path=db_with_preset)
+    editor.rename_section(0, "Warmup 2")
+    editor.save()
+    conn = sqlite3.connect(db_with_preset)
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM preset_preset_sections WHERE deleted = 0")
+    names = [r[0] for r in cur.fetchall()]
+    cur.execute("SELECT COUNT(*) FROM preset_preset_sections WHERE deleted = 1")
+    deleted_count = cur.fetchone()[0]
+    conn.close()
+    editor.close()
+    assert names == ["Warmup 2"]
+    assert deleted_count == 0
+
+
 def test_save_duplicate_name(db_with_preset):
     editor = PresetEditor(db_path=db_with_preset)
     editor.preset_name = "Test Preset"

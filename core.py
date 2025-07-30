@@ -1423,7 +1423,7 @@ class PresetEditor:
             preset_id = row[0]
             self._preset_id = preset_id
             cursor.execute(
-                "SELECT id FROM preset_preset_sections WHERE preset_id = ? AND deleted = 0",
+                "SELECT id FROM preset_preset_sections WHERE preset_id = ? AND deleted = 0 ORDER BY position",
                 (preset_id,),
             )
             sec_ids = [r[0] for r in cursor.fetchall()]
@@ -1442,11 +1442,7 @@ class PresetEditor:
                     "UPDATE preset_section_exercises SET deleted = 1 WHERE section_id = ?",
                     (sid,),
                 )
-            cursor.execute(
 
-                "UPDATE preset_preset_sections SET deleted = 1 WHERE preset_id = ?",
-                (preset_id,),
-            )
             cursor.execute(
                 "UPDATE preset_presets SET name = ? WHERE id = ?",
                 (self.preset_name, preset_id),
@@ -1458,13 +1454,42 @@ class PresetEditor:
             )
             preset_id = cursor.lastrowid
             self._preset_id = preset_id
+            sec_ids = []
+
+        # Remove leftover sections when count decreased
+        for sid in sec_ids[len(self.sections) :]:
+            cursor.execute(
+                "SELECT id FROM preset_section_exercises WHERE section_id = ? AND deleted = 0",
+                (sid,),
+            )
+            ex_ids = [r[0] for r in cursor.fetchall()]
+            for eid in ex_ids:
+                cursor.execute(
+                    "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
+                    (eid,),
+                )
+            cursor.execute(
+                "UPDATE preset_section_exercises SET deleted = 1 WHERE section_id = ?",
+                (sid,),
+            )
+            cursor.execute(
+                "UPDATE preset_preset_sections SET deleted = 1 WHERE id = ?",
+                (sid,),
+            )
 
         for sec_pos, sec in enumerate(self.sections):
-            cursor.execute(
-                "INSERT INTO preset_preset_sections (preset_id, name, position) VALUES (?, ?, ?)",
-                (preset_id, sec.get("name", f"Section {sec_pos + 1}"), sec_pos),
-            )
-            section_id = cursor.lastrowid
+            if sec_pos < len(sec_ids):
+                section_id = sec_ids[sec_pos]
+                cursor.execute(
+                    "UPDATE preset_preset_sections SET name = ?, position = ?, deleted = 0 WHERE id = ?",
+                    (sec.get("name", f"Section {sec_pos + 1}"), sec_pos, section_id),
+                )
+            else:
+                cursor.execute(
+                    "INSERT INTO preset_preset_sections (preset_id, name, position) VALUES (?, ?, ?)",
+                    (preset_id, sec.get("name", f"Section {sec_pos + 1}"), sec_pos),
+                )
+                section_id = cursor.lastrowid
             for ex_pos, ex in enumerate(sec.get("exercises", [])):
                 details = get_exercise_details(ex["name"], self.db_path)
                 desc = details.get("description", "") if details else ""
