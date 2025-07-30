@@ -676,6 +676,12 @@ ScreenManager:
                                         multiline: False
                                         on_text: root.update_preset_name(self.text)
                                         size_hint_x: 1
+                                MDBoxLayout:
+                                    id: metrics_box
+                                    orientation: "vertical"
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                                    spacing: dp(10)
 
             MDBoxLayout:
                 size_hint_y: None

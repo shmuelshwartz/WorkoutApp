@@ -970,6 +970,7 @@ class EditPresetScreen(MDScreen):
     exercise_panel = ObjectProperty(None)
     details_box = ObjectProperty(None)
     current_tab = StringProperty("sections")
+    metrics_box = ObjectProperty(None)
     save_enabled = BooleanProperty(False)
     loading_dialog = ObjectProperty(None, allownone=True)
 
@@ -1105,13 +1106,22 @@ class EditPresetScreen(MDScreen):
         self.update_save_enabled()
 
     def populate_details(self):
-        if not self.details_box:
+        if not self.details_box or not self.metrics_box:
             return
         self.ids.preset_name.text = self.preset_name
         preset_row = self.ids.get("preset_name_row")
-        for child in list(self.details_box.children):
-            if child is not preset_row:
-                self.details_box.remove_widget(child)
+
+        # Ensure the preset name row is present in the layout
+        if preset_row is not None:
+            if preset_row.parent and preset_row.parent is not self.details_box:
+                preset_row.parent.remove_widget(preset_row)
+            if preset_row not in self.details_box.children:
+                self.details_box.add_widget(preset_row, index=len(self.details_box.children))
+
+        # Clear previous metric widgets without touching the preset name row
+        if self.metrics_box:
+            self.metrics_box.clear_widgets()
+
 
         self.preset_metric_widgets = {}
         metrics = [
@@ -1188,7 +1198,8 @@ class EditPresetScreen(MDScreen):
                 widget.bind(active=_on_change)
 
             row.add_widget(widget)
-            self.details_box.add_widget(row)
+            if self.metrics_box:
+                self.metrics_box.add_widget(row)
 
         # Ensure the preset name remains visible when entering the tab
         if "details_scroll" in self.ids:
