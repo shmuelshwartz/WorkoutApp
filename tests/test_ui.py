@@ -519,8 +519,22 @@ def test_edit_preset_populate_details(monkeypatch):
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     metrics = [
-        {"name": "Focus", "input_type": "str", "source_type": "manual_text", "scope": "preset", "enum_values_json": None},
-        {"name": "Level", "input_type": "int", "source_type": "manual_text", "scope": "preset", "enum_values_json": None},
+        {
+            "name": "Focus",
+            "input_type": "str",
+            "source_type": "manual_text",
+            "scope": "preset",
+            "enum_values_json": None,
+            "input_timing": "preset",
+        },
+        {
+            "name": "Level",
+            "input_type": "int",
+            "source_type": "manual_text",
+            "scope": "preset",
+            "enum_values_json": None,
+            "input_timing": "preset",
+        },
     ]
 
     monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)

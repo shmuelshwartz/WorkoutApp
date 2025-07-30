@@ -662,14 +662,20 @@ ScreenManager:
                                 size_hint_y: None
                                 height: self.minimum_height
                                 spacing: dp(10)
-                                MDTextField:
-                                    id: preset_name
-                                    hint_text: "Preset Name"
-                                    multiline: False
-                                    on_text: root.update_preset_name(self.text)
-                                    size_hint_x: 1
+                                MDBoxLayout:
+                                    id: preset_name_row
+                                    orientation: "horizontal"
                                     size_hint_y: None
-                                    height: "48dp"  # Give it space to render properly
+                                    height: "40dp"
+                                    MDLabel:
+                                        text: "Preset Name"
+                                        size_hint_x: 0.4
+                                    MDTextField:
+                                        id: preset_name
+                                        hint_text: "Preset Name"
+                                        multiline: False
+                                        on_text: root.update_preset_name(self.text)
+                                        size_hint_x: 1
 
             MDBoxLayout:
                 size_hint_y: None
