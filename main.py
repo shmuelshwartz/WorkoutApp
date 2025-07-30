@@ -1130,7 +1130,12 @@ class EditPresetScreen(MDScreen):
             if m.get("input_timing") == "preset" and m.get("scope") == "preset"
         ]
         app = MDApp.get_running_app()
-        values = app.preset_editor.metadata if app and app.preset_editor else {}
+        values = {}
+        if app and app.preset_editor:
+            values = {
+                m.get("name"): m.get("value")
+                for m in app.preset_editor.preset_metrics
+            }
 
         for m in metrics:
             name = m.get("name")
@@ -1185,7 +1190,11 @@ class EditPresetScreen(MDScreen):
                     except Exception:
                         val = 0.0
                 if app and app.preset_editor is not None:
-                    app.preset_editor.metadata[metric] = val
+                    existing = [m for m in app.preset_editor.preset_metrics if m.get("name") == metric]
+                    if existing:
+                        app.preset_editor.update_metric(metric, value=val)
+                    else:
+                        app.preset_editor.add_metric(metric, value=val)
                 self.update_save_enabled()
 
             if isinstance(widget, MDTextField):
