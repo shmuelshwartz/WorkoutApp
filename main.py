@@ -1091,11 +1091,13 @@ class EditPresetScreen(MDScreen):
         return section
 
     def switch_tab(self, tab: str):
-        """Switch between the sections and details tabs."""
-        if tab in ("sections", "details"):
+        """Switch between the sections, details, and metrics tabs."""
+        if tab in ("sections", "details", "metrics"):
             self.current_tab = tab
             if tab == "details":
                 self.populate_details()
+            elif tab == "metrics":
+                self.populate_metrics()
 
     def update_preset_name(self, name: str):
         """Update the preset name in the editor."""
@@ -1213,6 +1215,10 @@ class EditPresetScreen(MDScreen):
         # Ensure the preset name remains visible when entering the tab
         if "details_scroll" in self.ids:
             self.ids.details_scroll.scroll_y = 1
+
+    def populate_metrics(self):
+        """Placeholder for future metrics tab population."""
+        pass
 
     def save_preset(self):
         app = MDApp.get_running_app()
