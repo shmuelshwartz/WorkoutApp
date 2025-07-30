@@ -1116,7 +1116,7 @@ class EditPresetScreen(MDScreen):
         metrics = [
             m
             for m in core.get_all_metric_types()
-            if m.get("input_timing") == "preset"
+            if m.get("input_timing") == "preset" and m.get("scope") == "preset"
         ]
         app = MDApp.get_running_app()
         values = app.preset_editor.metadata if app and app.preset_editor else {}
