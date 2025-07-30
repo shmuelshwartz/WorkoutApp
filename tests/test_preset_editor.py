@@ -111,7 +111,7 @@ def test_to_dict_after_modifications(db_copy):
                 ],
             }
         ],
-        "metadata": {},
+        "preset_metrics": [],
     }
     assert editor.to_dict() == expected
     editor.close()
@@ -249,7 +249,7 @@ def test_save_preset_metadata(db_copy):
     editor.preset_name = "Meta Preset"
     editor.add_section("Warmup")
     editor.add_exercise(0, "Push ups")
-    editor.metadata["Difficulty"] = 3
+    editor.add_metric("Difficulty", value=3)
     editor.save()
 
     conn = sqlite3.connect(db_copy)
