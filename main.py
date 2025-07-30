@@ -1109,11 +1109,15 @@ class EditPresetScreen(MDScreen):
             return
         self.ids.preset_name.text = self.preset_name
         for child in list(self.details_box.children):
-            if getattr(child, "id", "") != "preset_name":
+            if getattr(child, "id", "") != "preset_name_row":
                 self.details_box.remove_widget(child)
 
         self.preset_metric_widgets = {}
-        metrics = [m for m in core.get_all_metric_types() if m.get("scope") == "preset"]
+        metrics = [
+            m
+            for m in core.get_all_metric_types()
+            if m.get("input_timing") == "preset"
+        ]
         app = MDApp.get_running_app()
         values = app.preset_editor.metadata if app and app.preset_editor else {}
 
