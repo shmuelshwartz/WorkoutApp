@@ -1,20 +1,20 @@
 BEGIN TRANSACTION;
 CREATE TABLE IF NOT EXISTS "library_exercise_metrics" (
-    "id"	INTEGER,
-    "exercise_id"	INTEGER NOT NULL,
-    "metric_type_id"	INTEGER NOT NULL,
-    "input_type"	TEXT CHECK("input_type" IS NULL OR "input_type" IN ('int', 'float', 'str', 'bool')),
-    "source_type"	TEXT CHECK("source_type" IS NULL OR "source_type" IN ('manual_text', 'manual_enum', 'manual_slider')),
-    "input_timing"	TEXT CHECK("input_timing" IS NULL OR "input_timing" IN ('library', 'preset', 'pre_session', 'post_session', 'pre_exercise', 'post_exercise', 'pre_set', 'post_set')),
-    "scope"	TEXT CHECK("scope" IS NULL OR "scope" IN ('exercise', 'set')),
-    "is_required"	BOOLEAN,
-    "enum_values_json"	TEXT,
-    "position"	INTEGER DEFAULT 0,
-    "deleted"	BOOLEAN NOT NULL DEFAULT 0,
-    "value"	TEXT,
-    PRIMARY KEY("id" AUTOINCREMENT),
-    FOREIGN KEY("exercise_id") REFERENCES "library_exercises"("id") ON DELETE CASCADE,
-    FOREIGN KEY("metric_type_id") REFERENCES "library_metric_types"("id") ON DELETE CASCADE
+	"id"	INTEGER,
+	"exercise_id"	INTEGER NOT NULL,
+	"metric_type_id"	INTEGER NOT NULL,
+	"input_type"	TEXT CHECK("input_type" IS NULL OR "input_type" IN ('int', 'float', 'str', 'bool')),
+	"source_type"	TEXT CHECK("source_type" IS NULL OR "source_type" IN ('manual_text', 'manual_enum', 'manual_slider')),
+	"input_timing"	TEXT CHECK("input_timing" IS NULL OR "input_timing" IN ('library', 'preset', 'pre_session', 'post_session', 'pre_exercise', 'post_exercise', 'pre_set', 'post_set')),
+	"scope"	TEXT CHECK("scope" IS NULL OR "scope" IN ('exercise', 'set')),
+	"is_required"	BOOLEAN,
+	"enum_values_json"	TEXT,
+	"position"	INTEGER DEFAULT 0,
+	"deleted"	BOOLEAN NOT NULL DEFAULT 0,
+	"value"	TEXT,
+	PRIMARY KEY("id" AUTOINCREMENT),
+	FOREIGN KEY("exercise_id") REFERENCES "library_exercises"("id") ON DELETE CASCADE,
+	FOREIGN KEY("metric_type_id") REFERENCES "library_metric_types"("id") ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS "library_exercises" (
 	"id"	INTEGER,
