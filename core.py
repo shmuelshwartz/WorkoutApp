@@ -26,7 +26,9 @@ def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
 
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name FROM preset_presets WHERE deleted = 0 ORDER BY id")
+    cursor.execute(
+        "SELECT id, name FROM preset_presets WHERE deleted = 0 ORDER BY id"
+    )
     presets = []
     for preset_id, preset_name in cursor.fetchall():
         cursor.execute(
@@ -1172,7 +1174,9 @@ def delete_metric_type(
         raise ValueError("Metric type is in use and cannot be deleted")
 
     cursor.execute(
-        "SELECT 1 FROM preset_preset_metrics WHERE metric_type_id = ? AND deleted = 0 LIMIT 1",
+
+        "SELECT 1 FROM preset_preset_metrics WHERE library_metric_type_id = ? AND deleted = 0 LIMIT 1",
+
         (mt_id,),
     )
     if cursor.fetchone():
@@ -1254,7 +1258,9 @@ class PresetEditor:
             """
             SELECT mt.name, pm.value, mt.input_type
               FROM preset_preset_metrics pm
-              JOIN library_metric_types mt ON mt.id = pm.metric_type_id
+
+              JOIN library_metric_types mt ON mt.id = pm.library_metric_type_id
+
              WHERE pm.preset_id = ? AND pm.deleted = 0 AND mt.deleted = 0
             """,
             (preset_id,),
@@ -1429,14 +1435,13 @@ class PresetEditor:
                 ex_ids = [r[0] for r in cursor.fetchall()]
                 for eid in ex_ids:
                     cursor.execute(
-                    "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
+
+                        "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
+
                         (eid,),
                     )
             cursor.execute(
-                "UPDATE preset_section_exercises SET deleted = 1 WHERE section_id = ?",
-                (sid,),
-            )
-            cursor.execute(
+
                 "UPDATE preset_preset_sections SET deleted = 1 WHERE preset_id = ?",
                 (preset_id,),
             )
@@ -1547,7 +1552,9 @@ class PresetEditor:
                 continue
             mt_id = row[0]
             cursor.execute(
-                "INSERT INTO preset_preset_metrics (preset_id, metric_type_id, value) VALUES (?, ?, ?)",
+
+                "INSERT INTO preset_preset_metrics (preset_id, library_metric_type_id, value) VALUES (?, ?, ?)",
+
                 (preset_id, mt_id, str(value)),
             )
 

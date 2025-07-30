@@ -13,7 +13,7 @@ from core import PresetEditor, DEFAULT_SETS_PER_EXERCISE, DEFAULT_REST_DURATION
 def db_copy(tmp_path):
     """Return a temporary empty database using the bundled schema."""
     dst = tmp_path / "workout.db"
-    schema = Path(__file__).resolve().parents[1] / "data" / "workout.sql"
+    schema = Path(__file__).resolve().parents[1] / "data" / "workout_schema.sql"
     conn = sqlite3.connect(dst)
     with open(schema, "r", encoding="utf-8") as fh:
         conn.executescript(fh.read())
@@ -34,7 +34,7 @@ def db_with_preset(db_copy):
     cur.execute("INSERT INTO preset_presets (name) VALUES (?)", ("Test Preset",))
     preset_id = cur.lastrowid
     cur.execute(
-        "INSERT INTO preset_sections (preset_id, name, position) VALUES (?, ?, 0)",
+        "INSERT INTO preset_preset_sections (preset_id, name, position) VALUES (?, ?, 0)",
         (preset_id, "Warmup"),
     )
     section_id = cur.lastrowid
@@ -144,7 +144,7 @@ def test_save_new_preset(db_copy):
     cur = conn.cursor()
     cur.execute("SELECT name FROM preset_presets")
     assert cur.fetchone()[0] == "My Preset"
-    cur.execute("SELECT name FROM preset_sections")
+    cur.execute("SELECT name FROM preset_preset_sections")
     assert cur.fetchone()[0] == "Warmup"
     cur.execute(
         "SELECT exercise_name, number_of_sets, rest_time FROM preset_section_exercises WHERE deleted = 0"
@@ -204,7 +204,7 @@ def test_save_preserves_metric_overrides(db_copy):
         UPDATE library_exercise_metrics
            SET input_type = 'int',
                source_type = 'manual_text',
-               input_timing = 'pre_workout',
+               input_timing = 'pre_session',
                is_required = 1,
                scope = 'set'
          WHERE id = ?
@@ -223,13 +223,13 @@ def test_save_preserves_metric_overrides(db_copy):
     conn = sqlite3.connect(db_copy)
     cur = conn.cursor()
     cur.execute(
-        "SELECT metric_name, input_timing, is_required, scope FROM preset_section_exercise_metrics WHERE deleted = 0"
+        "SELECT metric_name, input_timing, is_required, scope FROM preset_exercise_metrics WHERE deleted = 0"
     )
     result = cur.fetchone()
     conn.close()
     editor.close()
 
-    assert result == ("Reps", "pre_workout", 1, "set")
+    assert result == ("Reps", "pre_session", 1, "set")
 
 
 def test_save_missing_exercise_fails(db_copy):
