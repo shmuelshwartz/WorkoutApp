@@ -611,6 +611,10 @@ ScreenManager:
                     text: "Details"
                     md_bg_color: app.theme_cls.primary_color if root.current_tab == "details" else (.5, .5, .5, 1)
                     on_release: root.switch_tab("details")
+                MDRaisedButton:
+                    text: "Metrics"
+                    md_bg_color: app.theme_cls.primary_color if root.current_tab == "metrics" else (.5, .5, .5, 1)
+                    on_release: root.switch_tab("metrics")
 
             ScreenManager:
                 id: edit_tabs
@@ -683,6 +687,14 @@ ScreenManager:
                                     size_hint_y: None
                                     height: self.minimum_height
                                     spacing: dp(10)
+
+                Screen:
+                    name: "metrics"
+                    BoxLayout:
+                        orientation: "vertical"
+                        MDLabel:
+                            text: "Metrics"
+                            halign: "center"
 
             MDBoxLayout:
                 size_hint_y: None
