@@ -1565,22 +1565,6 @@ class PresetEditor:
                 (preset_id,),
             )
             sec_ids = [r[0] for r in cursor.fetchall()]
-            for sid in sec_ids:
-                cursor.execute(
-                    "SELECT id FROM preset_section_exercises WHERE section_id = ? AND deleted = 0",
-                    (sid,),
-                )
-                ex_ids = [r[0] for r in cursor.fetchall()]
-                for eid in ex_ids:
-                    cursor.execute(
-                        "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
-                        (eid,),
-                    )
-                cursor.execute(
-                    "UPDATE preset_section_exercises SET deleted = 1 WHERE section_id = ?",
-                    (sid,),
-                )
-
             cursor.execute(
                 "UPDATE preset_presets SET name = ? WHERE id = ?",
                 (self.preset_name, preset_id),
@@ -1593,27 +1577,6 @@ class PresetEditor:
             preset_id = cursor.lastrowid
             self._preset_id = preset_id
             sec_ids = []
-
-        # Remove leftover sections when count decreased
-        for sid in sec_ids[len(self.sections) :]:
-            cursor.execute(
-                "SELECT id FROM preset_section_exercises WHERE section_id = ? AND deleted = 0",
-                (sid,),
-            )
-            ex_ids = [r[0] for r in cursor.fetchall()]
-            for eid in ex_ids:
-                cursor.execute(
-                    "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
-                    (eid,),
-                )
-            cursor.execute(
-                "UPDATE preset_section_exercises SET deleted = 1 WHERE section_id = ?",
-                (sid,),
-            )
-            cursor.execute(
-                "UPDATE preset_preset_sections SET deleted = 1 WHERE id = ?",
-                (sid,),
-            )
 
         for sec_pos, sec in enumerate(self.sections):
             if sec_pos < len(sec_ids):
@@ -1628,6 +1591,15 @@ class PresetEditor:
                     (preset_id, sec.get("name", f"Section {sec_pos + 1}"), sec_pos),
                 )
                 section_id = cursor.lastrowid
+
+            cursor.execute(
+                "SELECT id, library_exercise_id FROM preset_section_exercises WHERE section_id = ? AND deleted = 0 ORDER BY position",
+                (section_id,),
+            )
+            ex_rows = cursor.fetchall()
+            ex_ids = [r[0] for r in ex_rows]
+            old_libs = [r[1] for r in ex_rows]
+
             for ex_pos, ex in enumerate(sec.get("exercises", [])):
                 details = get_exercise_details(ex["name"], self.db_path)
                 desc = details.get("description", "") if details else ""
@@ -1639,23 +1611,91 @@ class PresetEditor:
                 if lr is None:
                     raise ValueError(f"Exercise '{ex['name']}' does not exist")
                 lib_id = lr[0]
-                cursor.execute(
-                    """INSERT INTO preset_section_exercises
-                        (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id, rest_time)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                    (
-                        section_id,
-                        ex["name"],
-                        desc,
-                        ex_pos,
-                        ex.get("sets", DEFAULT_SETS_PER_EXERCISE),
-                        lib_id,
-                        ex.get("rest", DEFAULT_REST_DURATION),
-                    ),
-                )
-                se_id = cursor.lastrowid
 
-                if lib_id is not None:
+                if ex_pos < len(ex_ids):
+                    ex_id = ex_ids[ex_pos]
+                    old_lib_id = old_libs[ex_pos]
+                    cursor.execute(
+                        "UPDATE preset_section_exercises SET exercise_name = ?, exercise_description = ?, number_of_sets = ?, rest_time = ?, position = ?, library_exercise_id = ?, deleted = 0 WHERE id = ?",
+                        (
+                            ex["name"],
+                            desc,
+                            ex.get("sets", DEFAULT_SETS_PER_EXERCISE),
+                            ex.get("rest", DEFAULT_REST_DURATION),
+                            ex_pos,
+                            lib_id,
+                            ex_id,
+                        ),
+                    )
+
+                    if old_lib_id != lib_id:
+                        cursor.execute(
+                            "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
+                            (ex_id,),
+                        )
+                        cursor.execute(
+                            """
+                            SELECT mt.name,
+                                   COALESCE(em.input_type, mt.input_type),
+                                   COALESCE(em.source_type, mt.source_type),
+                                   COALESCE(em.input_timing, mt.input_timing),
+                                   COALESCE(em.is_required, mt.is_required),
+                                   COALESCE(em.scope, mt.scope),
+                                   COALESCE(em.enum_values_json, mt.enum_values_json),
+                                   em.position,
+                                   mt.id
+                              FROM library_exercise_metrics em
+                              JOIN library_metric_types mt ON em.metric_type_id = mt.id
+                             WHERE em.exercise_id = ?
+                             ORDER BY em.position
+                            """,
+                            (lib_id,),
+                        )
+                        for (
+                            mt_name,
+                            m_input,
+                            m_source,
+                            m_timing,
+                            m_req,
+                            m_scope,
+                            m_enum_json,
+                            mpos,
+                            mt_id,
+                        ) in cursor.fetchall():
+                            cursor.execute(
+                                """INSERT INTO preset_exercise_metrics
+                                    (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                (
+                                    ex_id,
+                                    mt_name,
+                                    m_input,
+                                    m_source,
+                                    m_timing,
+                                    m_req,
+                                    m_scope,
+                                    m_enum_json,
+                                    mpos,
+                                    mt_id,
+                                ),
+                            )
+                else:
+                    cursor.execute(
+                        """INSERT INTO preset_section_exercises
+                            (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id, rest_time)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            section_id,
+                            ex["name"],
+                            desc,
+                            ex_pos,
+                            ex.get("sets", DEFAULT_SETS_PER_EXERCISE),
+                            lib_id,
+                            ex.get("rest", DEFAULT_REST_DURATION),
+                        ),
+                    )
+                    ex_id = cursor.lastrowid
+
                     cursor.execute(
                         """
                         SELECT mt.name,
@@ -1690,7 +1730,7 @@ class PresetEditor:
                                 (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id)
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                             (
-                                se_id,
+                                ex_id,
                                 mt_name,
                                 m_input,
                                 m_source,
@@ -1699,9 +1739,39 @@ class PresetEditor:
                                 m_scope,
                                 m_enum_json,
                                 mpos,
-                        mt_id,
+                                mt_id,
                             ),
                         )
+
+            for old_id in ex_ids[len(sec.get("exercises", [])):]:
+                cursor.execute(
+                    "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
+                    (old_id,),
+                )
+                cursor.execute(
+                    "UPDATE preset_section_exercises SET deleted = 1 WHERE id = ?",
+                    (old_id,),
+                )
+
+        for sid in sec_ids[len(self.sections):]:
+            cursor.execute(
+                "SELECT id FROM preset_section_exercises WHERE section_id = ? AND deleted = 0",
+                (sid,),
+            )
+            ex_ids = [r[0] for r in cursor.fetchall()]
+            for eid in ex_ids:
+                cursor.execute(
+                    "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
+                    (eid,),
+                )
+                cursor.execute(
+                    "UPDATE preset_section_exercises SET deleted = 1 WHERE id = ?",
+                    (eid,),
+                )
+            cursor.execute(
+                "UPDATE preset_preset_sections SET deleted = 1 WHERE id = ?",
+                (sid,),
+            )
 
         cursor.execute(
             "SELECT id, library_metric_type_id FROM preset_preset_metrics"
