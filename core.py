@@ -1435,11 +1435,13 @@ class PresetEditor:
                 ex_ids = [r[0] for r in cursor.fetchall()]
                 for eid in ex_ids:
                     cursor.execute(
-
                         "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
-
                         (eid,),
                     )
+                cursor.execute(
+                    "UPDATE preset_section_exercises SET deleted = 1 WHERE section_id = ?",
+                    (sid,),
+                )
             cursor.execute(
 
                 "UPDATE preset_preset_sections SET deleted = 1 WHERE preset_id = ?",
@@ -1542,20 +1544,57 @@ class PresetEditor:
             "UPDATE preset_preset_metrics SET deleted = 1 WHERE preset_id = ?",
             (preset_id,),
         )
-        for name, value in self.metadata.items():
+        for pos, (name, value) in enumerate(self.metadata.items()):
             cursor.execute(
-                "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0",
+                """
+                SELECT input_type, source_type, input_timing, scope, is_required,
+                       enum_values_json, id
+                  FROM library_metric_types
+                 WHERE name = ? AND deleted = 0
+                """,
                 (name,),
             )
             row = cursor.fetchone()
             if not row:
                 continue
-            mt_id = row[0]
+            (
+                input_type,
+                source_type,
+                input_timing,
+                scope,
+                is_required,
+                enum_json,
+                mt_id,
+            ) = row
             cursor.execute(
-
-                "INSERT INTO preset_preset_metrics (preset_id, library_metric_type_id, value) VALUES (?, ?, ?)",
-
-                (preset_id, mt_id, str(value)),
+                """
+                INSERT INTO preset_preset_metrics
+                    (
+                        preset_id,
+                        library_metric_type_id,
+                        input_type,
+                        source_type,
+                        input_timing,
+                        scope,
+                        is_required,
+                        enum_values_json,
+                        position,
+                        value
+                    )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    preset_id,
+                    mt_id,
+                    input_type,
+                    source_type,
+                    input_timing,
+                    scope,
+                    int(is_required),
+                    enum_json,
+                    pos,
+                    str(value),
+                ),
             )
 
         self.conn.commit()

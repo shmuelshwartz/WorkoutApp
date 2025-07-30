@@ -232,6 +232,41 @@ def test_save_preserves_metric_overrides(db_copy):
     assert result == ("Reps", "pre_session", 1, "set")
 
 
+def test_save_preset_metadata(db_copy):
+    conn = sqlite3.connect(db_copy)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO library_metric_types
+            (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
+        VALUES ('Difficulty', 'int', 'manual_text', 'preset', 0, 'preset', '', 0)
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    editor = PresetEditor(db_path=db_copy)
+    editor.preset_name = "Meta Preset"
+    editor.add_section("Warmup")
+    editor.add_exercise(0, "Push ups")
+    editor.metadata["Difficulty"] = 3
+    editor.save()
+
+    conn = sqlite3.connect(db_copy)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT input_type, source_type, input_timing, scope, is_required, value
+        FROM preset_preset_metrics WHERE deleted = 0
+        """
+    )
+    row = cur.fetchone()
+    conn.close()
+    editor.close()
+
+    assert row == ("int", "manual_text", "preset", "preset", 0, "3")
+
+
 def test_save_missing_exercise_fails(db_copy):
     editor = PresetEditor(db_path=db_copy)
     editor.preset_name = "My Preset"
