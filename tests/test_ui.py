@@ -551,6 +551,26 @@ def test_edit_preset_populate_details(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_preset_name_row_preserved(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
+
+    app = _DummyApp()
+    app.preset_editor = type("PE", (), {"metadata": {}, "is_modified": lambda self=None: False})()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+
+    screen = EditPresetScreen()
+    screen.populate_details()
+
+    assert screen.ids.preset_name_row in screen.details_box.children
+    assert screen.ids.preset_name in screen.ids.preset_name_row.children
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_fallback_input_timing_options(monkeypatch):
     """Fallback schema uses allowed input_timing values."""
 

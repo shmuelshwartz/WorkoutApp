@@ -1108,8 +1108,9 @@ class EditPresetScreen(MDScreen):
         if not self.details_box:
             return
         self.ids.preset_name.text = self.preset_name
+        preset_row = self.ids.get("preset_name_row")
         for child in list(self.details_box.children):
-            if getattr(child, "id", "") != "preset_name_row":
+            if child is not preset_row:
                 self.details_box.remove_widget(child)
 
         self.preset_metric_widgets = {}
