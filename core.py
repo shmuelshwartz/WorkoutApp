@@ -1704,9 +1704,12 @@ class PresetEditor:
                         )
 
         cursor.execute(
-            "UPDATE preset_preset_metrics SET deleted = 1 WHERE preset_id = ?",
+            "SELECT id, library_metric_type_id FROM preset_preset_metrics"
+            " WHERE preset_id = ? AND deleted = 0",
             (preset_id,),
         )
+        existing = {lm_id: row_id for row_id, lm_id in cursor.fetchall()}
+
         for pos, metric in enumerate(self.preset_metrics):
             cursor.execute(
                 "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0",
@@ -1721,35 +1724,70 @@ class PresetEditor:
                 if metric.get("source_type") == "manual_enum" and metric.get("values")
                 else None
             )
-            cursor.execute(
-                """
-                INSERT INTO preset_preset_metrics
+
+            if mt_id in existing:
+                cursor.execute(
+                    """
+                    UPDATE preset_preset_metrics
+                       SET input_type = ?,
+                           source_type = ?,
+                           input_timing = ?,
+                           scope = ?,
+                           is_required = ?,
+                           enum_values_json = ?,
+                           position = ?,
+                           value = ?,
+                           deleted = 0
+                     WHERE id = ?
+                    """,
+                    (
+                        metric.get("input_type"),
+                        metric.get("source_type"),
+                        metric.get("input_timing"),
+                        metric.get("scope"),
+                        int(metric.get("is_required", False)),
+                        enum_json,
+                        pos,
+                        str(metric.get("value")) if metric.get("value") is not None else None,
+                        existing.pop(mt_id),
+                    ),
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO preset_preset_metrics
+                        (
+                            preset_id,
+                            library_metric_type_id,
+                            input_type,
+                            source_type,
+                            input_timing,
+                            scope,
+                            is_required,
+                            enum_values_json,
+                            position,
+                            value
+                        )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
                     (
                         preset_id,
-                        library_metric_type_id,
-                        input_type,
-                        source_type,
-                        input_timing,
-                        scope,
-                        is_required,
-                        enum_values_json,
-                        position,
-                        value
-                    )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    preset_id,
-                    mt_id,
-                    metric.get("input_type"),
-                    metric.get("source_type"),
-                    metric.get("input_timing"),
-                    metric.get("scope"),
-                    int(metric.get("is_required", False)),
-                    enum_json,
-                    pos,
-                    str(metric.get("value")) if metric.get("value") is not None else None,
-                ),
+                        mt_id,
+                        metric.get("input_type"),
+                        metric.get("source_type"),
+                        metric.get("input_timing"),
+                        metric.get("scope"),
+                        int(metric.get("is_required", False)),
+                        enum_json,
+                        pos,
+                        str(metric.get("value")) if metric.get("value") is not None else None,
+                    ),
+                )
+
+        for remaining_id in existing.values():
+            cursor.execute(
+                "UPDATE preset_preset_metrics SET deleted = 1 WHERE id = ?",
+                (remaining_id,),
             )
 
         self.conn.commit()
