@@ -1207,14 +1207,58 @@ class PresetEditor:
 
         self.preset_name: str = preset_name or ""
         self.sections: list[dict] = []
-        self.metadata: dict[str, str] = {}
+        self.preset_metrics: list[dict] = []
         self._preset_id: int | None = None
         self._original: dict | None = None
 
         if preset_name:
             self.load(preset_name)
         else:
+            self._load_required_metrics()
             self._original = self.to_dict()
+
+    def _load_required_metrics(self) -> None:
+        """Load required preset metric types into ``preset_metrics``."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+            SELECT name, description, input_type, source_type,
+                   input_timing, is_required, scope, enum_values_json
+              FROM library_metric_types
+             WHERE deleted = 0 AND is_required = 1
+               AND scope IN ('preset', 'session')
+            ORDER BY id
+            """
+        )
+        for (
+            name,
+            desc,
+            in_type,
+            source,
+            timing,
+            req,
+            scope,
+            enum_json,
+        ) in cursor.fetchall():
+            values = []
+            if source == "manual_enum" and enum_json:
+                try:
+                    values = json.loads(enum_json)
+                except Exception:
+                    values = []
+            self.preset_metrics.append(
+                {
+                    "name": name,
+                    "input_type": in_type,
+                    "source_type": source,
+                    "input_timing": timing,
+                    "is_required": bool(req),
+                    "scope": scope,
+                    "description": desc,
+                    "values": values,
+                    "value": None,
+                }
+            )
 
     def load(self, preset_name: str) -> None:
         """Load ``preset_name`` from the database into memory."""
@@ -1236,7 +1280,7 @@ class PresetEditor:
 
         self.preset_name = preset_name
         self.sections.clear()
-        self.metadata.clear()
+        self.preset_metrics.clear()
 
         for section_id, name in cursor.fetchall():
             cursor.execute(
@@ -1256,27 +1300,56 @@ class PresetEditor:
 
         cursor.execute(
             """
-            SELECT mt.name, pm.value, mt.input_type
+            SELECT mt.name, pm.value, pm.input_type, pm.source_type,
+                   pm.input_timing, pm.is_required, pm.scope,
+                   pm.enum_values_json, mt.description
               FROM preset_preset_metrics pm
-
               JOIN library_metric_types mt ON mt.id = pm.library_metric_type_id
-
              WHERE pm.preset_id = ? AND pm.deleted = 0 AND mt.deleted = 0
+             ORDER BY pm.position
             """,
             (preset_id,),
         )
-        for name, value, input_type in cursor.fetchall():
-            if input_type == "int":
+        for (
+            name,
+            value,
+            in_type,
+            source,
+            timing,
+            req,
+            scope,
+            enum_json,
+            desc,
+        ) in cursor.fetchall():
+            if in_type == "int":
                 try:
                     value = int(value)
                 except Exception:
                     value = 0
-            elif input_type == "float":
+            elif in_type == "float":
                 try:
                     value = float(value)
                 except Exception:
                     value = 0.0
-            self.metadata[name] = value
+            values = []
+            if source == "manual_enum" and enum_json:
+                try:
+                    values = json.loads(enum_json)
+                except Exception:
+                    values = []
+            self.preset_metrics.append(
+                {
+                    "name": name,
+                    "input_type": in_type,
+                    "source_type": source,
+                    "input_timing": timing,
+                    "is_required": bool(req),
+                    "scope": scope,
+                    "description": desc,
+                    "values": values,
+                    "value": value,
+                }
+            )
 
         self._preset_id = preset_id
         self._original = self.to_dict()
@@ -1377,11 +1450,76 @@ class PresetEditor:
         ex = exercises.pop(old_index)
         exercises.insert(new_index, ex)
 
+    # ------------------------------------------------------------------
+    # Preset metric helpers
+    # ------------------------------------------------------------------
+    def add_metric(self, metric_name: str, *, value=None) -> None:
+        """Add a metric defined in ``library_metric_types`` by name."""
+
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+            SELECT description, input_type, source_type, input_timing,
+                   scope, is_required, enum_values_json
+              FROM library_metric_types
+             WHERE name = ? AND deleted = 0
+            """,
+            (metric_name,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Metric '{metric_name}' not found")
+        (
+            desc,
+            in_type,
+            source,
+            timing,
+            scope,
+            req,
+            enum_json,
+        ) = row
+        values = []
+        if source == "manual_enum" and enum_json:
+            try:
+                values = json.loads(enum_json)
+            except Exception:
+                values = []
+        self.preset_metrics.append(
+            {
+                "name": metric_name,
+                "input_type": in_type,
+                "source_type": source,
+                "input_timing": timing,
+                "is_required": bool(req),
+                "scope": scope,
+                "description": desc,
+                "values": values,
+                "value": value,
+            }
+        )
+
+    def remove_metric(self, metric_name: str) -> None:
+        """Remove metric with ``metric_name`` if present."""
+
+        self.preset_metrics = [m for m in self.preset_metrics if m.get("name") != metric_name]
+
+    def update_metric(self, metric_name: str, **updates) -> None:
+        """Update metric named ``metric_name`` with ``updates``."""
+
+        for metric in self.preset_metrics:
+            if metric.get("name") == metric_name:
+                metric.update(updates)
+                break
+
     def to_dict(self) -> dict:
         """Return the preset data as a dictionary."""
 
         return copy.deepcopy(
-            {"name": self.preset_name, "sections": self.sections, "metadata": self.metadata}
+            {
+                "name": self.preset_name,
+                "sections": self.sections,
+                "preset_metrics": self.preset_metrics,
+            }
         )
 
     def close(self) -> None:
@@ -1544,28 +1682,20 @@ class PresetEditor:
             "UPDATE preset_preset_metrics SET deleted = 1 WHERE preset_id = ?",
             (preset_id,),
         )
-        for pos, (name, value) in enumerate(self.metadata.items()):
+        for pos, metric in enumerate(self.preset_metrics):
             cursor.execute(
-                """
-                SELECT input_type, source_type, input_timing, scope, is_required,
-                       enum_values_json, id
-                  FROM library_metric_types
-                 WHERE name = ? AND deleted = 0
-                """,
-                (name,),
+                "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0",
+                (metric.get("name"),),
             )
             row = cursor.fetchone()
             if not row:
                 continue
-            (
-                input_type,
-                source_type,
-                input_timing,
-                scope,
-                is_required,
-                enum_json,
-                mt_id,
-            ) = row
+            mt_id = row[0]
+            enum_json = (
+                json.dumps(metric.get("values"))
+                if metric.get("source_type") == "manual_enum" and metric.get("values")
+                else None
+            )
             cursor.execute(
                 """
                 INSERT INTO preset_preset_metrics
@@ -1586,14 +1716,14 @@ class PresetEditor:
                 (
                     preset_id,
                     mt_id,
-                    input_type,
-                    source_type,
-                    input_timing,
-                    scope,
-                    int(is_required),
+                    metric.get("input_type"),
+                    metric.get("source_type"),
+                    metric.get("input_timing"),
+                    metric.get("scope"),
+                    int(metric.get("is_required", False)),
                     enum_json,
                     pos,
-                    str(value),
+                    str(metric.get("value")) if metric.get("value") is not None else None,
                 ),
             )
 

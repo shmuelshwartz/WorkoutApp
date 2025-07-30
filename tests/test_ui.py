@@ -540,7 +540,18 @@ def test_edit_preset_populate_details(monkeypatch):
     monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
 
     app = _DummyApp()
-    app.preset_editor = type("PE", (), {"metadata": {"Focus": "Legs", "Level": 2}, "is_modified": lambda self=None: False})()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {
+            "preset_metrics": [
+                {"name": "Focus", "value": "Legs"},
+                {"name": "Level", "value": 2},
+            ],
+            "metadata": {"Focus": "Legs", "Level": 2},
+            "is_modified": lambda self=None: False,
+        },
+    )()
     monkeypatch.setattr(App, "get_running_app", lambda: app)
 
     screen = EditPresetScreen()
