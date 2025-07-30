@@ -1541,8 +1541,8 @@ class AddMetricPopup(MDDialog):
                     "name": "input_timing",
                     "options": [
                         "preset",
-                        "pre_workout",
-                        "post_workout",
+                        "pre_session",
+                        "post_session",
                         "pre_set",
                         "post_set",
                     ],
@@ -1810,8 +1810,8 @@ class EditMetricPopup(MDDialog):
                     "name": "input_timing",
                     "options": [
                         "preset",
-                        "pre_workout",
-                        "post_workout",
+                        "pre_session",
+                        "post_session",
                         "pre_set",
                         "post_set",
                     ],
@@ -2240,8 +2240,8 @@ class EditMetricTypePopup(MDDialog):
                     "name": "input_timing",
                     "options": [
                         "preset",
-                        "pre_workout",
-                        "post_workout",
+                        "pre_session",
+                        "post_session",
                         "pre_set",
                         "post_set",
                     ],

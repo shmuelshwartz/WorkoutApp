@@ -534,3 +534,22 @@ def test_edit_preset_populate_details(monkeypatch):
 
     assert set(screen.preset_metric_widgets.keys()) == {"Focus", "Level"}
     assert screen.preset_metric_widgets["Focus"].text == "Legs"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_fallback_input_timing_options(monkeypatch):
+    """Fallback schema uses allowed input_timing values."""
+
+    class DummyScreen:
+        exercise_obj = type("obj", (), {"metrics": []})()
+
+    monkeypatch.setattr(core, "get_metric_type_schema", lambda *a, **k: [])
+    popup = AddMetricPopup(DummyScreen(), mode="new")
+    opts = list(popup.input_widgets["input_timing"].values)
+    assert opts == [
+        "preset",
+        "pre_session",
+        "post_session",
+        "pre_set",
+        "post_set",
+    ]
