@@ -48,7 +48,6 @@ CREATE TABLE IF NOT EXISTS "preset_exercise_metrics" (
 	"is_required"	BOOLEAN NOT NULL DEFAULT 0,
 	"scope"	TEXT NOT NULL CHECK("scope" IN ('exercise', 'set')),
 	"position"	INTEGER NOT NULL DEFAULT 0,
-	"library_metric_type_id"	INTEGER,
 	"enum_values_json"	TEXT,
 	"deleted"	INTEGER DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT),
