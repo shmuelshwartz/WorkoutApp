@@ -10,7 +10,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 def sample_db(tmp_path: Path) -> Path:
     """Create a temporary database populated with a minimal 'Push Day' preset."""
     db_path = tmp_path / "workout.db"
-    sql_path = Path(__file__).resolve().parent.parent / "data" / "workout.sql"
+    sql_path = Path(__file__).resolve().parent.parent / "data" / "workout_schema.sql"
 
     conn = sqlite3.connect(db_path)
     with open(sql_path, "r", encoding="utf-8") as fh:
@@ -39,7 +39,7 @@ def sample_db(tmp_path: Path) -> Path:
             (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
         VALUES (?, ?, ?, ?, ?, ?, '', 0)
         """,
-        ("Machine", "str", "manual_enum", "pre_workout", 0, "exercise"),
+        ("Machine", "str", "manual_enum", "pre_session", 0, "exercise"),
     )
 
     reps_id = conn.execute("SELECT id FROM library_metric_types WHERE name='Reps'").fetchone()[0]
@@ -81,11 +81,11 @@ def sample_db(tmp_path: Path) -> Path:
     conn.execute("INSERT INTO preset_presets (name) VALUES ('Push Day')")
     preset_id = conn.execute("SELECT id FROM preset_presets WHERE name='Push Day'").fetchone()[0]
     conn.execute(
-        "INSERT INTO preset_sections (preset_id, name, position) VALUES (?, 'Main', 0)",
+        "INSERT INTO preset_preset_sections (preset_id, name, position) VALUES (?, 'Main', 0)",
         (preset_id,),
     )
     section_id = conn.execute(
-        "SELECT id FROM preset_sections WHERE preset_id=?", (preset_id,)
+        "SELECT id FROM preset_preset_sections WHERE preset_id=?", (preset_id,)
     ).fetchone()[0]
 
     # section exercises
@@ -118,7 +118,7 @@ def sample_db(tmp_path: Path) -> Path:
     # section exercise metrics (override reps timing for bench)
     conn.execute(
         """
-        INSERT INTO preset_section_exercise_metrics
+        INSERT INTO preset_exercise_metrics
             (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
         VALUES (?, 'Reps', 'int', 'manual_text', 'post_set', 1, 'set', ?)
         """,
@@ -126,7 +126,7 @@ def sample_db(tmp_path: Path) -> Path:
     )
     conn.execute(
         """
-        INSERT INTO preset_section_exercise_metrics
+        INSERT INTO preset_exercise_metrics
             (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
         VALUES (?, 'Reps', 'int', 'manual_text', 'pre_set', 1, 'set', ?)
         """,
@@ -134,7 +134,7 @@ def sample_db(tmp_path: Path) -> Path:
     )
     conn.execute(
         """
-        INSERT INTO preset_section_exercise_metrics
+        INSERT INTO preset_exercise_metrics
             (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
         VALUES (?, 'Weight', 'float', 'manual_text', 'pre_set', 0, 'set', ?)
         """,
@@ -142,9 +142,9 @@ def sample_db(tmp_path: Path) -> Path:
     )
     conn.execute(
         """
-        INSERT INTO preset_section_exercise_metrics
+        INSERT INTO preset_exercise_metrics
             (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
-        VALUES (?, 'Machine', 'str', 'manual_enum', 'pre_workout', 0, 'exercise', ?, ?)
+        VALUES (?, 'Machine', 'str', 'manual_enum', 'pre_session', 0, 'exercise', ?, ?)
         """,
         (bench_se_id, '["A","B"]', machine_id),
     )

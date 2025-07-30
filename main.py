@@ -2840,7 +2840,7 @@ class EditExerciseScreen(MDScreen):
                         if row:
                             preset_id = row[0]
                             cur.execute(
-                                "SELECT id FROM preset_sections WHERE preset_id = ? ORDER BY position",
+                                "SELECT id FROM preset_preset_sections WHERE preset_id = ? ORDER BY position",
                                 (preset_id,),
                             )
                             sections = cur.fetchall()
@@ -2855,11 +2855,7 @@ class EditExerciseScreen(MDScreen):
                                     se_id = se_row[0]
                                     for mname in removed:
                                         cur.execute(
-                                            "DELETE FROM preset_section_exercise_metric_enum_values WHERE section_exercise_metric_id IN (SELECT id FROM preset_section_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ?)",
-                                            (se_id, mname),
-                                        )
-                                        cur.execute(
-                                            "DELETE FROM preset_section_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ?",
+                                            "DELETE FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ?",
                                             (se_id, mname),
                                         )
                                     conn.commit()

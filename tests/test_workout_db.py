@@ -9,7 +9,7 @@ import core
 
 def create_empty_db(path: Path) -> None:
     """Create a new database at *path* using the bundled schema."""
-    schema = Path("data/workout.sql").read_text()
+    schema = Path("data/workout_schema.sql").read_text()
     conn = sqlite3.connect(path)
     conn.executescript(schema)
     conn.commit()
@@ -41,7 +41,7 @@ def populate_sample_data(db_path: Path) -> None:
     cur.execute("INSERT INTO preset_presets (name) VALUES ('Push Day')")
     preset_id = cur.lastrowid
     cur.execute(
-        "INSERT INTO preset_sections (preset_id, name, position) VALUES (?, ?, 0)",
+        "INSERT INTO preset_preset_sections (preset_id, name, position) VALUES (?, ?, 0)",
         (preset_id, "Main"),
     )
     section_id = cur.lastrowid
