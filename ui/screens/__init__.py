@@ -1,18 +1,15 @@
 """UI screen modules for WorkoutApp."""
 
 from .exercise_library import ExerciseLibraryScreen
-
-__all__ = ["ExerciseLibraryScreen"]
 from .metric_input_screen import MetricInputScreen
-
-__all__ = ["MetricInputScreen"]
-
-"""Screen module exports."""
-
+from .presets_screen import PresetsScreen
+from .preset_detail_screen import PresetDetailScreen
 from .workout_active_screen import WorkoutActiveScreen
 
-__all__ = ["WorkoutActiveScreen"]
-
-from .preset_detail_screen import PresetDetailScreen
-
-
+__all__ = [
+    "ExerciseLibraryScreen",
+    "MetricInputScreen",
+    "PresetsScreen",
+    "PresetDetailScreen",
+    "WorkoutActiveScreen",
+]
