@@ -71,6 +71,23 @@ METRIC_FIELD_ORDER = [
     "is_required",
 ]
 
+# Mapping helpers for legacy core APIs expecting ``input_type`` and
+# ``source_type``.
+def _pair_from_type(t: str):
+    if t == "enum":
+        return "str", "manual_enum"
+    if t == "slider":
+        return "float", "manual_slider"
+    return t, "manual_text"
+
+
+def _type_from_pair(input_type: str, source_type: str) -> str:
+    if source_type == "manual_enum":
+        return "enum"
+    if source_type == "manual_slider":
+        return "slider"
+    return input_type
+
 
 class LoadingDialog(MDDialog):
     """Simple dialog displaying a spinner while work is performed."""
@@ -312,34 +329,38 @@ class MetricInputScreen(MDScreen):
         def _create_row(metric):
             if isinstance(metric, str):
                 name = metric
-                input_type = "str"
-                source_type = "manual_text"
+                mtype = "str"
                 values = []
             else:
                 name = metric.get("name")
-                input_type = metric.get("input_type", "str")
-                source_type = metric.get("source_type", "manual_text")
+                if "type" in metric:
+                    mtype = metric.get("type", "str")
+                else:
+                    mtype = _type_from_pair(
+                        metric.get("input_type", "str"),
+                        metric.get("source_type", "manual_text"),
+                    )
                 values = metric.get("values", [])
 
             row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
             row.metric_name = name
-            row.input_type = input_type
-            row.source_type = source_type
+            row.input_type, row.source_type = _pair_from_type(mtype)
+            row.type = mtype
             row.add_widget(MDLabel(text=name, size_hint_x=0.4))
 
-            if source_type == "manual_slider":
+            if mtype == "slider":
                 widget = MDSlider(min=0, max=1, value=0)
                 widget.bind(
                     on_touch_down=self.on_slider_touch_down,
                     on_touch_up=self.on_slider_touch_up,
                 )
-            elif source_type == "manual_enum":
+            elif mtype == "enum":
                 widget = Spinner(text=values[0] if values else "", values=values)
             else:  # manual_text
                 input_filter = None
-                if input_type == "int":
+                if mtype == "int":
                     input_filter = "int"
-                elif input_type == "float":
+                elif mtype == "float":
                     input_filter = "float"
                 widget = MDTextField(multiline=False, input_filter=input_filter)
 
@@ -359,7 +380,7 @@ class MetricInputScreen(MDScreen):
         for row in reversed(self.prev_metric_list.children):
             name = getattr(row, "metric_name", "")
             widget = getattr(row, "input_widget", None)
-            input_type = getattr(row, "input_type", "str")
+            mtype = getattr(row, "type", getattr(row, "input_type", "str"))
             if widget is None:
                 continue
             value = None
@@ -370,13 +391,13 @@ class MetricInputScreen(MDScreen):
             elif isinstance(widget, Spinner):
                 value = widget.text
             if value in (None, ""):
-                value = 0 if input_type in ("int", "float") else ""
-            if input_type == "int":
+                value = 0 if mtype in ("int", "float", "slider") else ""
+            if mtype == "int":
                 try:
                     value = int(value)
                 except ValueError:
                     value = 0
-            elif input_type == "float":
+            elif mtype in ("float", "slider"):
                 try:
                     value = float(value)
                 except ValueError:
@@ -1589,6 +1610,7 @@ class AddMetricPopup(MDDialog):
                     "name": "type",
                     "options": ["int", "float", "str", "bool", "enum", "slider"],
                 },
+
                 {
                     "name": "input_timing",
                     "options": [
@@ -1690,6 +1712,7 @@ class AddMetricPopup(MDDialog):
                 allowed = string.digits + ","
             elif metric_type == "float":
                 allowed = string.digits + ",."
+
             else:  # default to str
                 allowed = string.ascii_letters + " ,"
 
@@ -1701,6 +1724,7 @@ class AddMetricPopup(MDDialog):
 
         if "type" in self.input_widgets:
             self.input_widgets["type"].bind(text=lambda *a: (update_enum_visibility(), update_enum_filter()))
+
             update_enum_visibility()
             update_enum_filter()
 
@@ -1755,6 +1779,7 @@ class AddMetricPopup(MDDialog):
         name = self.input_widgets["name"].text.strip()
         metric_type = self.input_widgets["type"].text
 
+
         if not name:
             errors.append("name")
 
@@ -1768,6 +1793,7 @@ class AddMetricPopup(MDDialog):
 
         values = []
         if metric_type == "enum":
+
             text = self.enum_values_field.text.strip()
             if not text:
                 errors.append("enum_values")
@@ -1793,6 +1819,9 @@ class AddMetricPopup(MDDialog):
                 metric[key] = bool(widget.active)
             else:
                 metric[key] = widget.text
+        metric_type = metric.pop("type", mtype)
+        metric["type"] = metric_type
+        metric["input_type"], metric["source_type"] = _pair_from_type(metric_type)
         if values:
             metric["values"] = values
 
@@ -2006,7 +2035,7 @@ class EditMetricPopup(MDDialog):
 
             self.input_widgets[name] = widget
 
-        # Text box for enum values shown when ``source_type`` is ``manual_enum``
+        # Text box for enum values shown when ``type`` is ``enum``
         self.enum_values_field = MDTextField(
             hint_text="Enum Values (comma separated)",
             size_hint_y=None,
@@ -2030,7 +2059,13 @@ class EditMetricPopup(MDDialog):
                 widget.text = str(value)
 
         # populate enum values
-        if self.metric.get("source_type") == "manual_enum":
+        metric_type = self.metric.get("type")
+        if not metric_type:
+            metric_type = _type_from_pair(
+                self.metric.get("input_type", "str"),
+                self.metric.get("source_type", "manual_text"),
+            )
+        if metric_type == "enum":
             if self.enum_values_field.parent is None:
                 form.add_widget(self.enum_values_field)
             values = ", ".join(self.metric.get("values", []))
@@ -2040,7 +2075,7 @@ class EditMetricPopup(MDDialog):
                 form.remove_widget(self.enum_values_field)
 
         def update_enum_visibility(*args):
-            show = self.input_widgets["source_type"].text == "manual_enum"
+            show = self.input_widgets["type"].text == "enum"
             has_parent = self.enum_values_field.parent is not None
             if show and not has_parent:
                 form.add_widget(self.enum_values_field)
@@ -2048,10 +2083,10 @@ class EditMetricPopup(MDDialog):
                 form.remove_widget(self.enum_values_field)
 
         def update_enum_filter(*args):
-            input_type = self.input_widgets["input_type"].text
-            if input_type == "int":
+            mtype = self.input_widgets["type"].text
+            if mtype == "int":
                 allowed = string.digits + ","
-            elif input_type == "float":
+            elif mtype in ("float", "slider"):
                 allowed = string.digits + ".,"
             else:
                 allowed = string.ascii_letters + " ,"
@@ -2062,11 +2097,8 @@ class EditMetricPopup(MDDialog):
 
             self.enum_values_field.input_filter = _filter
 
-        if "source_type" in self.input_widgets and "input_type" in self.input_widgets:
-            self.input_widgets["input_type"].bind(text=lambda *a: update_enum_filter())
-            self.input_widgets["source_type"].bind(
-                text=lambda *a: update_enum_visibility()
-            )
+        if "type" in self.input_widgets:
+            self.input_widgets["type"].bind(text=lambda *a: (update_enum_filter(), update_enum_visibility()))
             update_enum_visibility()
             update_enum_filter()
 
@@ -2087,6 +2119,13 @@ class EditMetricPopup(MDDialog):
                 updates[key] = bool(widget.active)
             else:
                 updates[key] = widget.text
+
+        if "type" in updates:
+            tval = updates.pop("type")
+            it, st = _pair_from_type(tval)
+            updates["type"] = tval
+            updates["input_type"] = it
+            updates["source_type"] = st
 
         if self.enum_values_field.parent is not None:
             text = self.enum_values_field.text.strip()
