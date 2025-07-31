@@ -19,6 +19,30 @@ DEFAULT_DB_PATH = Path(__file__).resolve().parent / "data" / "workout.db"
 #    'exercises': [{'name': <exercise name>, 'sets': <number_of_sets>}, ...]}
 WORKOUT_PRESETS = []
 
+# Map legacy session-level input_timing values to the canonical
+# values expected by the ``preset_preset_metrics`` table.
+_TIMING_TO_DB = {
+    "pre_session": "pre_workout",
+    "post_session": "post_workout",
+}
+_TIMING_FROM_DB = {v: k for k, v in _TIMING_TO_DB.items()}
+
+
+def _to_db_timing(value: str | None) -> str | None:
+    """Return canonical timing value for database writes."""
+
+    if value is None:
+        return None
+    return _TIMING_TO_DB.get(value, value)
+
+
+def _from_db_timing(value: str | None) -> str | None:
+    """Return UI-friendly timing value from the database."""
+
+    if value is None:
+        return None
+    return _TIMING_FROM_DB.get(value, value)
+
 
 def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
     """Load workout presets from the SQLite database into WORKOUT_PRESETS."""
@@ -1344,19 +1368,19 @@ class PresetEditor:
                     values = json.loads(enum_json)
                 except Exception:
                     values = []
-            self.preset_metrics.append(
-                {
-                    "name": name,
-                    "input_type": in_type,
-                    "source_type": source,
-                    "input_timing": timing,
-                    "is_required": bool(req),
-                    "scope": scope,
-                    "description": desc,
-                    "values": values,
-                    "value": value,
-                }
-            )
+                self.preset_metrics.append(
+                    {
+                        "name": name,
+                        "input_type": in_type,
+                        "source_type": source,
+                        "input_timing": _from_db_timing(timing),
+                        "is_required": bool(req),
+                        "scope": scope,
+                        "description": desc,
+                        "values": values,
+                        "value": value,
+                    }
+                )
 
         self._preset_id = preset_id
         self._original = self.to_dict()
@@ -1850,7 +1874,7 @@ class PresetEditor:
                     (
                         metric.get("input_type"),
                         metric.get("source_type"),
-                        metric.get("input_timing"),
+                        _to_db_timing(metric.get("input_timing")),
                         metric.get("scope"),
                         int(metric.get("is_required", False)),
                         enum_json,
@@ -1882,7 +1906,7 @@ class PresetEditor:
                         mt_id,
                         metric.get("input_type"),
                         metric.get("source_type"),
-                        metric.get("input_timing"),
+                        _to_db_timing(metric.get("input_timing")),
                         metric.get("scope"),
                         int(metric.get("is_required", False)),
                         enum_json,

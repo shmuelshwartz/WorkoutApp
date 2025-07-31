@@ -291,6 +291,38 @@ def test_save_preset_metadata(db_copy):
     assert row == ("int", "manual_text", "preset", "preset", 0, "3")
 
 
+def test_session_metric_timing_alias(db_copy):
+    conn = sqlite3.connect(db_copy)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO library_metric_types
+            (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
+        VALUES ('Marker', 'int', 'manual_text', 'pre_session', 0, 'session', '', 0)
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    editor = PresetEditor(db_path=db_copy)
+    editor.preset_name = "Alias"
+    editor.add_section("Warmup")
+    editor.add_exercise(0, "Push ups")
+    editor.add_metric("Marker", value=1)
+    editor.save()
+
+    conn = sqlite3.connect(db_copy)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT input_timing FROM preset_preset_metrics WHERE deleted = 0"
+    )
+    timing = cur.fetchone()[0]
+    conn.close()
+    editor.close()
+
+    assert timing == "pre_workout"
+
+
 def test_save_missing_exercise_fails(db_copy):
     editor = PresetEditor(db_path=db_copy)
     editor.preset_name = "My Preset"
