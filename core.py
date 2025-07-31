@@ -152,9 +152,8 @@ def get_metrics_for_exercise(
 ) -> list:
     """Return metric definitions for ``exercise_name``.
 
-    Each item in the returned list is a dictionary with ``name``, ``input_type``,
-    ``source_type`` and ``values`` keys. ``values`` will contain any allowed
-    values for ``manual_enum`` metrics.
+    Each item in the returned list is a dictionary with ``name`` and ``type``
+    keys. ``values`` will contain any allowed values for ``enum`` metrics.
     """
 
     conn = sqlite3.connect(str(db_path))
@@ -180,8 +179,7 @@ def get_metrics_for_exercise(
         """
         SELECT mt.id,
                mt.name,
-               COALESCE(em.input_type, mt.input_type),
-               COALESCE(em.source_type, mt.source_type),
+               COALESCE(em.type, mt.type),
                COALESCE(em.input_timing, mt.input_timing),
                COALESCE(em.is_required, mt.is_required),
                COALESCE(em.scope, mt.scope),
@@ -199,8 +197,7 @@ def get_metrics_for_exercise(
     for (
         metric_id,
         name,
-        input_type,
-        source_type,
+        mtype,
         input_timing,
         is_required,
         scope,
@@ -208,7 +205,7 @@ def get_metrics_for_exercise(
         description,
     ) in cursor.fetchall():
         values = []
-        if source_type == "manual_enum" and enum_json:
+        if mtype == "enum" and enum_json:
             try:
                 values = json.loads(enum_json)
             except Exception:
@@ -216,8 +213,7 @@ def get_metrics_for_exercise(
         metrics.append(
             {
                 "name": name,
-                "input_type": input_type,
-                "source_type": source_type,
+                "type": mtype,
                 "input_timing": input_timing,
                 "is_required": bool(is_required),
                 "scope": scope,
@@ -272,7 +268,7 @@ def get_all_metric_types(
     if include_user_created:
         cursor.execute(
             """
-            SELECT name, input_type, source_type, input_timing,
+            SELECT name, type, input_timing,
                    is_required, scope, description, is_user_created,
                    enum_values_json
             FROM library_metric_types
@@ -283,8 +279,7 @@ def get_all_metric_types(
         metric_types = [
             {
                 "name": name,
-                "input_type": input_type,
-                "source_type": source_type,
+                "type": mtype,
                 "input_timing": input_timing,
                 "is_required": bool(is_required),
                 "scope": scope,
@@ -294,8 +289,7 @@ def get_all_metric_types(
             }
             for (
                 name,
-                input_type,
-                source_type,
+                mtype,
                 input_timing,
                 is_required,
                 scope,
@@ -307,7 +301,7 @@ def get_all_metric_types(
     else:
         cursor.execute(
             """
-            SELECT name, input_type, source_type, input_timing,
+            SELECT name, type, input_timing,
                    is_required, scope, description, enum_values_json
             FROM library_metric_types
             WHERE deleted = 0
@@ -317,8 +311,7 @@ def get_all_metric_types(
         metric_types = [
             {
                 "name": name,
-                "input_type": input_type,
-                "source_type": source_type,
+                "type": mtype,
                 "input_timing": input_timing,
                 "is_required": bool(is_required),
                 "scope": scope,
@@ -327,8 +320,7 @@ def get_all_metric_types(
             }
             for (
                 name,
-                input_type,
-                source_type,
+                mtype,
                 input_timing,
                 is_required,
                 scope,
@@ -410,8 +402,7 @@ def is_metric_type_user_created(
 
 def add_metric_type(
     name: str,
-    input_type: str,
-    source_type: str,
+    mtype: str,
     input_timing: str,
     scope: str,
     description: str = "",
@@ -426,15 +417,14 @@ def add_metric_type(
     cursor.execute(
         """
         INSERT INTO library_metric_types
-            (name, input_type, source_type, input_timing,
+            (name, type, input_timing,
              is_required, scope, description, is_user_created,
              enum_values_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?)
         """,
         (
             name,
-            input_type,
-            source_type,
+            mtype,
             input_timing,
             int(is_required),
             scope,
@@ -530,8 +520,7 @@ def remove_metric_from_exercise(
 def update_metric_type(
     metric_type_name: str,
     *,
-    input_type: str | None = None,
-    source_type: str | None = None,
+    mtype: str | None = None,
     input_timing: str | None = None,
     scope: str | None = None,
     description: str | None = None,
@@ -561,12 +550,9 @@ def update_metric_type(
     metric_id = row[0]
     updates = []
     params: list = []
-    if input_type is not None:
-        updates.append("input_type = ?")
-        params.append(input_type)
-    if source_type is not None:
-        updates.append("source_type = ?")
-        params.append(source_type)
+    if mtype is not None:
+        updates.append("type = ?")
+        params.append(mtype)
     if input_timing is not None:
         updates.append("input_timing = ?")
         params.append(input_timing)
@@ -629,14 +615,14 @@ def set_section_exercise_metric_override(
     section_id = sections[section_index][0]
 
     cursor.execute(
-        "SELECT id, input_type, source_type FROM library_metric_types WHERE name = ? AND deleted = 0",
+        "SELECT id, type FROM library_metric_types WHERE name = ? AND deleted = 0",
         (metric_type_name,),
     )
     row = cursor.fetchone()
     if not row:
         conn.close()
         raise ValueError(f"Metric '{metric_type_name}' not found")
-    metric_type_id, def_input_type, def_source_type = row
+    metric_type_id, def_type = row
 
     cursor.execute(
         """SELECT id FROM preset_section_exercises WHERE section_id = ? AND exercise_name = ? AND deleted = 0 ORDER BY position LIMIT 1""",
@@ -668,14 +654,13 @@ def set_section_exercise_metric_override(
         cursor.execute(
             """
             INSERT INTO preset_exercise_metrics
-                (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (section_exercise_id, metric_name, type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 se_id,
                 metric_type_name,
-                def_input_type,
-                def_source_type,
+                def_type,
                 input_timing,
                 int(is_required),
                 scope,
@@ -692,8 +677,7 @@ def set_exercise_metric_override(
     metric_type_name: str,
     *,
     is_user_created: bool | None = None,
-    input_type: str | None = None,
-    source_type: str | None = None,
+    mtype: str | None = None,
     input_timing: str | None = None,
     is_required: bool | None = None,
     scope: str | None = None,
@@ -748,12 +732,9 @@ def set_exercise_metric_override(
 
     updates = []
     params: list = []
-    if input_type is not None:
-        updates.append("input_type = ?")
-        params.append(input_type)
-    if source_type is not None:
-        updates.append("source_type = ?")
-        params.append(source_type)
+    if mtype is not None:
+        updates.append("type = ?")
+        params.append(mtype)
     if input_timing is not None:
         updates.append("input_timing = ?")
         params.append(input_timing)
