@@ -38,6 +38,8 @@ import sys
 import re
 import json
 
+from ui.screens import ExerciseLibraryScreen
+
 # Import core so we can always reference the up-to-date WORKOUT_PRESETS list
 import core
 from core import (
@@ -438,6 +440,8 @@ class PresetsScreen(MDScreen):
             self.manager.current = "preset_detail"
 
 
+class PresetDetailScreen(MDScreen):
+    preset_name = StringProperty("")
 class ExerciseLibraryScreen(MDScreen):
     previous_screen = StringProperty("home")
     exercise_list = ObjectProperty(None)

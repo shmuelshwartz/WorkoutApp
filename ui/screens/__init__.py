@@ -1,3 +1,8 @@
+"""UI screen modules for WorkoutApp."""
+
+from .exercise_library import ExerciseLibraryScreen
+
+__all__ = ["ExerciseLibraryScreen"]
 from .metric_input_screen import MetricInputScreen
 
 __all__ = ["MetricInputScreen"]
