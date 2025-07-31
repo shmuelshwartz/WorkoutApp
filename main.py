@@ -114,29 +114,6 @@ class LoadingDialog(MDDialog):
 
 
 
-
-        if self.selected_item:
-            self.selected_item.md_bg_color = (0, 0, 0, 0)
-            self.selected_item.theme_text_color = "Primary"
-        self.selected_item = item
-        self.selected_item.md_bg_color = self._selected_color
-        self.selected_item.theme_text_color = "Custom"
-        self.selected_item.text_color = self._selected_text_color
-        if any(p["name"] == name for p in core.WORKOUT_PRESETS):
-            self.selected_preset = name
-            MDApp.get_running_app().selected_preset = name
-
-    def confirm_selection(self):
-        if self.selected_preset and self.manager:
-            detail = self.manager.get_screen("preset_detail")
-            detail.preset_name = self.selected_preset
-            self.manager.current = "preset_detail"
-
-
-class PresetDetailScreen(MDScreen):
-    preset_name = StringProperty("")
-
-
 class AddMetricPopup(MDDialog):
     """Popup dialog for choosing an action, selecting metrics or creating a new one."""
 
