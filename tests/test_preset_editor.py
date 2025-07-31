@@ -13,7 +13,7 @@ from core import PresetEditor, DEFAULT_SETS_PER_EXERCISE, DEFAULT_REST_DURATION
 def db_copy(tmp_path):
     """Return a temporary empty database using the bundled schema."""
     dst = tmp_path / "workout.db"
-    schema = Path(__file__).resolve().parents[1] / "data" / "workout.sql"
+    schema = Path(__file__).resolve().parents[1] / "data" / "workout_schema.sql"
     conn = sqlite3.connect(dst)
     with open(schema, "r", encoding="utf-8") as fh:
         conn.executescript(fh.read())
@@ -34,7 +34,7 @@ def db_with_preset(db_copy):
     cur.execute("INSERT INTO preset_presets (name) VALUES (?)", ("Test Preset",))
     preset_id = cur.lastrowid
     cur.execute(
-        "INSERT INTO preset_sections (preset_id, name, position) VALUES (?, ?, 0)",
+        "INSERT INTO preset_preset_sections (preset_id, name, position) VALUES (?, ?, 0)",
         (preset_id, "Warmup"),
     )
     section_id = cur.lastrowid
@@ -71,7 +71,11 @@ def test_add_exercise_success(db_copy):
     editor = PresetEditor(db_path=db_copy)
     editor.add_section("Warmup")
     ex = editor.add_exercise(0, "Push ups", sets=4)
-    assert ex == {"name": "Push ups", "sets": 4, "rest": DEFAULT_REST_DURATION}
+    assert ex["id"] is None
+    assert ex["name"] == "Push ups"
+    assert ex["sets"] == 4
+    assert ex["rest"] == DEFAULT_REST_DURATION
+    assert "library_id" in ex
     assert editor.sections[0]["exercises"] == [ex]
     editor.close()
 
@@ -111,6 +115,7 @@ def test_to_dict_after_modifications(db_copy):
                 ],
             }
         ],
+        "preset_metrics": [],
     }
     assert editor.to_dict() == expected
     editor.close()
@@ -122,7 +127,11 @@ def test_load_existing_preset(db_with_preset):
     assert len(editor.sections) == 1
     sec = editor.sections[0]
     assert sec["name"] == "Warmup"
-    assert sec["exercises"] == [{"name": "Push ups", "sets": 3, "rest": 120}]
+    ex = sec["exercises"][0]
+    assert ex["name"] == "Push ups"
+    assert ex["sets"] == 3
+    assert ex["rest"] == 120
+    assert "id" in ex and "library_id" in ex
     editor.close()
 
 
@@ -143,9 +152,11 @@ def test_save_new_preset(db_copy):
     cur = conn.cursor()
     cur.execute("SELECT name FROM preset_presets")
     assert cur.fetchone()[0] == "My Preset"
-    cur.execute("SELECT name FROM preset_sections")
+    cur.execute("SELECT name FROM preset_preset_sections")
     assert cur.fetchone()[0] == "Warmup"
-    cur.execute("SELECT exercise_name, number_of_sets, rest_time FROM preset_section_exercises")
+    cur.execute(
+        "SELECT exercise_name, number_of_sets, rest_time FROM preset_section_exercises WHERE deleted = 0"
+    )
     assert cur.fetchone() == ("Push ups", 4, 120)
     conn.close()
     editor.close()
@@ -157,10 +168,28 @@ def test_save_existing_preset(db_with_preset):
     editor.save()
     conn = sqlite3.connect(db_with_preset)
     cur = conn.cursor()
-    cur.execute("SELECT number_of_sets, rest_time FROM preset_section_exercises")
+    cur.execute(
+        "SELECT number_of_sets, rest_time FROM preset_section_exercises WHERE deleted = 0"
+    )
     assert cur.fetchone() == (5, 120)
     conn.close()
     editor.close()
+
+
+def test_rename_section_does_not_create_deleted_rows(db_with_preset):
+    editor = PresetEditor("Test Preset", db_path=db_with_preset)
+    editor.rename_section(0, "Warmup 2")
+    editor.save()
+    conn = sqlite3.connect(db_with_preset)
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM preset_preset_sections WHERE deleted = 0")
+    names = [r[0] for r in cur.fetchall()]
+    cur.execute("SELECT COUNT(*) FROM preset_preset_sections WHERE deleted = 1")
+    deleted_count = cur.fetchone()[0]
+    conn.close()
+    editor.close()
+    assert names == ["Warmup 2"]
+    assert deleted_count == 0
 
 
 def test_save_duplicate_name(db_with_preset):
@@ -179,8 +208,8 @@ def test_save_preserves_metric_overrides(db_copy):
     cur.execute(
         """
         INSERT INTO library_metric_types
-            (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
-        VALUES ('Reps', 'int', 'manual_text', 'post_set', 0, 'set', '', 0)
+            (name, type, input_timing, is_required, scope, description, is_user_created)
+        VALUES ('Reps', 'int', 'post_set', 0, 'set', '', 0)
         """
     )
     mt_id = cur.lastrowid
@@ -197,9 +226,8 @@ def test_save_preserves_metric_overrides(db_copy):
     cur.execute(
         """
         UPDATE library_exercise_metrics
-           SET input_type = 'int',
-               source_type = 'manual_text',
-               input_timing = 'pre_workout',
+           SET type = 'int',
+               input_timing = 'pre_session',
                is_required = 1,
                scope = 'set'
          WHERE id = ?
@@ -218,13 +246,80 @@ def test_save_preserves_metric_overrides(db_copy):
     conn = sqlite3.connect(db_copy)
     cur = conn.cursor()
     cur.execute(
-        "SELECT metric_name, input_timing, is_required, scope FROM preset_section_exercise_metrics"
+        "SELECT metric_name, input_timing, is_required, scope FROM preset_exercise_metrics WHERE deleted = 0"
     )
     result = cur.fetchone()
     conn.close()
     editor.close()
 
-    assert result == ("Reps", "pre_workout", 1, "set")
+    assert result == ("Reps", "pre_session", 1, "set")
+
+
+def test_save_preset_metadata(db_copy):
+    conn = sqlite3.connect(db_copy)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO library_metric_types
+            (name, type, input_timing, is_required, scope, description, is_user_created)
+        VALUES ('Difficulty', 'int', 'preset', 0, 'preset', '', 0)
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    editor = PresetEditor(db_path=db_copy)
+    editor.preset_name = "Meta Preset"
+    editor.add_section("Warmup")
+    editor.add_exercise(0, "Push ups")
+    editor.add_metric("Difficulty", value=3)
+    editor.save()
+
+    conn = sqlite3.connect(db_copy)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT type, input_timing, scope, is_required, value
+        FROM preset_preset_metrics WHERE deleted = 0
+        """
+    )
+    row = cur.fetchone()
+    conn.close()
+    editor.close()
+
+    assert row == ("int", "preset", "preset", 0, "3")
+
+
+def test_session_metric_timing_alias(db_copy):
+    conn = sqlite3.connect(db_copy)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO library_metric_types
+            (name, type, input_timing, is_required, scope, description, is_user_created)
+        VALUES ('Marker', 'int', 'pre_session', 0, 'session', '', 0)
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    editor = PresetEditor(db_path=db_copy)
+    editor.preset_name = "Alias"
+    editor.add_section("Warmup")
+    editor.add_exercise(0, "Push ups")
+    editor.add_metric("Marker", value=1)
+    editor.save()
+
+    conn = sqlite3.connect(db_copy)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT input_timing FROM preset_preset_metrics WHERE deleted = 0"
+    )
+    timing = cur.fetchone()[0]
+    conn.close()
+    editor.close()
+
+    assert timing == "pre_workout"
 
 
 def test_save_missing_exercise_fails(db_copy):
@@ -262,11 +357,32 @@ def test_remove_exercise_and_save(db_with_preset):
     editor.save()
     conn = sqlite3.connect(db_with_preset)
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM preset_section_exercises")
+    cur.execute("SELECT COUNT(*) FROM preset_section_exercises WHERE deleted = 0")
     count = cur.fetchone()[0]
     conn.close()
     editor.close()
     assert count == 0
+
+
+def test_move_exercise_updates_position_only(sample_db):
+    editor = PresetEditor("Push Day", db_path=sample_db)
+    orig_ids = [ex["id"] for ex in editor.sections[0]["exercises"]]
+    editor.move_exercise(0, 0, 1)
+    editor.save()
+    conn = sqlite3.connect(sample_db)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, position FROM preset_section_exercises WHERE deleted = 0 ORDER BY position"
+    )
+    rows = cur.fetchall()
+    cur.execute(
+        "SELECT COUNT(*) FROM preset_exercise_metrics WHERE deleted = 1"
+    )
+    deleted = cur.fetchone()[0]
+    conn.close()
+    editor.close()
+    assert rows == [(orig_ids[1], 0), (orig_ids[0], 1)]
+    assert deleted == 0
 
 
 

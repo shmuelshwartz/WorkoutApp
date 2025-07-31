@@ -9,7 +9,7 @@ import core
 
 def create_empty_db(path: Path) -> None:
     """Create a new database at *path* using the bundled schema."""
-    schema = Path("data/workout.sql").read_text()
+    schema = Path("data/workout_schema.sql").read_text()
     conn = sqlite3.connect(path)
     conn.executescript(schema)
     conn.commit()
@@ -31,17 +31,17 @@ def populate_sample_data(db_path: Path) -> None:
     )
     # Metric types
     cur.executemany(
-        "INSERT INTO library_metric_types (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created) VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
+        "INSERT INTO library_metric_types (name, type, input_timing, is_required, scope, description, is_user_created) VALUES (?, ?, ?, ?, ?, ?, 1)",
         [
-            ("Reps", "int", "manual_text", "post_set", 1, "set", "Number of reps"),
-            ("Weight", "float", "manual_text", "post_set", 0, "set", "Weight used"),
+            ("Reps", "int", "post_set", 1, "set", "Number of reps"),
+            ("Weight", "float", "post_set", 0, "set", "Weight used"),
         ],
     )
     # Preset with one section and two exercises
     cur.execute("INSERT INTO preset_presets (name) VALUES ('Push Day')")
     preset_id = cur.lastrowid
     cur.execute(
-        "INSERT INTO preset_sections (preset_id, name, position) VALUES (?, ?, 0)",
+        "INSERT INTO preset_preset_sections (preset_id, name, position) VALUES (?, ?, 0)",
         (preset_id, "Main"),
     )
     section_id = cur.lastrowid
@@ -89,9 +89,9 @@ def sample_db(tmp_db: Path) -> Path:
 def test_get_metric_type_schema(tmp_db: Path):
     fields = core.get_metric_type_schema(db_path=tmp_db)
     names = {f["name"] for f in fields}
-    assert names == {"name", "input_type", "source_type", "input_timing", "is_required", "scope", "description", "enum_values_json"}
-    input_type_opts = next(f["options"] for f in fields if f["name"] == "input_type")
-    assert set(input_type_opts) == {"int", "float", "str", "bool"}
+    assert names == {"name", "type", "input_timing", "is_required", "scope", "description", "enum_values_json"}
+    type_opts = next(f["options"] for f in fields if f["name"] == "type")
+    assert set(type_opts) == {"int", "float", "str", "bool", "enum", "slider"}
 
 
 def test_get_all_exercises_and_details(sample_db: Path):
@@ -125,11 +125,15 @@ def test_add_and_remove_metric_from_exercise(sample_db: Path):
     core.add_metric_to_exercise("Bench Press", "Reps", db_path=sample_db)
     conn = sqlite3.connect(sample_db)
     cur = conn.cursor()
-    cur.execute("""SELECT COUNT(*) FROM library_exercise_metrics em JOIN library_exercises e ON em.exercise_id = e.id JOIN library_metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps'""")
+    cur.execute(
+        """SELECT COUNT(*) FROM library_exercise_metrics em JOIN library_exercises e ON em.exercise_id = e.id JOIN library_metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps' AND em.deleted = 0 AND e.deleted = 0 AND mt.deleted = 0"""
+    )
     count = cur.fetchone()[0]
     assert count == 1
     core.remove_metric_from_exercise("Bench Press", "Reps", db_path=sample_db)
-    cur.execute("""SELECT COUNT(*) FROM library_exercise_metrics em JOIN library_exercises e ON em.exercise_id = e.id JOIN library_metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps'""")
+    cur.execute(
+        """SELECT COUNT(*) FROM library_exercise_metrics em JOIN library_exercises e ON em.exercise_id = e.id JOIN library_metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps' AND em.deleted = 0 AND e.deleted = 0 AND mt.deleted = 0"""
+    )
     count = cur.fetchone()[0]
     conn.close()
     assert count == 0

@@ -1,189 +1,170 @@
-# 🏋️‍♂️ workout_app Database Design (Prefixed Schema)
+# 🏋️‍♂️ workout_app Database Design
 
 > **Note:** The database has already been created and matches the schema defined in `workout_db.sql`. It is not an empty database.
 
-This document describes the database design for **workout_app**. The schema follows a **prefix-based naming convention** to clearly separate global, preset-specific, and session-specific data.  
+This document describes the database schema used in **workout_app** — a personal, offline-first fitness tracking app focused on calisthenics and progressive overload.
 
-This approach supports the app’s **offline-first**, highly customizable philosophy, enabling:  
-
-- A **global exercise library** (shared across presets and sessions)  
-- Reusable workout templates (**presets**) with per-preset overrides  
-- Fully independent session logging (future), while still referencing global data for context  
+The design favors **clarity**, **customizability**, and **full local independence** across library, presets, and future workout sessions. The schema uses **prefix-based naming** to clearly separate concerns and enable predictable data ownership.
 
 ---
 
-## 🚀 Core Concepts
+## 🚀 Schema Overview
 
-The database is structured into **three distinct parts**:  
+The schema is divided into **two active domains**, with a third reserved for future use:
 
-| Prefix      | Scope                                     |
-|-------------|-------------------------------------------|
-| `library_`  | Global Exercise Library – shared across all presets and sessions |
-| `preset_`   | Preset-Specific Data – reusable templates |
-| `session_`  | (Future) Session-Specific Data – user workout logs |
+| Prefix       | Purpose                                        |
+|--------------|------------------------------------------------|
+| `library_`   | Global exercise and metric definitions         |
+| `preset_`    | Fully self-contained workout templates         |
+| `session_`   | _(Planned)_ Individual workout logs            |
 
-This naming convention provides **clear ownership**, making it obvious which tables belong to each part.
+This naming convention makes the structure intuitive and avoids accidental cross-dependencies.
 
 ---
 
 ## 🔵 Global Exercise Library (`library_`)
 
-This is the **central repository** for defining exercises and their default attributes.  
+The `library_` tables form the **central repository** of exercise and metric definitions. These are shared references used when creating presets and, later, sessions.
 
-| Table Name                          | Description                                      |
-|-------------------------------------|--------------------------------------------------|
-| `library_exercises`                 | Master list of exercises (name, description, user-created flag) |
-| `library_exercise_metrics`          | Default metrics for each exercise (e.g., Reps, Weight, Tempo) with optional per-exercise overrides |
-| `library_metric_types`              | Defines all metric types and their configurations |
+### 📂 Tables
 
-✅ **Key Idea**:  
-- These tables are **shared across all presets and sessions** via `exercise_id`.  
-- Changes here (e.g., renaming “Bench Press”) are **immediately visible** wherever `exercise_id` is referenced.
+| Table                        | Description                                                  |
+|-----------------------------|--------------------------------------------------------------|
+| `library_exercises`         | Master list of exercises (user-created or built-in)          |
+| `library_metric_types`      | Definitions of all possible metric types and behaviors       |
+| `library_exercise_metrics`  | Metrics associated with each exercise, with optional overrides |
 
-### 📝 Metric Overrides (Per-Exercise Customization)
+### 🧠 Design Notes
 
-The `library_exercise_metrics` table directly supports per-exercise customization of metric definitions.  
-It includes optional override fields:  
+- `library_exercises` uses a `is_user_created` flag and a `UNIQUE(name, is_user_created)` constraint to support personalized variants.
+- `library_metric_types` defines what a metric *is*, including its type, scope, and optional enum values (in JSON).
+- `library_exercise_metrics` links exercises to metric types and optionally overrides properties like `type`, `input_timing`, and `enum_values_json`.
 
-- `input_type`
-- `source_type`
-- `input_timing`
-- `is_required`
-- `scope`
-
-These fields are `NULL` by default, meaning the exercise inherits the global definition from `library_metric_types`.  
-When populated, they allow a specific exercise (e.g., "5k Run") to redefine how a metric behaves compared to the standard (e.g., making "Distance" an enum with a preset value).  
-This simplifies the schema by removing the need for a separate `library_exercise_metric_overrides` table.
+📌 All `library_` data is **global** and may be referenced by presets and sessions. However, changes here only affect presets **at creation time** — not retroactively.
 
 ---
 
-## 🟢 Preset-Specific Data (`preset_`)
+## 🟢 Preset Templates (`preset_`)
 
-These tables store **workout templates (presets)**, including all their sections, exercises, and per-exercise/per-metric details.  
-**All preset tables are fully self-contained:** every exercise, metric, and enum value used in a preset is snapshotted at creation, so presets remain intact even if the library is changed or deleted.
+Presets represent **workout templates** made up of sections, exercises, and per-exercise metrics. All data is **snapshotted** from the `library_` tables when the preset is created.
 
-| Table Name                                  | Description                                                             |
-|----------------------------------------------|-------------------------------------------------------------------------|
-| `preset_presets`                            | Workout templates (e.g., "Push Day")                                    |
-| `preset_sections`                           | Logical divisions within a preset (e.g., Warm-up, Main Workout)         |
-| `preset_section_exercises`                  | Exercises within sections, with all names/descriptions snapshotted      |
-| `preset_section_exercise_metrics`           | Metrics for each exercise, fully snapshotted, including all properties  |
-| `preset_section_exercise_metric_enum_values`| Enum values for enum-type metrics, snapshotted per preset/metric        |
-| `preset_metadata`                           | Key-value pairs for preset-level information                            |
+### ✅ Full Independence
+- **Presets do not rely on the library at runtime.** If you delete everything in `library_`, your presets remain fully intact.
+- Foreign keys to library tables (e.g., `library_exercise_id`) use `ON DELETE SET NULL`, ensuring no cascade loss.
 
-✅ **Key Idea**:  
-- **Presets are fully self-contained**: All exercise and metric data is copied into the preset at creation time (including enums).  
-- **Library exercise references** (such as `library_exercise_id` in `preset_section_exercises`) are for informational purposes only—**no foreign key is enforced**, and deleting a library exercise will not affect any preset data.  
-- **Edits to presets** only affect that specific preset. Library changes do **not** propagate to existing presets.
+### 📂 Tables
 
----
-
-## 📦 Why Prefixes?  
-
-| Prefix      | Purpose                                                      |
-|-------------|--------------------------------------------------------------|
-| `library_`  | Indicates data shared globally and referenced everywhere     |
-| `preset_`   | Indicates data copied/overridden at the preset level         |
-| `session_`  | (Planned) Fully self-contained session data for user logs    |
-
-This prevents ambiguity and makes it easy to:  
-- Understand which tables are **independent**  
-- Know which changes propagate (library) and which don’t (preset/session)
+| Table                      | Description                                                      |
+|---------------------------|------------------------------------------------------------------|
+| `preset_presets`          | Preset definitions (e.g., “Push Day”, “Cardio A”)                |
+| `preset_preset_sections`  | Named sections within a preset (e.g., “Warm-Up”, “Main Set”)     |
+| `preset_section_exercises`| Exercises within a section, with full local copies of name, etc. |
+| `preset_exercise_metrics` | Metrics for each exercise — snapshotted and editable             |
+| `preset_preset_metrics`   | Metrics that apply to the entire preset/session (e.g., RPE, Duration) |
 
 ---
 
-## 🔥 How Metrics Work
+### 🏗️ Preset Structure
 
-1. **Defaults (Global)**  
-   - Defined in `library_exercise_metrics`  
-   - Includes all standard metrics for each exercise  
+Presets follow this structure:
 
-2. **Overrides (Preset-Specific)**  
-   - Copied to `preset_section_exercise_metrics` when adding to a preset  
-   - Editable per preset without affecting global defaults  
+- **Preset (`preset_presets`)**
+  - Sections (`preset_preset_sections`)
+    - Exercises (`preset_section_exercises`)
+      - Metrics (`preset_exercise_metrics`)
+  - Preset-level metrics (`preset_preset_metrics`)
 
-3. **Change Propagation Logic**  
-   - Editing a global exercise or metric:  
-     - ✅ Option to apply globally (affects all presets/sessions)  
-     - 🚫 Or keep presets unchanged  
-   - Editing inside a preset:  
-     - ✅ Option to save as a new global default  
-     - 🚫 Or keep change local to that preset  
+This allows for fine-grained control of workout logic, data input timing, and UI flow.
 
 ---
 
-## 📝 Example: “Bench Press” Metric Flow
+### 🧠 Design Highlights
 
-| Level          | Table                                 | Action                              |
-|----------------|---------------------------------------|-------------------------------------|
-| Global         | `library_exercise_metrics`            | Defines default: Weight, Reps, Tempo|
-| Preset         | `preset_section_exercise_metrics`     | Copied when adding to preset       |
-| Session (future)| `session_exercise_metrics` (planned) | Tracks actual performed values      |
-
----
-
-## 🗝️ Flexible Metadata
-
-`preset_metadata` stores arbitrary details tied to presets:  
-
-| Key           | Value           |
-|---------------|-----------------|
-| Day Number    | `1`             |
-| Focus         | `Hypertrophy`   |
-| Phase         | `Strength Cycle`|
-
-This allows extensibility without changing table structure.
+- All tables include `position` fields to control display order in the app.
+- Soft deletes are implemented uniformly via a `deleted BOOLEAN DEFAULT 0` field.
+- `enum_values_json` supports customizable metric inputs like drop-downs or sliders.
+- Metrics store a `value` field, supporting pre-filled defaults in both presets and exercises.
+- Snapshotted fields like `metric_name`, `type`, etc., ensure the preset behaves the same even if the original metric definition changes or is deleted.
 
 ---
 
-## 📦 Exercise Enums
+## 🔠 Prefix Summary
 
-Enum values for enum-type metrics are now stored directly in the `enum_values_json` field on relevant tables:
-
-- `library_metric_types.enum_values_json` — defines global/default enums for a metric type
-- `library_exercise_metrics.enum_values_json` — allows per-exercise overrides of enum values
-- `preset_section_exercise_metrics.enum_values_json` — enums copied/snapshotted into each preset
-
-📌 Example:  
-- Table: `library_exercise_metrics`
-- Field: `enum_values_json`
-- Value: `["Flat Barbell Bench", "Incline Smith Machine", "Hammer Strength Chest Press"]`
+| Prefix       | Scope                    | Key Behavior                             |
+|--------------|--------------------------|------------------------------------------|
+| `library_`   | Global references         | Shared; changes can propagate            |
+| `preset_`    | Fully self-contained data | Snapshotted; immune to library changes   |
+| `session_`   | _(Future)_ workout logs   | Will be structured similarly to presets  |
 
 ---
 
-## 🏋️ Preset Example: “Push Day”
+## 📊 Metrics: Lifecycle & Logic
 
-- Preset: Push Day
-  - Section: Warm-up
-    - Exercise: Shoulder Circles
-    - Exercise: Jumping Jacks
-  - Section: Workout
-    - Exercise: Bench Press
-    - Exercise: Push-ups
+| Stage   | Table                              | Purpose                                  |
+|---------|-------------------------------------|------------------------------------------|
+| Global  | `library_metric_types`              | Defines what a metric is                 |
+| Exercise| `library_exercise_metrics`          | Associates metrics to global exercises   |
+| Preset  | `preset_exercise_metrics`           | Snapshots metrics for preset exercises   |
+| Preset  | `preset_preset_metrics`             | Adds metrics tied to the whole preset    |
 
-Each exercise:
-- Includes its own metrics (`preset_section_exercise_metrics`)
-- Tracks number of sets and position in the section (`preset_section_exercises`)
+📌 All metric-related tables support:
+- `type`: Data and input style (int, float, str, bool, enum, slider)
+- `input_timing`: When user enters it (pre/post exercise, session, etc.)
+- `scope`: Whether it applies to a set, exercise, session, or preset
+- `enum_values_json`: A JSON array of options for enums
+- `value`: Optional pre-filled default
 
 ---
 
-## 💡 Design Philosophy
+## 🔐 Constraints & Indexes
 
-✔️ **Simpler Schema**: Removed `library_exercise_metric_overrides` table.  
-✔️ **Embedded Overrides**: Overrides are stored directly in `library_exercise_metrics` as nullable fields.  
-✔️ **Separation of Concerns**: Prefixes clarify data ownership.  
-✔️ **Snapshotting**: Preset tables continue to store copies of names, descriptions, and metrics.  
-✔️ **User Control**: All changes are explicit—no unintended side effects.
+### ✅ Unique Constraints
+
+| Index Name                             | Purpose                                               |
+|----------------------------------------|-------------------------------------------------------|
+| `idx_library_exercises_name_user_created`   | Prevent duplicate exercise names by creator type      |
+| `idx_library_metric_types_name_user_created`| Same for metric types                                 |
+| `idx_library_exercise_metric_unique_active` | Only one active metric type per exercise              |
+| `idx_unique_exercise_metric_active`         | Prevent duplicate metric names per preset exercise    |
+| `idx_unique_preset_metric_active`           | Prevent duplicate metrics per preset                  |
+
+All unique indexes are scoped to `deleted = 0` to support soft deletes.
+
+---
+
+## 🧠 Design Philosophy
+
+| Principle              | Implementation                                                   |
+|------------------------|-------------------------------------------------------------------|
+| **Offline-first**      | Fully local, no external dependencies                             |
+| **Snapshot-based**     | Presets copy all relevant data from the library                  |
+| **Editable Templates** | Metrics and exercise details in presets are customizable          |
+| **Data Clarity**       | Prefixes make ownership and dependency clear                      |
+| **UI-Friendly**        | `position`, `scope`, and `enum_values_json` fields support rendering |
 
 ---
 
 ## 📋 Summary Table
 
-| Feature                 | Table(s)                                     |
-|-------------------------|-----------------------------------------------|
-| Global Exercises        | `library_exercises`, `library_exercise_metrics`, `library_metric_types` |
-| Presets & Sections      | `preset_presets`, `preset_sections`          |
-| Preset Exercises        | `preset_section_exercises`                   |
-| Preset Exercise Metrics | `preset_section_exercise_metrics`            |
-| Preset Enum Values      | `preset_section_exercise_metric_enum_values` |
-| Preset Metadata         | `preset_metadata`                            |
+| Feature                  | Table(s)                                                       |
+|--------------------------|-----------------------------------------------------------------|
+| Global Exercises         | `library_exercises`, `library_exercise_metrics`, `library_metric_types` |
+| Preset Templates         | `preset_presets`                                               |
+| Sections in Presets      | `preset_preset_sections`                                       |
+| Exercises in Presets     | `preset_section_exercises`                                     |
+| Metrics for Exercises    | `preset_exercise_metrics`                                      |
+| Preset-Level Metrics     | `preset_preset_metrics`                                        |
+
+---
+
+## 🔮 Next: Session Logging (Future)
+
+The `session_` namespace will eventually support detailed workout logs:
+- Which preset (if any) the session is based on
+- Real-time or retrospective metric logging
+- Set-by-set performance data
+
+---
+
+✅ **This schema is stable, extensible, and optimized for personal use.**  
+Its use of snapshotting, soft deletes, and scoped uniqueness strikes the right balance between flexibility and data integrity.

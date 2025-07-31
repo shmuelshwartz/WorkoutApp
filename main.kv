@@ -51,7 +51,7 @@ ScreenManager:
             text: "Go to Presets"
             on_release: app.root.current = "presets"
         MDRaisedButton:
-            text: "Go to Exercises"
+            text: "Go to Library"
             on_release: app.root.current = "exercise_library"
         MDRaisedButton:
             text: "Go to Progress"
@@ -587,6 +587,8 @@ ScreenManager:
 <EditPresetScreen>:
     sections_box: sections_box
     exercise_panel: exercise_panel
+    details_box: details_box
+    metrics_box: metrics_box
     panel_visible: False
     on_current_tab: edit_tabs.current = self.current_tab
     FloatLayout:
@@ -609,6 +611,10 @@ ScreenManager:
                     text: "Details"
                     md_bg_color: app.theme_cls.primary_color if root.current_tab == "details" else (.5, .5, .5, 1)
                     on_release: root.switch_tab("details")
+                MDRaisedButton:
+                    text: "Metrics"
+                    md_bg_color: app.theme_cls.primary_color if root.current_tab == "metrics" else (.5, .5, .5, 1)
+                    on_release: root.switch_tab("metrics")
 
             ScreenManager:
                 id: edit_tabs
@@ -649,24 +655,73 @@ ScreenManager:
 
                 Screen:
                     name: "details"
-                    on_enter: preset_name.text = root.preset_name
-                    BoxLayout:
-                        orientation: "vertical"
+                    on_enter: root.populate_details()
+                    FloatLayout:
                         ScrollView:
+                            id: details_scroll
                             do_scroll_x: False
                             MDBoxLayout:
+                                id: details_box
                                 orientation: "vertical"
                                 size_hint_y: None
                                 height: self.minimum_height
                                 spacing: dp(10)
-                                MDTextField:
-                                    id: preset_name
-                                    hint_text: "Preset Name"
-                                    multiline: False
-                                    on_text: root.update_preset_name(self.text)
-                                    size_hint_x: 1
+                                MDBoxLayout:
+                                    id: preset_name_row
+                                    orientation: "horizontal"
                                     size_hint_y: None
-                                    height: "48dp"  # Give it space to render properly
+                                    height: "40dp"
+                                    MDLabel:
+                                        text: "Preset Name"
+                                        size_hint_x: 0.4
+                                    MDTextField:
+                                        id: preset_name
+                                        hint_text: "Preset Name"
+                                        multiline: False
+                                        on_text: root.update_preset_name(self.text)
+                                        size_hint_x: 1
+                                MDBoxLayout:
+                                    id: metrics_box
+                                    orientation: "vertical"
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                                    spacing: dp(10)
+                        MDFloatingActionButton:
+                            id: add_metric_btn
+                            icon: "plus"
+                            md_bg_color: app.theme_cls.primary_color
+                            pos_hint: {"center_x": 0.5, "y": 0.02}
+                            tooltip_text: "Add Metric"
+                            on_release: root.open_add_preset_metric_popup()
+
+                Screen:
+                    name: "metrics"
+                    FloatLayout:
+                        BoxLayout:
+                            orientation: "vertical"
+                            MDLabel:
+                                text: "Required Session Metrics"
+                                halign: "center"
+                                theme_text_color: "Custom"
+                                text_color: 0.2, 0.6, 0.86, 1
+                                size_hint_y: None
+                                height: "40dp"
+                            MDRecycleView:
+                                id: session_metric_list
+                                viewclass: "MetricRow"
+                                RecycleBoxLayout:
+                                    default_size: None, dp(56)
+                                    default_size_hint: 1, None
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                                    orientation: "vertical"
+                        MDFloatingActionButton:
+                            id: add_session_metric_btn
+                            icon: "plus"
+                            md_bg_color: app.theme_cls.primary_color
+                            pos_hint: {"center_x": 0.5, "y": 0.02}
+                            tooltip_text: "Add Metric"
+                            on_release: root.open_add_session_metric_popup()
 
             MDBoxLayout:
                 size_hint_y: None
@@ -798,12 +853,25 @@ ScreenManager:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: root.exercise_name if root.exercise_name else "Edit Exercise"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-            size_hint_y:0.1
+        MDBoxLayout:
+            size_hint_y: 0.1
+            orientation: "horizontal"
+            spacing: "10dp"
+            MDIconButton:
+                icon: "chevron-left"
+                opacity: 1 if root.section_index >= 0 else 0
+                disabled: root.section_index < 0 or not app.preset_editor or root.exercise_index <= 0
+                on_release: root.go_prev_exercise()
+            MDLabel:
+                text: root.exercise_name if root.exercise_name else "Edit Exercise"
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: 0.2, 0.6, 0.86, 1
+            MDIconButton:
+                icon: "chevron-right"
+                opacity: 1 if root.section_index >= 0 else 0
+                disabled: root.section_index < 0 or not app.preset_editor or root.exercise_index >= root.section_length - 1
+                on_release: root.go_next_exercise()
         MDBoxLayout:
             size_hint_y: None
             height: "40dp"

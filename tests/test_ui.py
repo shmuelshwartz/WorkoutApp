@@ -5,8 +5,8 @@ import pytest
 os.environ["KIVY_WINDOW"] = "mock"
 # Skip tests entirely if Kivy (and KivyMD) are not installed
 kivy_available = (
-    importlib.util.find_spec("kivy") is not None and
-    importlib.util.find_spec("kivymd") is not None
+    importlib.util.find_spec("kivy") is not None
+    and importlib.util.find_spec("kivymd") is not None
 )
 
 if kivy_available:
@@ -23,9 +23,12 @@ if kivy_available:
         MetricInputScreen,
         WorkoutActiveScreen,
         AddMetricPopup,
+        EditMetricPopup,
+        EditMetricTypePopup,
         EditExerciseScreen,
         ExerciseSelectionPanel,
         PresetsScreen,
+        EditPresetScreen,
     )
     import time
 
@@ -36,7 +39,6 @@ if kivy_available:
 
         def property(self, name, default=None):  # pragma: no cover - simple shim
             return ObjectProperty(None)
-
 
     @pytest.fixture(autouse=True)
     def _provide_app(monkeypatch):
@@ -80,7 +82,7 @@ def test_enum_values_accepts_spaces():
         exercise_obj = type("obj", (), {"metrics": []})()
 
     popup = AddMetricPopup(DummyScreen(), mode="new")
-    popup.input_widgets["input_type"].text = "str"
+    popup.input_widgets["type"].text = "str"
     filtered = popup.enum_values_field.input_filter("A B,C", False)
     assert filtered == "A B,C"
 
@@ -91,9 +93,109 @@ def test_enum_values_strip_spaces_after_comma():
         exercise_obj = type("obj", (), {"metrics": []})()
 
     popup = AddMetricPopup(DummyScreen(), mode="new")
-    popup.input_widgets["input_type"].text = "str"
+    popup.input_widgets["type"].text = "str"
     filtered = popup.enum_values_field.input_filter("A, B ,  C", False)
     assert filtered == "A,B,C"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_add_metric_popup_has_single_enum_field():
+    class DummyScreen:
+        exercise_obj = type("obj", (), {"metrics": []})()
+
+    popup = AddMetricPopup(DummyScreen(), mode="new")
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c
+        for c in children
+        if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 0
+    popup.input_widgets["type"].text = "enum"
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 1
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_popup_has_single_enum_field():
+    class DummyExercise:
+        metrics = [
+            {
+                "name": "Machine",
+                "type": "enum",
+                "values": ["A", "B"],
+            }
+        ]
+        updated = False
+
+        def update_metric(self, *a, **k):
+            self.updated = True
+
+    class DummyScreen:
+        exercise_obj = DummyExercise()
+
+    metric = DummyScreen.exercise_obj.metrics[0]
+    popup = EditMetricPopup(DummyScreen(), metric)
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c
+        for c in children
+        if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 1
+    popup.input_widgets["type"].text = "str"
+
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 0
+    popup.input_widgets["type"].text = "enum"
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 1
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_popup_no_duplicate_field():
+    class DummyExercise:
+        metrics = [
+            {
+                "name": "Machine",
+                "type": "enum",
+                "values": ["A", "B"],
+            }
+        ]
+
+    class DummyScreen:
+        exercise_obj = DummyExercise()
+
+    metric = DummyScreen.exercise_obj.metrics[0]
+    popup1 = EditMetricPopup(DummyScreen(), metric)
+    count1 = len(
+        [
+            c
+            for c in popup1.content_cls.children[0].children
+            if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+        ]
+    )
+    popup1.dismiss()
+
+    popup2 = EditMetricPopup(DummyScreen(), metric)
+    count2 = len(
+        [
+            c
+            for c in popup2.content_cls.children[0].children
+            if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+        ]
+    )
+    assert count1 == 1
+    assert count2 == 1
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
@@ -120,6 +222,68 @@ def test_add_metric_popup_filters_scope(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_add_preset_metric_popup_filters_scope(monkeypatch):
+    app = _DummyApp()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {
+            "preset_metrics": [{"name": "Focus"}],
+            "add_metric": lambda self, *a, **k: None,
+            "is_modified": lambda self=None: False,
+        },
+    )()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+
+    metrics = [
+        {"name": "Focus", "scope": "preset"},
+        {"name": "Level", "scope": "preset"},
+        {"name": "Session", "scope": "session"},
+    ]
+
+    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+    screen = EditPresetScreen()
+    popup = AddPresetMetricPopup(screen)
+    list_view = popup.content_cls.children[0]
+    names = {child.text for child in list_view.children}
+
+    assert "Session" not in names
+    assert "Focus" not in names
+    assert "Level" in names
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_add_session_metric_popup_filters_scope(monkeypatch):
+    app = _DummyApp()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {
+            "preset_metrics": [{"name": "Duration"}],
+            "add_metric": lambda self, *a, **k: None,
+            "is_modified": lambda self=None: False,
+        },
+    )()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+
+    metrics = [
+        {"name": "Duration", "scope": "session"},
+        {"name": "Mood", "scope": "session"},
+        {"name": "Focus", "scope": "preset"},
+    ]
+
+    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+    screen = EditPresetScreen()
+    popup = AddSessionMetricPopup(screen)
+    list_view = popup.content_cls.children[0]
+    names = {child.text for child in list_view.children}
+
+    assert "Focus" not in names
+    assert "Duration" not in names
+    assert "Mood" in names
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_edit_exercise_default_tab():
     screen = EditExerciseScreen()
     screen.previous_screen = "exercise_library"
@@ -136,9 +300,59 @@ def test_edit_exercise_preset_tab():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_exercise_navigation_flags(monkeypatch):
+    app = _DummyApp()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {"sections": [{"name": "S1", "exercises": [{"name": "a"}, {"name": "b"}]}]},
+    )()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+    screen = EditExerciseScreen()
+    screen.section_index = 0
+    screen.exercise_index = 0
+    assert not screen.can_go_prev()
+    assert screen.can_go_next()
+    screen.exercise_index = 1
+    assert screen.can_go_prev()
+    assert not screen.can_go_next()
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_exercise_go_next(monkeypatch):
+    app = _DummyApp()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {"sections": [{"name": "S1", "exercises": [{"name": "a"}, {"name": "b"}]}]},
+    )()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+    screen = EditExerciseScreen()
+    screen.section_index = 0
+    screen.exercise_index = 0
+    screen.save_enabled = False
+    called = {"idx": None}
+
+    def nav(idx):
+        called["idx"] = idx
+
+    screen._navigate_to = nav
+    screen.go_next_exercise()
+    assert called["idx"] == 1
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_exercise_selection_panel_filters(monkeypatch):
     panel = ExerciseSelectionPanel()
-    panel.exercise_list = type("L", (), {"children": [], "clear_widgets": lambda self: self.children.clear(), "add_widget": lambda self, w: self.children.append(w)})()
+    panel.exercise_list = type(
+        "L",
+        (),
+        {
+            "children": [],
+            "clear_widgets": lambda self: self.children.clear(),
+            "add_widget": lambda self, w: self.children.append(w),
+        },
+    )()
 
     monkeypatch.setattr(
         core,
@@ -159,6 +373,7 @@ def test_preset_select_button_updates(monkeypatch):
     """Selecting a preset updates the select button text."""
     from kivy.lang import Builder
     from pathlib import Path
+
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     monkeypatch.setattr(
@@ -175,13 +390,12 @@ def test_preset_select_button_updates(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-
 def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
     """Saving with a duplicate user-defined name shows an error."""
     import sqlite3
     from pathlib import Path
 
-    schema = Path(__file__).resolve().parents[1] / "data" / "workout.sql"
+    schema = Path(__file__).resolve().parents[1] / "data" / "workout_schema.sql"
     db_path = tmp_path / "workout.db"
     conn = sqlite3.connect(db_path)
     with open(schema, "r", encoding="utf-8") as fh:
@@ -214,6 +428,7 @@ def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
 
     assert opened["value"]
     assert screen.name_field.error
+
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_edit_metric_duplicate_name(monkeypatch):
@@ -250,11 +465,53 @@ def test_edit_metric_type_popup_selects_correct_metric():
     popup = EditMetricTypePopup(DummyScreen(), "Reps", True)
     assert popup.metric["description"] == "copy"
 
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_type_popup_enum_field_visibility():
+    class DummyScreen:
+        all_metrics = [
+            {
+                "name": "Speed",
+                "type": "int",
+                "is_user_created": True,
+            }
+        ]
+
+    popup = EditMetricTypePopup(DummyScreen(), "Speed", True)
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 0
+    popup.input_widgets["type"].text = "enum"
+    children = popup.content_cls.children[0].children
+    enum_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+    ]
+    assert len(enum_fields) == 1
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_type_popup_loads_enum_values():
+    class DummyScreen:
+        all_metrics = [
+            {
+                "name": "Side",
+                "type": "enum",
+                "is_user_created": True,
+                "enum_values_json": "[\"Left\", \"Right\", \"None\"]",
+            }
+        ]
+
+    popup = EditMetricTypePopup(DummyScreen(), "Side", True)
+    assert popup.enum_values_field.text == "Left, Right, None"
+
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_preset_select_button_color(monkeypatch):
     """Selecting a preset updates the select button color."""
     from kivy.lang import Builder
     from pathlib import Path
+
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     monkeypatch.setattr(
@@ -264,8 +521,203 @@ def test_preset_select_button_color(monkeypatch):
     )
 
     screen = PresetsScreen()
-    dummy = type("Obj", (), {"md_bg_color": (0, 0, 0, 0)})()
+    dummy = type(
+        "Obj",
+        (),
+        {
+            "md_bg_color": (0, 0, 0, 0),
+            "theme_text_color": "Primary",
+            "text_color": (0, 0, 0, 1),
+        },
+    )()
     screen.select_preset("Sample", dummy)
 
     assert dummy.md_bg_color == screen._selected_color
 
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_preset_selected_text_color_and_clear(monkeypatch):
+    """Selecting a preset changes text color and is cleared on leave."""
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    monkeypatch.setattr(
+        core,
+        "WORKOUT_PRESETS",
+        [{"name": "Sample", "exercises": []}],
+    )
+
+    screen = PresetsScreen()
+    dummy = type(
+        "Obj",
+        (),
+        {
+            "md_bg_color": (0, 0, 0, 0),
+            "theme_text_color": "Primary",
+            "text_color": (0, 0, 0, 1),
+        },
+    )()
+    screen.select_preset("Sample", dummy)
+
+    assert dummy.theme_text_color == "Custom"
+    assert dummy.text_color == screen._selected_text_color
+
+    screen.on_leave()
+
+    assert dummy.theme_text_color == "Primary"
+    assert screen.selected_item is None
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_preset_populate_details(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    metrics = [
+        {
+            "name": "Focus",
+            "type": "str",
+            "scope": "preset",
+            "enum_values_json": None,
+            "input_timing": "preset",
+        },
+        {
+            "name": "Level",
+            "type": "int",
+            "scope": "preset",
+            "enum_values_json": None,
+            "input_timing": "preset",
+        },
+    ]
+
+    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+
+    app = _DummyApp()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {
+            "preset_metrics": [
+                {"name": "Focus", "value": "Legs"},
+                {"name": "Level", "value": 2},
+            ],
+            "is_modified": lambda self=None: False,
+            "update_metric": lambda self, *a, **k: None,
+            "add_metric": lambda self, *a, **k: None,
+        },
+    )()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+
+    screen = EditPresetScreen()
+    screen.populate_details()
+
+    assert set(screen.preset_metric_widgets.keys()) == {"Focus", "Level"}
+    assert screen.preset_metric_widgets["Focus"].text == "Legs"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_preset_name_row_preserved(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
+
+    app = _DummyApp()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {
+            "preset_metrics": [],
+            "is_modified": lambda self=None: False,
+            "update_metric": lambda self, *a, **k: None,
+            "add_metric": lambda self, *a, **k: None,
+        },
+    )()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+
+    screen = EditPresetScreen()
+    screen.populate_details()
+
+    assert screen.ids.preset_name_row in screen.details_box.children
+    assert screen.ids.preset_name in screen.ids.preset_name_row.children
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_details_has_add_button(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
+
+    app = _DummyApp()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {
+            "preset_metrics": [],
+            "is_modified": lambda self=None: False,
+            "update_metric": lambda self, *a, **k: None,
+            "add_metric": lambda self, *a, **k: None,
+        },
+    )()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+
+    screen = EditPresetScreen()
+    screen.populate_details()
+
+    assert "add_metric_btn" in screen.ids
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_metrics_has_add_button(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
+
+    app = _DummyApp()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {
+            "preset_metrics": [],
+            "is_modified": lambda self=None: False,
+            "update_metric": lambda self, *a, **k: None,
+            "add_metric": lambda self, *a, **k: None,
+        },
+    )()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+
+    screen = EditPresetScreen()
+    screen.populate_metrics()
+
+    assert "add_session_metric_btn" in screen.ids
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_fallback_input_timing_options(monkeypatch):
+    """Fallback schema uses allowed input_timing values."""
+
+    class DummyScreen:
+        exercise_obj = type("obj", (), {"metrics": []})()
+
+    monkeypatch.setattr(core, "get_metric_type_schema", lambda *a, **k: [])
+    popup = AddMetricPopup(DummyScreen(), mode="new")
+    opts = list(popup.input_widgets["input_timing"].values)
+    assert opts == [
+        "preset",
+        "pre_session",
+        "post_session",
+        "pre_set",
+        "post_set",
+    ]
