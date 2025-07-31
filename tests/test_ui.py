@@ -147,6 +147,7 @@ def test_edit_metric_popup_has_single_enum_field():
     ]
     assert len(enum_fields) == 1
     popup.input_widgets["type"].text = "str"
+
     children = popup.content_cls.children[0].children
     enum_fields = [
         c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"

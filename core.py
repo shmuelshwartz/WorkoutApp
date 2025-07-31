@@ -1048,6 +1048,7 @@ def save_exercise(exercise: Exercise) -> None:
         if not mt_row:
             continue
         metric_id, def_type = mt_row
+
         cursor.execute(
             "SELECT type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
             (metric_id,),
@@ -1059,6 +1060,7 @@ def save_exercise(exercise: Exercise) -> None:
             if m.get("type") != d_type:
                 m_type = m.get("type")
             if m.get("input_timing") != d_timing:
+
                 timing = m.get("input_timing")
             if bool(m.get("is_required")) != bool(d_req):
                 req = int(m.get("is_required", False))
@@ -1074,11 +1076,13 @@ def save_exercise(exercise: Exercise) -> None:
                 metric_id,
                 position,
                 m_type,
+
                 timing,
                 req,
                 scope_val,
                 (
                     json.dumps(m.get("values")) if m.get("values") and (m.get("type") or def_type) == "enum" else None
+
                 ),
             ),
         )
@@ -1221,6 +1225,7 @@ class PresetEditor:
         cursor.execute(
             """
             SELECT name, description, type, input_timing, is_required, scope, enum_values_json
+
               FROM library_metric_types
              WHERE deleted = 0 AND is_required = 1
                AND scope IN ('preset', 'session')
