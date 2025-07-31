@@ -72,8 +72,6 @@ METRIC_FIELD_ORDER = [
 ]
 
 
-
-
 class LoadingDialog(MDDialog):
     """Simple dialog displaying a spinner while work is performed."""
 
@@ -2094,6 +2092,7 @@ class EditMetricPopup(MDDialog):
         if "type" in updates:
             updates["type"] = updates.pop("type")
 
+
         if self.enum_values_field.parent is not None:
             text = self.enum_values_field.text.strip()
             updates["values"] = [v.strip() for v in text.split(",") if v.strip()]
@@ -2188,8 +2187,7 @@ class EditMetricPopup(MDDialog):
                 if cb_type.active:
                     core.update_metric_type(
                         self.metric["name"],
-                        input_type=updates.get("input_type"),
-                        source_type=updates.get("source_type"),
+                        mtype=updates.get("type"),
                         input_timing=updates.get("input_timing"),
                         scope=updates.get("scope"),
                         description=updates.get("description"),
@@ -2209,8 +2207,7 @@ class EditMetricPopup(MDDialog):
                         core.set_exercise_metric_override(
                             self.screen.exercise_obj.name,
                             self.metric["name"],
-                            input_type=updates.get("input_type"),
-                            source_type=updates.get("source_type"),
+                            mtype=updates.get("type"),
                             input_timing=updates.get("input_timing"),
                             is_required=updates.get("is_required"),
                             scope=updates.get("scope"),
@@ -2278,8 +2275,7 @@ class EditMetricPopup(MDDialog):
                 if checkbox.active:
                     core.update_metric_type(
                         self.metric["name"],
-                        input_type=updates.get("input_type"),
-                        source_type=updates.get("source_type"),
+                        mtype=updates.get("type"),
                         input_timing=updates.get("input_timing"),
                         scope=updates.get("scope"),
                         description=updates.get("description"),
@@ -2299,8 +2295,7 @@ class EditMetricPopup(MDDialog):
                         core.set_exercise_metric_override(
                             self.screen.exercise_obj.name,
                             self.metric["name"],
-                            input_type=updates.get("input_type"),
-                            source_type=updates.get("source_type"),
+                            mtype=updates.get("type"),
                             input_timing=updates.get("input_timing"),
                             is_required=updates.get("is_required"),
                             scope=updates.get("scope"),
@@ -2367,10 +2362,9 @@ class EditMetricTypePopup(MDDialog):
             schema = [
                 {"name": "name"},
                 {"name": "description"},
-                {"name": "input_type", "options": ["int", "float", "str", "bool"]},
                 {
-                    "name": "source_type",
-                    "options": ["manual_text", "manual_enum", "manual_slider"],
+                    "name": "type",
+                    "options": ["int", "float", "str", "bool", "enum", "slider"],
                 },
                 {
                     "name": "input_timing",

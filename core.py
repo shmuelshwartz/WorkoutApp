@@ -1048,6 +1048,7 @@ def save_exercise(exercise: Exercise) -> None:
         if not mt_row:
             continue
         metric_id, default_type = mt_row
+
         cursor.execute(
             "SELECT type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
             (metric_id,),
@@ -1059,10 +1060,11 @@ def save_exercise(exercise: Exercise) -> None:
             if m.get("type") != def_type:
                 mtype = m.get("type")
             if m.get("input_timing") != def_timing:
+
                 timing = m.get("input_timing")
-            if bool(m.get("is_required")) != bool(def_req):
+            if bool(m.get("is_required")) != bool(d_req):
                 req = int(m.get("is_required", False))
-            if m.get("scope") != def_scope:
+            if m.get("scope") != d_scope:
                 scope_val = m.get("scope")
 
         cursor.execute(
@@ -1074,11 +1076,13 @@ def save_exercise(exercise: Exercise) -> None:
                 metric_id,
                 position,
                 mtype,
+
                 timing,
                 req,
                 scope_val,
                 (
                     json.dumps(m.get("values")) if m.get("values") and (m.get("type") or default_type) == "enum" else None
+
                 ),
             ),
         )
@@ -1222,6 +1226,7 @@ class PresetEditor:
             """
             SELECT name, description, type,
                    input_timing, is_required, scope, enum_values_json
+
               FROM library_metric_types
              WHERE deleted = 0 AND is_required = 1
                AND scope IN ('preset', 'session')
@@ -1323,18 +1328,18 @@ class PresetEditor:
             enum_json,
             desc,
         ) in cursor.fetchall():
-            if in_type == "int":
+            if mtype == "int":
                 try:
                     value = int(value)
                 except Exception:
                     value = 0
-            elif in_type == "float":
+            elif mtype in ("float", "slider"):
                 try:
                     value = float(value)
                 except Exception:
                     value = 0.0
             values = []
-            if source == "manual_enum" and enum_json:
+            if mtype == "enum" and enum_json:
                 try:
                     values = json.loads(enum_json)
                 except Exception:
@@ -1687,6 +1692,7 @@ class PresetEditor:
                         for (
                             mt_name,
                             m_input,
+
                             m_timing,
                             m_req,
                             m_scope,
@@ -1700,6 +1706,7 @@ class PresetEditor:
                                     ex_id,
                                     mt_name,
                                     m_input,
+
                                     m_timing,
                                     m_req,
                                     m_scope,
@@ -1744,6 +1751,7 @@ class PresetEditor:
                     for (
                         mt_name,
                         m_input,
+
                         m_timing,
                         m_req,
                         m_scope,
@@ -1757,6 +1765,7 @@ class PresetEditor:
                                 ex_id,
                                 mt_name,
                                 m_input,
+
                                 m_timing,
                                 m_req,
                                 m_scope,
