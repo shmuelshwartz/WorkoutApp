@@ -1047,22 +1047,24 @@ def save_exercise(exercise: Exercise) -> None:
         mt_row = cursor.fetchone()
         if not mt_row:
             continue
-        metric_id, m_type = mt_row
+        metric_id, def_type = mt_row
+
         cursor.execute(
             "SELECT type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
             (metric_id,),
         )
         default_row = cursor.fetchone()
-        dtype = timing = req = scope_val = None
+        m_type = timing = req = scope_val = None
         if default_row:
-            def_type, def_timing, def_req, def_scope = default_row
-            if m.get("type") != def_type:
-                dtype = m.get("type")
-            if m.get("input_timing") != def_timing:
+            d_type, d_timing, d_req, d_scope = default_row
+            if m.get("type") != d_type:
+                m_type = m.get("type")
+            if m.get("input_timing") != d_timing:
+
                 timing = m.get("input_timing")
-            if bool(m.get("is_required")) != bool(def_req):
+            if bool(m.get("is_required")) != bool(d_req):
                 req = int(m.get("is_required", False))
-            if m.get("scope") != def_scope:
+            if m.get("scope") != d_scope:
                 scope_val = m.get("scope")
 
         cursor.execute(
@@ -1073,14 +1075,14 @@ def save_exercise(exercise: Exercise) -> None:
                 ex_id,
                 metric_id,
                 position,
-                dtype,
+                m_type,
+
                 timing,
                 req,
                 scope_val,
                 (
-                    json.dumps(m.get("values"))
-                    if m.get("values") and m_type == "enum"
-                    else None
+                    json.dumps(m.get("values")) if m.get("values") and (m.get("type") or def_type) == "enum" else None
+
                 ),
             ),
         )
@@ -1222,8 +1224,8 @@ class PresetEditor:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT name, description, type, input_timing,
-                   is_required, scope, enum_values_json
+            SELECT name, description, type, input_timing, is_required, scope, enum_values_json
+
               FROM library_metric_types
              WHERE deleted = 0 AND is_required = 1
                AND scope IN ('preset', 'session')
