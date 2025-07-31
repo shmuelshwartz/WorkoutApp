@@ -224,3 +224,32 @@ def test_delete_metric_type(sample_db):
     assert all(m["name"] != "Tempo" for m in metrics)
     assert core.delete_metric_type("Tempo", db_path=sample_db, is_user_created=True) is False
 
+
+def test_delete_metric_type_in_use_by_preset_exercise(sample_db):
+    mt_id = core.add_metric_type(
+        name="Velocity",
+        mtype="float",
+        input_timing="post_set",
+        scope="set",
+        db_path=sample_db,
+    )
+
+    conn = sqlite3.connect(sample_db)
+    cur = conn.cursor()
+    bench_se_id = cur.execute(
+        "SELECT id FROM preset_section_exercises WHERE exercise_name = 'Bench Press'"
+    ).fetchone()[0]
+    cur.execute(
+        """
+        INSERT INTO preset_exercise_metrics
+            (section_exercise_id, metric_name, type, input_timing, is_required, scope, library_metric_type_id)
+        VALUES (?, 'Velocity', 'float', 'post_set', 0, 'set', ?)
+        """,
+        (bench_se_id, mt_id),
+    )
+    conn.commit()
+    conn.close()
+
+    with pytest.raises(ValueError):
+        core.delete_metric_type("Velocity", db_path=sample_db, is_user_created=True)
+
