@@ -1205,27 +1205,42 @@ class EditPresetScreen(MDScreen):
             self.ids.details_scroll.scroll_y = 1
 
     def populate_metrics(self):
-        """Populate the Metrics tab with required session metrics."""
+        """Populate the Metrics tab with session-scoped metrics."""
         rv = self.ids.get("session_metric_list")
         if not rv:
             return
 
-        metrics = [
-            m
-            for m in core.get_all_metric_types()
-            if m.get("scope") == "session" and m.get("is_required")
-        ]
+        app = MDApp.get_running_app()
+        metrics = []
+        if app and app.preset_editor:
+            metrics = [
+                m
+                for m in app.preset_editor.preset_metrics
+                if m.get("scope") == "session"
+            ]
+
+        all_defs = {
+            m["name"]: m
+            for m in core.get_all_metric_types(include_user_created=True)
+        }
+
         rv.data = [
             {
                 "name": m["name"],
                 "text": m["name"],
-                "is_user_created": m.get("is_user_created", False),
+                "is_user_created": all_defs.get(m["name"], {}).get(
+                    "is_user_created", False
+                ),
             }
             for m in metrics
         ]
 
     def open_add_preset_metric_popup(self):
         popup = AddPresetMetricPopup(self)
+        popup.open()
+
+    def open_add_session_metric_popup(self):
+        popup = AddSessionMetricPopup(self)
         popup.open()
 
     def save_preset(self):
@@ -1860,6 +1875,53 @@ class AddPresetMetricPopup(MDDialog):
             app.preset_editor.add_metric(name)
         self.dismiss()
         self.screen.populate_details()
+        self.screen.update_save_enabled()
+
+
+class AddSessionMetricPopup(MDDialog):
+    """Popup for adding session-level metrics."""
+
+    def __init__(self, screen: "EditPresetScreen", **kwargs):
+        self.screen = screen
+        content, buttons = self._build_widgets()
+        super().__init__(
+            title="Select Metric",
+            type="custom",
+            content_cls=content,
+            buttons=buttons,
+            **kwargs,
+        )
+
+    def _build_widgets(self):
+        app = MDApp.get_running_app()
+        existing = set()
+        if app and app.preset_editor:
+            existing = {m.get("name") for m in app.preset_editor.preset_metrics}
+        metrics = [
+            m
+            for m in core.get_all_metric_types()
+            if m.get("scope") == "session" and m.get("name") not in existing
+        ]
+
+        list_view = MDList()
+        for m in metrics:
+            item = OneLineListItem(text=m["name"])
+            item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
+            list_view.add_widget(item)
+
+        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        scroll.add_widget(list_view)
+
+        cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
+        buttons = [cancel_btn]
+        return scroll, buttons
+
+    def add_metric(self, name, *args):
+        app = MDApp.get_running_app()
+        if app and app.preset_editor:
+            app.preset_editor.add_metric(name)
+        self.dismiss()
+        self.screen.populate_metrics()
         self.screen.update_save_enabled()
 
 
