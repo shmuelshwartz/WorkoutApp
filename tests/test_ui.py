@@ -19,6 +19,7 @@ if kivy_available:
     import core
 
     from main import (
+        RestScreen,
         MetricInputScreen,
         WorkoutActiveScreen,
         AddMetricPopup,
@@ -29,7 +30,6 @@ if kivy_available:
         PresetsScreen,
         EditPresetScreen,
     )
-    from ui.screens.rest_screen import RestScreen
     import time
 
     class _DummyApp:
