@@ -140,3 +140,38 @@ After successful migration:
 | 🧪 Verify  | Match row counts, print debug logs            |
 | 🧼 Swap    | Replace old DB only after success             |
 | 🧯 On Error| Abort cleanly, keep .bak for recovery         |
+
+---
+
+## 👀 Additional Best Practices
+
+- Always test `workout_new.db` with the app before replacing the live DB.
+- Log every migration phase and any unexpected findings.
+- For major changes, consider adding a "dry run" mode in scripts.
+- Name migration scripts with an incrementing number and a short description, e.g., `003_add_duration_column.py`.
+- If you hit an error, restore the backup:  
+  `cp backups/workout_<EPOCH>.db.bak workout.db`
+- Never modify `workout.db` except via reviewed migration scripts.
+- Never ignore foreign key violations or silent errors.
+
+---
+
+## 📝 Example Minimal Migration Script
+
+```python
+import shutil
+import sqlite3
+
+# Step 1: Backup
+shutil.copyfile('workout.db', 'backups/workout_1699320031.db.bak')
+shutil.copyfile('workout.db', 'workout_new.db')
+
+# Step 2: Connect and test schema change (example: add a column)
+conn = sqlite3.connect('workout_new.db')
+conn.execute('PRAGMA foreign_keys = OFF;')
+conn.execute('ALTER TABLE library_exercises ADD COLUMN new_col TEXT;')
+conn.commit()
+conn.close()
+
+print("Migration completed. Check logs and test the new DB before swapping.")
+```
