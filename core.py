@@ -48,14 +48,14 @@ def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
     """Load workout presets from the SQLite database into WORKOUT_PRESETS."""
     global WORKOUT_PRESETS
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT id, name FROM preset_presets WHERE deleted = 0 ORDER BY id"
-    )
-    presets = []
-    for preset_id, preset_name in cursor.fetchall():
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
         cursor.execute(
+            "SELECT id, name FROM preset_presets WHERE deleted = 0 ORDER BY id"
+        )
+        presets = []
+        for preset_id, preset_name in cursor.fetchall():
+            cursor.execute(
             """
             SELECT se.exercise_name, se.number_of_sets, se.rest_time
             FROM preset_preset_sections s
@@ -63,14 +63,14 @@ def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
             WHERE s.preset_id = ? AND s.deleted = 0 AND se.deleted = 0
             ORDER BY s.position, se.position
             """,
-            (preset_id,),
-        )
-        exercises = [
-            {"name": row[0], "sets": row[1], "rest": row[2]}
-            for row in cursor.fetchall()
-        ]
-        presets.append({"name": preset_name, "exercises": exercises})
-    conn.close()
+                (preset_id,),
+            )
+            exercises = [
+                {"name": row[0], "sets": row[1], "rest": row[2]}
+                for row in cursor.fetchall()
+            ]
+            presets.append({"name": preset_name, "exercises": exercises})
+
     WORKOUT_PRESETS = presets
     return presets
 
@@ -86,21 +86,20 @@ def get_all_exercises(
     ``(name, is_user_created)`` tuples instead of just names.
     """
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    if include_user_created:
-        cursor.execute(
-            "SELECT name, is_user_created FROM library_exercises WHERE deleted = 0 ORDER BY is_user_created, name"
-        )
-        rows = cursor.fetchall()
-        exercises = [(name, bool(flag)) for name, flag in rows]
-    else:
-        cursor.execute(
-            "SELECT name FROM library_exercises WHERE deleted = 0 ORDER BY name"
-        )
-        exercises = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return exercises
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        if include_user_created:
+            cursor.execute(
+                "SELECT name, is_user_created FROM library_exercises WHERE deleted = 0 ORDER BY is_user_created, name"
+            )
+            rows = cursor.fetchall()
+            exercises = [(name, bool(flag)) for name, flag in rows]
+        else:
+            cursor.execute(
+                "SELECT name FROM library_exercises WHERE deleted = 0 ORDER BY name"
+            )
+            exercises = [row[0] for row in cursor.fetchall()]
+        return exercises
 
 
 def get_exercise_details(
@@ -117,31 +116,30 @@ def get_exercise_details(
     Returns ``None`` if the exercise does not exist.
     """
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    if is_user_created is None:
-        cursor.execute(
-            "SELECT name, description, is_user_created"
-            " FROM library_exercises WHERE name = ? AND deleted = 0"
-            " ORDER BY is_user_created DESC LIMIT 1",
-            (exercise_name,),
-        )
-    else:
-        cursor.execute(
-            "SELECT name, description, is_user_created"
-            " FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
-            (exercise_name, int(is_user_created)),
-        )
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        return None
-    name, description, user_flag = row
-    return {
-        "name": name,
-        "description": description or "",
-        "is_user_created": bool(user_flag),
-    }
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        if is_user_created is None:
+            cursor.execute(
+                "SELECT name, description, is_user_created"
+                " FROM library_exercises WHERE name = ? AND deleted = 0"
+                " ORDER BY is_user_created DESC LIMIT 1",
+                (exercise_name,),
+            )
+        else:
+            cursor.execute(
+                "SELECT name, description, is_user_created"
+                " FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
+                (exercise_name, int(is_user_created)),
+            )
+        row = cursor.fetchone()
+        if not row:
+            return None
+        name, description, user_flag = row
+        return {
+            "name": name,
+            "description": description or "",
+            "is_user_created": bool(user_flag),
+        }
 
 
 def get_metrics_for_exercise(
@@ -156,26 +154,25 @@ def get_metrics_for_exercise(
     keys. ``values`` will contain any allowed values for ``enum`` metrics.
     """
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
 
-    if is_user_created is None:
-        cursor.execute(
-            "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
-            (exercise_name,),
-        )
-    else:
-        cursor.execute(
-            "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
-            (exercise_name, int(is_user_created)),
-        )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        return []
-    exercise_id = row[0]
+        if is_user_created is None:
+            cursor.execute(
+                "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
+                (exercise_name,),
+            )
+        else:
+            cursor.execute(
+                "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
+                (exercise_name, int(is_user_created)),
+            )
+        row = cursor.fetchone()
+        if not row:
+            return []
+        exercise_id = row[0]
 
-    cursor.execute(
+        cursor.execute(
         """
         SELECT mt.id,
                mt.name,
@@ -190,11 +187,11 @@ def get_metrics_for_exercise(
         WHERE em.exercise_id = ? AND em.deleted = 0 AND mt.deleted = 0
         ORDER BY em.id
         """,
-        (exercise_id,),
-    )
+            (exercise_id,),
+        )
 
-    metrics = []
-    for (
+        metrics = []
+        for (
         metric_id,
         name,
         mtype,
@@ -203,14 +200,14 @@ def get_metrics_for_exercise(
         scope,
         enum_json,
         description,
-    ) in cursor.fetchall():
-        values = []
-        if mtype == "enum" and enum_json:
-            try:
-                values = json.loads(enum_json)
-            except Exception:
-                values = []
-        metrics.append(
+        ) in cursor.fetchall():
+            values = []
+            if mtype == "enum" and enum_json:
+                try:
+                    values = json.loads(enum_json)
+                except Exception:
+                    values = []
+            metrics.append(
             {
                 "name": name,
                 "type": mtype,
@@ -220,11 +217,11 @@ def get_metrics_for_exercise(
                 "description": description,
                 "values": values,
             }
-        )
+            )
 
-    # Apply overrides for a specific preset if requested
-    if preset_name:
-        cursor.execute(
+        # Apply overrides for a specific preset if requested
+        if preset_name:
+            cursor.execute(
             """
             SELECT sem.metric_name, sem.input_timing, sem.is_required, sem.scope
             FROM preset_exercise_metrics sem
@@ -234,22 +231,21 @@ def get_metrics_for_exercise(
             WHERE p.name = ? AND se.exercise_name = ?
               AND sem.deleted = 0 AND se.deleted = 0 AND s.deleted = 0 AND p.deleted = 0
             """,
-            (preset_name, exercise_name),
-        )
-        overrides = {
-            name: {
-                "input_timing": input_timing,
-                "is_required": bool(is_required),
-                "scope": scope,
+                (preset_name, exercise_name),
+            )
+            overrides = {
+                name: {
+                    "input_timing": input_timing,
+                    "is_required": bool(is_required),
+                    "scope": scope,
+                }
+                for name, input_timing, is_required, scope in cursor.fetchall()
             }
-            for name, input_timing, is_required, scope in cursor.fetchall()
-        }
-        for m in metrics:
-            if m["name"] in overrides:
-                m.update(overrides[m["name"]])
+            for m in metrics:
+                if m["name"] in overrides:
+                    m.update(overrides[m["name"]])
 
-    conn.close()
-    return metrics
+        return metrics
 
 
 def get_all_metric_types(
@@ -263,73 +259,72 @@ def get_all_metric_types(
     ``is_user_created`` flag.
     """
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    if include_user_created:
-        cursor.execute(
-            """
-            SELECT name, type, input_timing,
-                   is_required, scope, description, is_user_created,
-                   enum_values_json
-            FROM library_metric_types
-            WHERE deleted = 0
-            ORDER BY id
-            """
-        )
-        metric_types = [
-            {
-                "name": name,
-                "type": mtype,
-                "input_timing": input_timing,
-                "is_required": bool(is_required),
-                "scope": scope,
-                "description": description,
-                "is_user_created": bool(flag),
-                "enum_values_json": enum_json,
-            }
-            for (
-                name,
-                mtype,
-                input_timing,
-                is_required,
-                scope,
-                description,
-                flag,
-                enum_json,
-            ) in cursor.fetchall()
-        ]
-    else:
-        cursor.execute(
-            """
-            SELECT name, type, input_timing,
-                   is_required, scope, description, enum_values_json
-            FROM library_metric_types
-            WHERE deleted = 0
-            ORDER BY id
-            """
-        )
-        metric_types = [
-            {
-                "name": name,
-                "type": mtype,
-                "input_timing": input_timing,
-                "is_required": bool(is_required),
-                "scope": scope,
-                "description": description,
-                "enum_values_json": enum_json,
-            }
-            for (
-                name,
-                mtype,
-                input_timing,
-                is_required,
-                scope,
-                description,
-                enum_json,
-            ) in cursor.fetchall()
-        ]
-    conn.close()
-    return metric_types
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        if include_user_created:
+            cursor.execute(
+                """
+                SELECT name, type, input_timing,
+                       is_required, scope, description, is_user_created,
+                       enum_values_json
+                FROM library_metric_types
+                WHERE deleted = 0
+                ORDER BY id
+                """
+            )
+            metric_types = [
+                {
+                    "name": name,
+                    "type": mtype,
+                    "input_timing": input_timing,
+                    "is_required": bool(is_required),
+                    "scope": scope,
+                    "description": description,
+                    "is_user_created": bool(flag),
+                    "enum_values_json": enum_json,
+                }
+                for (
+                    name,
+                    mtype,
+                    input_timing,
+                    is_required,
+                    scope,
+                    description,
+                    flag,
+                    enum_json,
+                ) in cursor.fetchall()
+            ]
+        else:
+            cursor.execute(
+                """
+                SELECT name, type, input_timing,
+                       is_required, scope, description, enum_values_json
+                FROM library_metric_types
+                WHERE deleted = 0
+                ORDER BY id
+                """
+            )
+            metric_types = [
+                {
+                    "name": name,
+                    "type": mtype,
+                    "input_timing": input_timing,
+                    "is_required": bool(is_required),
+                    "scope": scope,
+                    "description": description,
+                    "enum_values_json": enum_json,
+                }
+                for (
+                    name,
+                    mtype,
+                    input_timing,
+                    is_required,
+                    scope,
+                    description,
+                    enum_json,
+                ) in cursor.fetchall()
+            ]
+        return metric_types
 
 
 def get_metric_type_schema(
@@ -342,45 +337,44 @@ def get_metric_type_schema(
     constraint enumerating them.
     """
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='library_metric_types'"
-    )
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        return []
-
-    create_sql = row[0]
-    fields = []
-    for line in create_sql.splitlines():
-        line = line.strip().lstrip(",").rstrip(",").strip()
-        if (
-            not line
-            or line.startswith("CREATE TABLE")
-            or line.startswith("PRIMARY KEY")
-            or line.startswith("'")
-        ):
-            continue
-        m = re.match(r'"?(\w+)"?', line)
-        if not m:
-            continue
-        name = m.group(1)
-        if name in {"id", "is_user_created", "deleted"}:
-            continue
-        fields.append({"name": name})
-
-    for field in fields:
-        chk = re.search(
-            rf'{field["name"]}[^,]*CHECK\(.*?{field["name"]}.*?IN \(([^)]*)\)\)',
-            create_sql,
-            re.DOTALL,
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='library_metric_types'"
         )
-        if chk:
-            opts = [opt.strip().strip("'\"") for opt in chk.group(1).split(",")]
-            field["options"] = opts
-    return fields
+        row = cursor.fetchone()
+        if not row:
+            return []
+
+        create_sql = row[0]
+        fields = []
+        for line in create_sql.splitlines():
+            line = line.strip().lstrip(",").rstrip(",").strip()
+            if (
+                not line
+                or line.startswith("CREATE TABLE")
+                or line.startswith("PRIMARY KEY")
+                or line.startswith("'")
+            ):
+                continue
+            m = re.match(r'"?(\w+)"?', line)
+            if not m:
+                continue
+            name = m.group(1)
+            if name in {"id", "is_user_created", "deleted"}:
+                continue
+            fields.append({"name": name})
+
+        for field in fields:
+            chk = re.search(
+                rf'{field["name"]}[^,]*CHECK\(.*?{field["name"]}.*?IN \(([^)]*)\)\)',
+                create_sql,
+                re.DOTALL,
+            )
+            if chk:
+                opts = [opt.strip().strip("'\"") for opt in chk.group(1).split(",")]
+                field["options"] = opts
+        return fields
 
 
 def is_metric_type_user_created(
@@ -389,15 +383,14 @@ def is_metric_type_user_created(
 ) -> bool:
     """Return ``True`` if ``metric_type_name`` is marked as user created."""
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT is_user_created FROM library_metric_types WHERE name = ?",
-        (metric_type_name,),
-    )
-    row = cursor.fetchone()
-    conn.close()
-    return bool(row[0]) if row else False
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT is_user_created FROM library_metric_types WHERE name = ?",
+            (metric_type_name,),
+        )
+        row = cursor.fetchone()
+        return bool(row[0]) if row else False
 
 
 def add_metric_type(
@@ -412,30 +405,29 @@ def add_metric_type(
 ) -> int:
     """Insert a new metric type and return its ID."""
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        INSERT INTO library_metric_types
-            (name, type, input_timing,
-             is_required, scope, description, is_user_created,
-             enum_values_json)
-        VALUES (?, ?, ?, ?, ?, ?, 1, ?)
-        """,
-        (
-            name,
-            mtype,
-            input_timing,
-            int(is_required),
-            scope,
-            description,
-            json.dumps(enum_values) if enum_values is not None else None,
-        ),
-    )
-    metric_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    return metric_id
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO library_metric_types
+                (name, type, input_timing,
+                 is_required, scope, description, is_user_created,
+                 enum_values_json)
+            VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+            """,
+            (
+                name,
+                mtype,
+                input_timing,
+                int(is_required),
+                scope,
+                description,
+                json.dumps(enum_values) if enum_values is not None else None,
+            ),
+        )
+        metric_id = cursor.lastrowid
+        conn.commit()
+        return metric_id
 
 
 def add_metric_to_exercise(
@@ -445,39 +437,36 @@ def add_metric_to_exercise(
 ) -> None:
     """Associate an existing metric type with an exercise."""
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0",
-        (exercise_name,),
-    )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError(f"Exercise '{exercise_name}' not found")
-    exercise_id = row[0]
-
-    cursor.execute(
-        "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0",
-        (metric_type_name,),
-    )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError(f"Metric type '{metric_type_name}' not found")
-    metric_id = row[0]
-
-    cursor.execute(
-        "SELECT 1 FROM library_exercise_metrics WHERE exercise_id = ? AND metric_type_id = ? AND deleted = 0",
-        (exercise_id, metric_id),
-    )
-    if cursor.fetchone() is None:
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id) VALUES (?, ?)",
+            "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0",
+            (exercise_name,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Exercise '{exercise_name}' not found")
+        exercise_id = row[0]
+
+        cursor.execute(
+            "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0",
+            (metric_type_name,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Metric type '{metric_type_name}' not found")
+        metric_id = row[0]
+
+        cursor.execute(
+            "SELECT 1 FROM library_exercise_metrics WHERE exercise_id = ? AND metric_type_id = ? AND deleted = 0",
             (exercise_id, metric_id),
         )
-        conn.commit()
-    conn.close()
+        if cursor.fetchone() is None:
+            cursor.execute(
+                "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id) VALUES (?, ?)",
+                (exercise_id, metric_id),
+            )
+            conn.commit()
 
 
 def remove_metric_from_exercise(
@@ -487,34 +476,31 @@ def remove_metric_from_exercise(
 ) -> None:
     """Remove a metric association from an exercise."""
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0",
-        (exercise_name,),
-    )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError(f"Exercise '{exercise_name}' not found")
-    exercise_id = row[0]
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0",
+            (exercise_name,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Exercise '{exercise_name}' not found")
+        exercise_id = row[0]
 
-    cursor.execute(
-        "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0",
-        (metric_type_name,),
-    )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError(f"Metric type '{metric_type_name}' not found")
-    metric_id = row[0]
+        cursor.execute(
+            "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0",
+            (metric_type_name,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Metric type '{metric_type_name}' not found")
+        metric_id = row[0]
 
-    cursor.execute(
-        "UPDATE library_exercise_metrics SET deleted = 1 WHERE exercise_id = ? AND metric_type_id = ?",
-        (exercise_id, metric_id),
-    )
-    conn.commit()
-    conn.close()
+        cursor.execute(
+            "UPDATE library_exercise_metrics SET deleted = 1 WHERE exercise_id = ? AND metric_type_id = ?",
+            (exercise_id, metric_id),
+        )
+        conn.commit()
 
 
 def update_metric_type(
@@ -531,51 +517,51 @@ def update_metric_type(
 ) -> None:
     """Update fields of a metric type identified by ``metric_type_name``."""
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    if is_user_created is None:
-        cursor.execute(
-            "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
-            (metric_type_name,),
-        )
-    else:
-        cursor.execute(
-            "SELECT id FROM library_metric_types WHERE name = ? AND is_user_created = ? AND deleted = 0",
-            (metric_type_name, int(is_user_created)),
-        )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError(f"Metric type '{metric_type_name}' not found")
-    metric_id = row[0]
-    updates = []
-    params: list = []
-    if mtype is not None:
-        updates.append("type = ?")
-        params.append(mtype)
-    if input_timing is not None:
-        updates.append("input_timing = ?")
-        params.append(input_timing)
-    if is_required is not None:
-        updates.append("is_required = ?")
-        params.append(int(is_required))
-    if scope is not None:
-        updates.append("scope = ?")
-        params.append(scope)
-    if description is not None:
-        updates.append("description = ?")
-        params.append(description)
-    if enum_values is not None:
-        updates.append("enum_values_json = ?")
-        params.append(json.dumps(enum_values))
-    if updates:
-        params.append(metric_id)
-        cursor.execute(
-            f"UPDATE library_metric_types SET {', '.join(updates)} WHERE id = ?",
-            params,
-        )
-        conn.commit()
-    conn.close()
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        if is_user_created is None:
+            cursor.execute(
+                "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
+                (metric_type_name,),
+            )
+        else:
+            cursor.execute(
+                "SELECT id FROM library_metric_types WHERE name = ? AND is_user_created = ? AND deleted = 0",
+                (metric_type_name, int(is_user_created)),
+            )
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Metric type '{metric_type_name}' not found")
+        metric_id = row[0]
+        updates = []
+        params: list = []
+        if mtype is not None:
+            updates.append("type = ?")
+            params.append(mtype)
+        if input_timing is not None:
+            updates.append("input_timing = ?")
+            params.append(input_timing)
+        if is_required is not None:
+            updates.append("is_required = ?")
+            params.append(int(is_required))
+        if scope is not None:
+            updates.append("scope = ?")
+            params.append(scope)
+        if description is not None:
+            updates.append("description = ?")
+            params.append(description)
+        if enum_values is not None:
+            updates.append("enum_values_json = ?")
+            params.append(json.dumps(enum_values))
+        if updates:
+            params.append(metric_id)
+            cursor.execute(
+                f"UPDATE library_metric_types SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            conn.commit()
+
+
 
 
 def set_section_exercise_metric_override(
@@ -592,86 +578,80 @@ def set_section_exercise_metric_override(
 ) -> None:
     """Apply an override for ``metric_type_name`` for a specific exercise in a preset."""
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT id FROM preset_presets WHERE name = ? AND deleted = 0", (preset_name,)
-    )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError(f"Preset '{preset_name}' not found")
-    preset_id = row[0]
-
-    cursor.execute(
-        "SELECT id FROM preset_preset_sections WHERE preset_id = ? AND deleted = 0 ORDER BY position",
-        (preset_id,),
-    )
-    sections = cursor.fetchall()
-    if section_index < 0 or section_index >= len(sections):
-        conn.close()
-        raise IndexError("Section index out of range")
-    section_id = sections[section_index][0]
-
-    cursor.execute(
-        "SELECT id, type FROM library_metric_types WHERE name = ? AND deleted = 0",
-        (metric_type_name,),
-    )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError(f"Metric '{metric_type_name}' not found")
-    metric_type_id, def_type = row
-
-    cursor.execute(
-        """SELECT id FROM preset_section_exercises WHERE section_id = ? AND exercise_name = ? AND deleted = 0 ORDER BY position LIMIT 1""",
-        (section_id, exercise_name),
-    )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError("Exercise not part of section")
-    se_id = row[0]
-
-    cursor.execute(
-        "SELECT id FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ? AND deleted = 0",
-        (se_id, metric_type_name),
-    )
-    row = cursor.fetchone()
-    if row:
-        updates = ["input_timing = ?", "is_required = ?", "scope = ?"]
-        params = [input_timing, int(is_required), scope]
-        if enum_values is not None:
-            updates.append("enum_values_json = ?")
-            params.append(json.dumps(enum_values))
-        params.append(row[0])
         cursor.execute(
-            f"UPDATE preset_exercise_metrics SET {', '.join(updates)} WHERE id = ?",
-            params,
+            "SELECT id FROM preset_presets WHERE name = ? AND deleted = 0",
+            (preset_name,),
         )
-    else:
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Preset '{preset_name}' not found")
+        preset_id = row[0]
+
         cursor.execute(
-            """
-            INSERT INTO preset_exercise_metrics
-                (section_exercise_id, metric_name, type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                se_id,
-                metric_type_name,
-                def_type,
-                input_timing,
-                int(is_required),
-                scope,
-                json.dumps(enum_values) if enum_values is not None else None,
-                metric_type_id,
-            ),
+            "SELECT id FROM preset_preset_sections WHERE preset_id = ? AND deleted = 0 ORDER BY position",
+            (preset_id,),
         )
-    conn.commit()
-    conn.close()
+        sections = cursor.fetchall()
+        if section_index < 0 or section_index >= len(sections):
+            raise IndexError("Section index out of range")
+        section_id = sections[section_index][0]
 
+        cursor.execute(
+            "SELECT id, type FROM library_metric_types WHERE name = ? AND deleted = 0",
+            (metric_type_name,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Metric '{metric_type_name}' not found")
+        metric_type_id, def_type = row
 
+        cursor.execute(
+            """SELECT id FROM preset_section_exercises WHERE section_id = ? AND exercise_name = ? AND deleted = 0 ORDER BY position LIMIT 1""",
+            (section_id, exercise_name),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError("Exercise not part of section")
+        se_id = row[0]
+
+        cursor.execute(
+            "SELECT id FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ? AND deleted = 0",
+            (se_id, metric_type_name),
+        )
+        row = cursor.fetchone()
+        if row:
+            updates = ["input_timing = ?", "is_required = ?", "scope = ?"]
+            params = [input_timing, int(is_required), scope]
+            if enum_values is not None:
+                updates.append("enum_values_json = ?")
+                params.append(json.dumps(enum_values))
+            params.append(row[0])
+            cursor.execute(
+                f"UPDATE preset_exercise_metrics SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO preset_exercise_metrics
+                    (section_exercise_id, metric_name, type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    se_id,
+                    metric_type_name,
+                    def_type,
+                    input_timing,
+                    int(is_required),
+                    scope,
+                    json.dumps(enum_values) if enum_values is not None else None,
+                    metric_type_id,
+                ),
+            )
+        conn.commit()
 def set_exercise_metric_override(
     exercise_name: str,
     metric_type_name: str,
@@ -691,84 +671,80 @@ def set_exercise_metric_override(
     chosen when it exists.
     """
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
 
-    if is_user_created is None:
+        if is_user_created is None:
+            cursor.execute(
+                "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
+                (exercise_name,),
+            )
+        else:
+            cursor.execute(
+                "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
+                (exercise_name, int(is_user_created)),
+            )
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Exercise '{exercise_name}' not found")
+        exercise_id = row[0]
+
         cursor.execute(
-            "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
-            (exercise_name,),
+            "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0",
+            (metric_type_name,),
         )
-    else:
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Metric '{metric_type_name}' not found")
+        metric_type_id = row[0]
+
         cursor.execute(
-            "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
-            (exercise_name, int(is_user_created)),
+            "SELECT id FROM library_exercise_metrics WHERE exercise_id = ? AND metric_type_id = ? AND deleted = 0",
+            (exercise_id, metric_type_id),
         )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError(f"Exercise '{exercise_name}' not found")
-    exercise_id = row[0]
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError("Exercise is not associated with the metric")
+        em_id = row[0]
 
-    cursor.execute(
-        "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0",
-        (metric_type_name,),
-    )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError(f"Metric '{metric_type_name}' not found")
-    metric_type_id = row[0]
-
-    cursor.execute(
-        "SELECT id FROM library_exercise_metrics WHERE exercise_id = ? AND metric_type_id = ? AND deleted = 0",
-        (exercise_id, metric_type_id),
-    )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        raise ValueError("Exercise is not associated with the metric")
-    em_id = row[0]
-
-    updates = []
-    params: list = []
-    if mtype is not None:
-        updates.append("type = ?")
-        params.append(mtype)
-    if input_timing is not None:
-        updates.append("input_timing = ?")
-        params.append(input_timing)
-    if is_required is not None:
-        updates.append("is_required = ?")
-        params.append(int(is_required))
-    if scope is not None:
-        updates.append("scope = ?")
-        params.append(scope)
-    if enum_values is not None:
-        updates.append("enum_values_json = ?")
-        params.append(json.dumps(enum_values))
-
-    if not updates:
-        cursor.execute(
-            """
-            UPDATE library_exercise_metrics
-               SET type = NULL,
-                   input_timing = NULL,
-                   is_required = NULL,
-                   scope = NULL,
-                   enum_values_json = NULL
-             WHERE id = ?
-            """,
-            (em_id,),
-        )
-    else:
-        params.append(em_id)
-        cursor.execute(
-            f"UPDATE library_exercise_metrics SET {', '.join(updates)} WHERE id = ?",
-            params,
-        )
-    conn.commit()
-    conn.close()
+        updates = []
+        params: list = []
+        if mtype is not None:
+            updates.append("type = ?")
+            params.append(mtype)
+        if input_timing is not None:
+            updates.append("input_timing = ?")
+            params.append(input_timing)
+        if is_required is not None:
+            updates.append("is_required = ?")
+            params.append(int(is_required))
+        if scope is not None:
+            updates.append("scope = ?")
+            params.append(scope)
+        if enum_values is not None:
+            updates.append("enum_values_json = ?")
+            params.append(json.dumps(enum_values))
+    
+        if not updates:
+            cursor.execute(
+                """
+                UPDATE library_exercise_metrics
+                   SET type = NULL,
+                       input_timing = NULL,
+                       is_required = NULL,
+                       scope = NULL,
+                       enum_values_json = NULL
+                 WHERE id = ?
+                """,
+                (em_id,),
+            )
+        else:
+            params.append(em_id)
+            cursor.execute(
+                f"UPDATE library_exercise_metrics SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            conn.commit()
 
 
 class WorkoutSession:
@@ -1014,81 +990,80 @@ def save_exercise(exercise: Exercise) -> None:
     """Persist ``exercise`` to the database as a user-defined copy."""
 
     db_path = exercise.db_path
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = 1 AND deleted = 0",
-        (exercise.name,),
-    )
-    row = cursor.fetchone()
-    if row:
-        ex_id = row[0]
         cursor.execute(
-            "UPDATE library_exercises SET description = ? WHERE id = ?",
-            (exercise.description, ex_id),
+            "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = 1 AND deleted = 0",
+            (exercise.name,),
         )
-        cursor.execute(
-            "UPDATE library_exercise_metrics SET deleted = 1 WHERE exercise_id = ?",
-            (ex_id,),
-        )
-    else:
-        cursor.execute(
-            "INSERT INTO library_exercises (name, description, is_user_created) VALUES (?, ?, 1)",
-            (exercise.name, exercise.description),
-        )
-        ex_id = cursor.lastrowid
-
-    for position, m in enumerate(exercise.metrics):
-        cursor.execute(
-            "SELECT id, type FROM library_metric_types WHERE name = ?",
-            (m["name"],),
-        )
-        mt_row = cursor.fetchone()
-        if not mt_row:
-            continue
-        metric_id, default_type = mt_row
-
-        cursor.execute(
-            "SELECT type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
-            (metric_id,),
-        )
-        default_row = cursor.fetchone()
-        mtype = timing = req = scope_val = None
-        if default_row:
-            def_type, def_timing, def_req, def_scope = default_row
-            if m.get("type") != def_type:
-                mtype = m.get("type")
-            if m.get("input_timing") != def_timing:
-
-                timing = m.get("input_timing")
-            if bool(m.get("is_required")) != bool(def_req):
-                req = int(m.get("is_required", False))
-            if m.get("scope") != def_scope:
-                scope_val = m.get("scope")
-
-        cursor.execute(
-            """INSERT INTO library_exercise_metrics
-                (exercise_id, metric_type_id, position, type, input_timing, is_required, scope, enum_values_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                ex_id,
-                metric_id,
-                position,
-                mtype,
-
-                timing,
-                req,
-                scope_val,
+        row = cursor.fetchone()
+        if row:
+            ex_id = row[0]
+            cursor.execute(
+                "UPDATE library_exercises SET description = ? WHERE id = ?",
+                (exercise.description, ex_id),
+            )
+            cursor.execute(
+                "UPDATE library_exercise_metrics SET deleted = 1 WHERE exercise_id = ?",
+                (ex_id,),
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO library_exercises (name, description, is_user_created) VALUES (?, ?, 1)",
+                (exercise.name, exercise.description),
+            )
+            ex_id = cursor.lastrowid
+    
+        for position, m in enumerate(exercise.metrics):
+            cursor.execute(
+                "SELECT id, type FROM library_metric_types WHERE name = ?",
+                (m["name"],),
+            )
+            mt_row = cursor.fetchone()
+            if not mt_row:
+                continue
+            metric_id, default_type = mt_row
+    
+            cursor.execute(
+                "SELECT type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
+                (metric_id,),
+            )
+            default_row = cursor.fetchone()
+            mtype = timing = req = scope_val = None
+            if default_row:
+                def_type, def_timing, def_req, def_scope = default_row
+                if m.get("type") != def_type:
+                    mtype = m.get("type")
+                if m.get("input_timing") != def_timing:
+    
+                    timing = m.get("input_timing")
+                if bool(m.get("is_required")) != bool(def_req):
+                    req = int(m.get("is_required", False))
+                if m.get("scope") != def_scope:
+                    scope_val = m.get("scope")
+    
+            cursor.execute(
+                """INSERT INTO library_exercise_metrics
+                    (exercise_id, metric_type_id, position, type, input_timing, is_required, scope, enum_values_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    json.dumps(m.get("values")) if m.get("values") and (m.get("type") or default_type) == "enum" else None
-
+                    ex_id,
+                    metric_id,
+                    position,
+                    mtype,
+    
+                    timing,
+                    req,
+                    scope_val,
+                    (
+                        json.dumps(m.get("values")) if m.get("values") and (m.get("type") or default_type) == "enum" else None
+    
+                    ),
                 ),
-            ),
-        )
-
-    conn.commit()
-    conn.close()
+            )
+    
+        conn.commit()
 
     exercise.is_user_created = True
     exercise.mark_saved()
@@ -1106,38 +1081,35 @@ def delete_exercise(
     function returns `True` when a row was deleted.
     """
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
-        (name, int(is_user_created)),
-    )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        return False
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
+            (name, int(is_user_created)),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return False
 
-    ex_id = row[0]
+        ex_id = row[0]
 
-    cursor.execute(
+        cursor.execute(
         "SELECT 1 FROM preset_section_exercises WHERE library_exercise_id = ? AND deleted = 0 LIMIT 1",
         (ex_id,),
-    )
-    if cursor.fetchone():
-        conn.close()
-        raise ValueError("Exercise is in use and cannot be deleted")
+        )
+        if cursor.fetchone():
+            raise ValueError("Exercise is in use and cannot be deleted")
 
-    cursor.execute(
-        "UPDATE library_exercise_metrics SET deleted = 1 WHERE exercise_id = ?",
-        (ex_id,),
-    )
-    cursor.execute(
+        cursor.execute(
+            "UPDATE library_exercise_metrics SET deleted = 1 WHERE exercise_id = ?",
+            (ex_id,),
+        )
+        cursor.execute(
         "UPDATE library_exercises SET deleted = 1 WHERE id = ?",
         (ex_id,),
-    )
-    conn.commit()
-    conn.close()
-    return True
+        )
+        conn.commit()
+        return True
 
 
 def delete_metric_type(
@@ -1153,46 +1125,40 @@ def delete_metric_type(
     raised if the metric type is still referenced by any exercise or preset.
     """
 
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT id FROM library_metric_types WHERE name = ? AND is_user_created = ? AND deleted = 0",
-        (name, int(is_user_created)),
-    )
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        return False
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id FROM library_metric_types WHERE name = ? AND is_user_created = ? AND deleted = 0",
+            (name, int(is_user_created)),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return False
 
-    mt_id = row[0]
 
-    # Check if this metric type is referenced by any exercises or presets
-    cursor.execute(
-        "SELECT 1 FROM library_exercise_metrics WHERE metric_type_id = ? AND deleted = 0 LIMIT 1",
-        (mt_id,),
-    )
-    if cursor.fetchone():
-        conn.close()
-        raise ValueError("Metric type is in use and cannot be deleted")
+        mt_id = row[0]
 
-    cursor.execute(
+        # Check if this metric type is referenced by any exercises or presets
+        cursor.execute(
+            "SELECT 1 FROM library_exercise_metrics WHERE metric_type_id = ? AND deleted = 0 LIMIT 1",
+            (mt_id,),
+        )
+        if cursor.fetchone():
+            raise ValueError("Metric type is in use and cannot be deleted")
 
-        "SELECT 1 FROM preset_preset_metrics WHERE library_metric_type_id = ? AND deleted = 0 LIMIT 1",
+        cursor.execute(
+            "SELECT 1 FROM preset_preset_metrics WHERE library_metric_type_id = ? AND deleted = 0 LIMIT 1",
+            (mt_id,),
+        )
+        if cursor.fetchone():
+            raise ValueError("Metric type is in use and cannot be deleted")
 
-        (mt_id,),
-    )
-    if cursor.fetchone():
-        conn.close()
-        raise ValueError("Metric type is in use and cannot be deleted")
-
-    cursor.execute(
-        "UPDATE library_metric_types SET deleted = 1 WHERE id = ?",
-        (mt_id,),
-    )
-    conn.commit()
-    conn.close()
-    return True
-
+        cursor.execute(
+            "UPDATE library_metric_types SET deleted = 1 WHERE id = ?",
+            (mt_id,),
+        )
+        conn.commit()
+        return True
 
 class PresetEditor:
     """Helper for creating or editing workout presets in memory."""
