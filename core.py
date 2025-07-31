@@ -1368,19 +1368,19 @@ class PresetEditor:
                     values = json.loads(enum_json)
                 except Exception:
                     values = []
-                self.preset_metrics.append(
-                    {
-                        "name": name,
-                        "input_type": in_type,
-                        "source_type": source,
-                        "input_timing": _from_db_timing(timing),
-                        "is_required": bool(req),
-                        "scope": scope,
-                        "description": desc,
-                        "values": values,
-                        "value": value,
-                    }
-                )
+            self.preset_metrics.append(
+                {
+                    "name": name,
+                    "input_type": in_type,
+                    "source_type": source,
+                    "input_timing": _from_db_timing(timing),
+                    "is_required": bool(req),
+                    "scope": scope,
+                    "description": desc,
+                    "values": values,
+                    "value": value,
+                }
+            )
 
         self._preset_id = preset_id
         self._original = self.to_dict()
