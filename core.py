@@ -1135,7 +1135,7 @@ def delete_metric_type(
         if not row:
             return False
 
-mt_id = row[0]
+        mt_id = row[0]
 
         # Check if this metric type is referenced by any exercises or presets
         cursor.execute(
