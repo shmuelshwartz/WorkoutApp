@@ -71,8 +71,6 @@ METRIC_FIELD_ORDER = [
     "is_required",
 ]
 
-# Deprecated helpers removed after migration to unified ``type`` column.
-
 
 class LoadingDialog(MDDialog):
     """Simple dialog displaying a spinner while work is performed."""
@@ -2092,8 +2090,8 @@ class EditMetricPopup(MDDialog):
                 updates[key] = widget.text
 
         if "type" in updates:
-            tval = updates.pop("type")
-            updates["type"] = tval
+            updates["type"] = updates.pop("type")
+
 
         if self.enum_values_field.parent is not None:
             text = self.enum_values_field.text.strip()

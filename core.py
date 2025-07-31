@@ -1047,19 +1047,19 @@ def save_exercise(exercise: Exercise) -> None:
         mt_row = cursor.fetchone()
         if not mt_row:
             continue
-        metric_id, def_type = mt_row
+        metric_id, default_type = mt_row
 
         cursor.execute(
             "SELECT type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
             (metric_id,),
         )
         default_row = cursor.fetchone()
-        m_type = timing = req = scope_val = None
+        mtype = timing = req = scope_val = None
         if default_row:
-            d_type, d_timing, d_req, d_scope = default_row
-            if m.get("type") != d_type:
-                m_type = m.get("type")
-            if m.get("input_timing") != d_timing:
+            def_type, def_timing, def_req, def_scope = default_row
+            if m.get("type") != def_type:
+                mtype = m.get("type")
+            if m.get("input_timing") != def_timing:
 
                 timing = m.get("input_timing")
             if bool(m.get("is_required")) != bool(d_req):
@@ -1075,13 +1075,13 @@ def save_exercise(exercise: Exercise) -> None:
                 ex_id,
                 metric_id,
                 position,
-                m_type,
+                mtype,
 
                 timing,
                 req,
                 scope_val,
                 (
-                    json.dumps(m.get("values")) if m.get("values") and (m.get("type") or def_type) == "enum" else None
+                    json.dumps(m.get("values")) if m.get("values") and (m.get("type") or default_type) == "enum" else None
 
                 ),
             ),
@@ -1224,7 +1224,8 @@ class PresetEditor:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT name, description, type, input_timing, is_required, scope, enum_values_json
+            SELECT name, description, type,
+                   input_timing, is_required, scope, enum_values_json
 
               FROM library_metric_types
              WHERE deleted = 0 AND is_required = 1
@@ -1679,8 +1680,8 @@ class PresetEditor:
                                    COALESCE(em.is_required, mt.is_required),
                                    COALESCE(em.scope, mt.scope),
                                    COALESCE(em.enum_values_json, mt.enum_values_json),
-                                   em.position,
-                                   mt.id
+                                  em.position,
+                                  mt.id
                               FROM library_exercise_metrics em
                               JOIN library_metric_types mt ON em.metric_type_id = mt.id
                              WHERE em.exercise_id = ?
@@ -1690,7 +1691,8 @@ class PresetEditor:
                         )
                         for (
                             mt_name,
-                            m_type,
+                            m_input,
+
                             m_timing,
                             m_req,
                             m_scope,
@@ -1703,7 +1705,8 @@ class PresetEditor:
                                 (
                                     ex_id,
                                     mt_name,
-                                    m_type,
+                                    m_input,
+
                                     m_timing,
                                     m_req,
                                     m_scope,
@@ -1747,7 +1750,8 @@ class PresetEditor:
                     )
                     for (
                         mt_name,
-                        m_type,
+                        m_input,
+
                         m_timing,
                         m_req,
                         m_scope,
@@ -1760,7 +1764,8 @@ class PresetEditor:
                             (
                                 ex_id,
                                 mt_name,
-                                m_type,
+                                m_input,
+
                                 m_timing,
                                 m_req,
                                 m_scope,
