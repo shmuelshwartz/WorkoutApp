@@ -1794,7 +1794,7 @@ class AddMetricPopup(MDDialog):
                 metric[key] = bool(widget.active)
             else:
                 metric[key] = widget.text
-        metric_type = metric.pop("type", mtype)
+        metric_type = metric.pop("type", metric_type)
         metric["type"] = metric_type
         if values:
             metric["values"] = values
