@@ -13,3 +13,7 @@ __all__ = [
     "PresetDetailScreen",
     "PresetsScreen",
 ]
+
+from .rest_screen import RestScreen
+
+
