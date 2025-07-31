@@ -82,7 +82,7 @@ def test_enum_values_accepts_spaces():
         exercise_obj = type("obj", (), {"metrics": []})()
 
     popup = AddMetricPopup(DummyScreen(), mode="new")
-    popup.input_widgets["input_type"].text = "str"
+    popup.input_widgets["type"].text = "str"
     filtered = popup.enum_values_field.input_filter("A B,C", False)
     assert filtered == "A B,C"
 
@@ -93,7 +93,7 @@ def test_enum_values_strip_spaces_after_comma():
         exercise_obj = type("obj", (), {"metrics": []})()
 
     popup = AddMetricPopup(DummyScreen(), mode="new")
-    popup.input_widgets["input_type"].text = "str"
+    popup.input_widgets["type"].text = "str"
     filtered = popup.enum_values_field.input_filter("A, B ,  C", False)
     assert filtered == "A,B,C"
 
@@ -125,8 +125,7 @@ def test_edit_metric_popup_has_single_enum_field():
         metrics = [
             {
                 "name": "Machine",
-                "input_type": "int",
-                "source_type": "manual_enum",
+                "type": "enum",
                 "values": ["A", "B"],
             }
         ]
@@ -167,8 +166,7 @@ def test_edit_metric_popup_no_duplicate_field():
         metrics = [
             {
                 "name": "Machine",
-                "input_type": "int",
-                "source_type": "manual_enum",
+                "type": "enum",
                 "values": ["A", "B"],
             }
         ]
@@ -473,8 +471,7 @@ def test_edit_metric_type_popup_enum_field_visibility():
         all_metrics = [
             {
                 "name": "Speed",
-                "input_type": "int",
-                "source_type": "manual_text",
+                "type": "int",
                 "is_user_created": True,
             }
         ]
@@ -499,8 +496,7 @@ def test_edit_metric_type_popup_loads_enum_values():
         all_metrics = [
             {
                 "name": "Side",
-                "input_type": "str",
-                "source_type": "manual_enum",
+                "type": "enum",
                 "is_user_created": True,
                 "enum_values_json": "[\"Left\", \"Right\", \"None\"]",
             }
@@ -583,16 +579,14 @@ def test_edit_preset_populate_details(monkeypatch):
     metrics = [
         {
             "name": "Focus",
-            "input_type": "str",
-            "source_type": "manual_text",
+            "type": "str",
             "scope": "preset",
             "enum_values_json": None,
             "input_timing": "preset",
         },
         {
             "name": "Level",
-            "input_type": "int",
-            "source_type": "manual_text",
+            "type": "int",
             "scope": "preset",
             "enum_values_json": None,
             "input_timing": "preset",
