@@ -656,8 +656,7 @@ ScreenManager:
                 Screen:
                     name: "details"
                     on_enter: root.populate_details()
-                    BoxLayout:
-                        orientation: "vertical"
+                    FloatLayout:
                         ScrollView:
                             id: details_scroll
                             do_scroll_x: False
@@ -687,6 +686,13 @@ ScreenManager:
                                     size_hint_y: None
                                     height: self.minimum_height
                                     spacing: dp(10)
+                        MDFloatingActionButton:
+                            id: add_metric_btn
+                            icon: "plus"
+                            md_bg_color: app.theme_cls.primary_color
+                            pos_hint: {"center_x": 0.5, "y": 0.02}
+                            tooltip_text: "Add Metric"
+                            on_release: root.open_add_preset_metric_popup()
 
                 Screen:
                     name: "metrics"

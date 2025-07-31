@@ -1126,48 +1126,39 @@ class EditPresetScreen(MDScreen):
 
 
         self.preset_metric_widgets = {}
-        metrics = [
-            m
-            for m in core.get_all_metric_types()
-            if m.get("input_timing") == "preset" and m.get("scope") == "preset"
-        ]
         app = MDApp.get_running_app()
-        values = {}
+        metrics = []
         if app and app.preset_editor:
-            values = {
-                m.get("name"): m.get("value")
+            metrics = [
+                m
                 for m in app.preset_editor.preset_metrics
-            }
+                if m.get("input_timing") == "preset" and m.get("scope") == "preset"
+            ]
 
         for m in metrics:
             name = m.get("name")
             input_type = m.get("input_type")
             source_type = m.get("source_type")
-            enum_json = m.get("enum_values_json")
-            enum_vals = []
-            if source_type == "manual_enum" and enum_json:
-                try:
-                    enum_vals = json.loads(enum_json)
-                except Exception:
-                    enum_vals = []
+            enum_vals = m.get("values") or []
+            value = m.get("value")
 
             row = MDBoxLayout(size_hint_y=None, height="40dp")
             row.add_widget(MDLabel(text=name, size_hint_x=0.4))
 
             if source_type == "manual_slider":
-                widget = MDSlider(min=0, max=1, value=float(values.get(name, 0)))
+                widget = MDSlider(min=0, max=1, value=float(value or 0))
             elif source_type == "manual_enum":
-                default = str(values.get(name, enum_vals[0] if enum_vals else ""))
+                default = str(value if value is not None else (enum_vals[0] if enum_vals else ""))
                 widget = Spinner(text=default, values=enum_vals)
             elif input_type == "bool":
-                widget = MDCheckbox(active=bool(values.get(name)))
+                widget = MDCheckbox(active=bool(value))
             else:
                 input_filter = None
                 if input_type == "int":
                     input_filter = "int"
                 elif input_type == "float":
                     input_filter = "float"
-                widget = MDTextField(text=str(values.get(name, "")), multiline=False, input_filter=input_filter)
+                widget = MDTextField(text=str(value if value is not None else ""), multiline=False, input_filter=input_filter)
 
             self.preset_metric_widgets[name] = widget
 
@@ -1192,11 +1183,7 @@ class EditPresetScreen(MDScreen):
                     except Exception:
                         val = 0.0
                 if app and app.preset_editor is not None:
-                    existing = [m for m in app.preset_editor.preset_metrics if m.get("name") == metric]
-                    if existing:
-                        app.preset_editor.update_metric(metric, value=val)
-                    else:
-                        app.preset_editor.add_metric(metric, value=val)
+                    app.preset_editor.update_metric(metric, value=val)
                 self.update_save_enabled()
 
             if isinstance(widget, MDTextField):
@@ -1219,6 +1206,10 @@ class EditPresetScreen(MDScreen):
     def populate_metrics(self):
         """Placeholder for future metrics tab population."""
         pass
+
+    def open_add_preset_metric_popup(self):
+        popup = AddPresetMetricPopup(self)
+        popup.open()
 
     def save_preset(self):
         app = MDApp.get_running_app()
@@ -1810,6 +1801,49 @@ class AddMetricPopup(MDDialog):
         self.screen.populate()
         self.screen.save_enabled = self.screen.exercise_obj.is_modified()
         self.show_metric_list()
+
+
+class AddPresetMetricPopup(MDDialog):
+    """Popup for adding preset-level metrics."""
+
+    def __init__(self, screen: "EditPresetScreen", **kwargs):
+        self.screen = screen
+        content, buttons = self._build_widgets()
+        super().__init__(
+            title="Select Metric", type="custom", content_cls=content, buttons=buttons, **kwargs
+        )
+
+    def _build_widgets(self):
+        app = MDApp.get_running_app()
+        existing = set()
+        if app and app.preset_editor:
+            existing = {m.get("name") for m in app.preset_editor.preset_metrics}
+        metrics = [
+            m
+            for m in core.get_all_metric_types()
+            if m.get("scope") == "preset" and m.get("name") not in existing
+        ]
+
+        list_view = MDList()
+        for m in metrics:
+            item = OneLineListItem(text=m["name"])
+            item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
+            list_view.add_widget(item)
+
+        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        scroll.add_widget(list_view)
+
+        cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
+        buttons = [cancel_btn]
+        return scroll, buttons
+
+    def add_metric(self, name, *args):
+        app = MDApp.get_running_app()
+        if app and app.preset_editor:
+            app.preset_editor.add_metric(name)
+        self.dismiss()
+        self.screen.populate_details()
+        self.screen.update_save_enabled()
 
 
 class EditMetricPopup(MDDialog):

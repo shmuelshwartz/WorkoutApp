@@ -223,6 +223,37 @@ def test_add_metric_popup_filters_scope(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_add_preset_metric_popup_filters_scope(monkeypatch):
+    app = _DummyApp()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {
+            "preset_metrics": [{"name": "Focus"}],
+            "add_metric": lambda self, *a, **k: None,
+            "is_modified": lambda self=None: False,
+        },
+    )()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+
+    metrics = [
+        {"name": "Focus", "scope": "preset"},
+        {"name": "Level", "scope": "preset"},
+        {"name": "Session", "scope": "session"},
+    ]
+
+    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+    screen = EditPresetScreen()
+    popup = AddPresetMetricPopup(screen)
+    list_view = popup.content_cls.children[0]
+    names = {child.text for child in list_view.children}
+
+    assert "Session" not in names
+    assert "Focus" not in names
+    assert "Level" in names
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_edit_exercise_default_tab():
     screen = EditExerciseScreen()
     screen.previous_screen = "exercise_library"
@@ -589,6 +620,34 @@ def test_preset_name_row_preserved(monkeypatch):
 
     assert screen.ids.preset_name_row in screen.details_box.children
     assert screen.ids.preset_name in screen.ids.preset_name_row.children
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_details_has_add_button(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
+
+    app = _DummyApp()
+    app.preset_editor = type(
+        "PE",
+        (),
+        {
+            "preset_metrics": [],
+            "is_modified": lambda self=None: False,
+            "update_metric": lambda self, *a, **k: None,
+            "add_metric": lambda self, *a, **k: None,
+        },
+    )()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+
+    screen = EditPresetScreen()
+    screen.populate_details()
+
+    assert "add_metric_btn" in screen.ids
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
