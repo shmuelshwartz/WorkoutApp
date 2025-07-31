@@ -1,22 +1,22 @@
 # 🏋️‍♂️ workout_app Database Design
 
-> **Note:** The database has already been created and matches the schema defined in `workout_db.sql`. It is not an empty database.
+> **Note:** The database has already been created and matches the schema defined in `workout_schema.sql`. It is not an empty database.
 
 This document describes the database schema used in **workout_app** — a personal, offline-first fitness tracking app focused on calisthenics and progressive overload.
 
-The design favors **clarity**, **customizability**, and **full local independence** across library, presets, and future workout sessions. The schema uses **prefix-based naming** to clearly separate concerns and enable predictable data ownership.
+The design favors **clarity**, **customizability**, and **full local independence** across library, presets, and completed workout sessions. The schema uses **prefix-based naming** to clearly separate concerns and enable predictable data ownership.
 
 ---
 
 ## 🚀 Schema Overview
 
-The schema is divided into **two active domains**, with a third reserved for future use:
+The schema is divided into **three domains**:
 
 | Prefix       | Purpose                                        |
 |--------------|------------------------------------------------|
 | `library_`   | Global exercise and metric definitions         |
 | `preset_`    | Fully self-contained workout templates         |
-| `session_`   | _(Planned)_ Individual workout logs            |
+| `session_`   | Logged workout sessions and metrics            |
 
 This naming convention makes the structure intuitive and avoids accidental cross-dependencies.
 
@@ -94,7 +94,7 @@ This allows for fine-grained control of workout logic, data input timing, and UI
 |--------------|--------------------------|------------------------------------------|
 | `library_`   | Global references         | Shared; changes can propagate            |
 | `preset_`    | Fully self-contained data | Snapshotted; immune to library changes   |
-| `session_`   | _(Future)_ workout logs   | Will be structured similarly to presets  |
+| `session_`   | Logged sessions           | Captures workout history and metrics |
 
 ---
 
@@ -154,17 +154,36 @@ All unique indexes are scoped to `deleted = 0` to support soft deletes.
 | Exercises in Presets     | `preset_section_exercises`                                     |
 | Metrics for Exercises    | `preset_exercise_metrics`                                      |
 | Preset-Level Metrics     | `preset_preset_metrics`                                        |
+| Workout Sessions         | `session_sessions` |
+| Session Sections        | `session_session_sections` |
+| Session Exercises       | `session_section_exercises` |
+| Exercise Sets           | `session_exercise_sets` |
+| Session Metrics         | `session_session_metrics` |
+| Exercise Metrics        | `session_exercise_metrics` |
+| Set Metrics             | `session_set_metrics` |
 
 ---
 
-## 🔮 Next: Session Logging (Future)
+## 🟠 Workout Sessions (`session_`)
 
-The `session_` namespace will eventually support detailed workout logs:
-- Which preset (if any) the session is based on
-- Real-time or retrospective metric logging
-- Set-by-set performance data
+The `session_` tables store completed workouts. Each session captures a snapshot of the preset at the time it was run and records all metrics entered during the workout.
 
----
+### 📂 Tables
 
-✅ **This schema is stable, extensible, and optimized for personal use.**  
-Its use of snapshotting, soft deletes, and scoped uniqueness strikes the right balance between flexibility and data integrity.
+| Table | Description |
+|-------|-------------|
+| `session_sessions` | Top-level session entry containing the preset reference, start/end timestamps, notes and `deleted` flag |
+| `session_session_sections` | Sections within a session; stores name, notes, position and `deleted` flag |
+| `session_section_exercises` | Exercises performed in a section; includes `number_of_sets`, `rest_time`, notes and `deleted` flag |
+| `session_exercise_sets` | Individual sets with `set_number`, `started_at`, `ended_at`, notes and `deleted` flag |
+| `session_session_metrics` | Metrics applying to the entire session |
+| `session_exercise_metrics` | Metrics recorded for each exercise |
+| `session_set_metrics` | Metrics recorded for each set |
+
+### 🧠 Design Notes
+
+- All timestamp columns use epoch `REAL` values.
+- Every table includes a `deleted` column for soft deletes.
+- Metric tables enforce valid values via `CHECK` constraints on `input_timing` and `scope`.
+- Notes fields allow optional user comments on sessions, exercises and sets.
+
