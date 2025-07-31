@@ -1062,9 +1062,9 @@ def save_exercise(exercise: Exercise) -> None:
             if m.get("input_timing") != def_timing:
 
                 timing = m.get("input_timing")
-            if bool(m.get("is_required")) != bool(d_req):
+            if bool(m.get("is_required")) != bool(def_req):
                 req = int(m.get("is_required", False))
-            if m.get("scope") != d_scope:
+            if m.get("scope") != def_scope:
                 scope_val = m.get("scope")
 
         cursor.execute(
