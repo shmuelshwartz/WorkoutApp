@@ -15,4 +15,6 @@ __all__ = ["WorkoutActiveScreen"]
 
 from .preset_detail_screen import PresetDetailScreen
 
+from .edit_preset_screen import EditPresetScreen
+
 
