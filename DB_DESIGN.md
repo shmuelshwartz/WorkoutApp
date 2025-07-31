@@ -37,7 +37,7 @@ The `library_` tables form the **central repository** of exercise and metric def
 ### 🧠 Design Notes
 
 - `library_exercises` uses a `is_user_created` flag and a `UNIQUE(name, is_user_created)` constraint to support personalized variants.
-- `library_metric_types` defines what a metric *is*, including type, scope, and optional enum values (in JSON).
+- `library_metric_types` defines what a metric *is*, including its type, scope, and optional enum values (in JSON).
 - `library_exercise_metrics` links exercises to metric types and optionally overrides properties like `type`, `input_timing`, and `enum_values_json`.
 
 📌 All `library_` data is **global** and may be referenced by presets and sessions. However, changes here only affect presets **at creation time** — not retroactively.
