@@ -6,6 +6,7 @@ from .presets_screen import PresetsScreen
 from .workout_active_screen import WorkoutActiveScreen
 from .preset_detail_screen import PresetDetailScreen
 
+
 from .preset_detail_screen import PresetDetailScreen
 from .workout_active_screen import WorkoutActiveScreen
 
@@ -20,6 +21,7 @@ __all__ = [
     "PresetsScreen",
     "WorkoutActiveScreen",
     "PresetDetailScreen",
+
     "WorkoutActiveScreen",
     "PresetDetailScreen",
     "PresetsScreen",
@@ -33,4 +35,5 @@ __all__ = [
     "PresetsScreen",
     "PresetDetailScreen",
     "WorkoutActiveScreen",
+
 ]
