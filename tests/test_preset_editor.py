@@ -71,7 +71,11 @@ def test_add_exercise_success(db_copy):
     editor = PresetEditor(db_path=db_copy)
     editor.add_section("Warmup")
     ex = editor.add_exercise(0, "Push ups", sets=4)
-    assert ex == {"name": "Push ups", "sets": 4, "rest": DEFAULT_REST_DURATION}
+    assert ex["id"] is None
+    assert ex["name"] == "Push ups"
+    assert ex["sets"] == 4
+    assert ex["rest"] == DEFAULT_REST_DURATION
+    assert "library_id" in ex
     assert editor.sections[0]["exercises"] == [ex]
     editor.close()
 
@@ -123,7 +127,11 @@ def test_load_existing_preset(db_with_preset):
     assert len(editor.sections) == 1
     sec = editor.sections[0]
     assert sec["name"] == "Warmup"
-    assert sec["exercises"] == [{"name": "Push ups", "sets": 3, "rest": 120}]
+    ex = sec["exercises"][0]
+    assert ex["name"] == "Push ups"
+    assert ex["sets"] == 3
+    assert ex["rest"] == 120
+    assert "id" in ex and "library_id" in ex
     editor.close()
 
 
@@ -323,6 +331,27 @@ def test_remove_exercise_and_save(db_with_preset):
     conn.close()
     editor.close()
     assert count == 0
+
+
+def test_move_exercise_updates_position_only(sample_db):
+    editor = PresetEditor("Push Day", db_path=sample_db)
+    orig_ids = [ex["id"] for ex in editor.sections[0]["exercises"]]
+    editor.move_exercise(0, 0, 1)
+    editor.save()
+    conn = sqlite3.connect(sample_db)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, position FROM preset_section_exercises WHERE deleted = 0 ORDER BY position"
+    )
+    rows = cur.fetchall()
+    cur.execute(
+        "SELECT COUNT(*) FROM preset_exercise_metrics WHERE deleted = 1"
+    )
+    deleted = cur.fetchone()[0]
+    conn.close()
+    editor.close()
+    assert rows == [(orig_ids[1], 0), (orig_ids[0], 1)]
+    assert deleted == 0
 
 
 
