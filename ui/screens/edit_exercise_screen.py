@@ -403,9 +403,7 @@ class EditExerciseScreen(MDScreen):
 
                     removed = [name for name in orig if name not in current]
                     if removed:
-                        db_path = (
-                            Path(__file__).resolve().parent / "data" / "workout.db"
-                        )
+                        db_path = DEFAULT_DB_PATH
                         conn = sqlite3.connect(str(db_path))
                         cur = conn.cursor()
                         cur.execute(
