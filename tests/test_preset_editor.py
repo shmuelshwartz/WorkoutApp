@@ -71,7 +71,7 @@ def test_add_exercise_success(db_copy):
     editor = PresetEditor(db_path=db_copy)
     editor.add_section("Warmup")
     ex = editor.add_exercise(0, "Push ups", sets=4)
-    assert ex == {"name": "Push ups", "sets": 4, "rest": DEFAULT_REST_DURATION}
+    assert ex == {"id": None, "name": "Push ups", "sets": 4, "rest": DEFAULT_REST_DURATION}
     assert editor.sections[0]["exercises"] == [ex]
     editor.close()
 
@@ -123,7 +123,7 @@ def test_load_existing_preset(db_with_preset):
     assert len(editor.sections) == 1
     sec = editor.sections[0]
     assert sec["name"] == "Warmup"
-    assert sec["exercises"] == [{"name": "Push ups", "sets": 3, "rest": 120}]
+    assert sec["exercises"] == [{"id": 1, "name": "Push ups", "sets": 3, "rest": 120}]
     editor.close()
 
 
@@ -323,6 +323,60 @@ def test_remove_exercise_and_save(db_with_preset):
     conn.close()
     editor.close()
     assert count == 0
+
+
+def test_reorder_exercises_updates_only_position(sample_db):
+    editor = PresetEditor("Push Day", db_path=sample_db)
+
+    conn = sqlite3.connect(sample_db)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, exercise_name, number_of_sets, rest_time, position
+        FROM preset_section_exercises
+        WHERE deleted = 0
+        ORDER BY position
+        """
+    )
+    before = cur.fetchall()
+    cur.execute(
+        "SELECT section_exercise_id, COUNT(*) FROM preset_exercise_metrics WHERE deleted = 0 GROUP BY section_exercise_id"
+    )
+    before_metrics = {row[0]: row[1] for row in cur.fetchall()}
+    conn.close()
+
+    editor.move_exercise(0, 1, 0)
+    editor.save()
+
+    conn = sqlite3.connect(sample_db)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, exercise_name, number_of_sets, rest_time, position
+        FROM preset_section_exercises
+        WHERE deleted = 0
+        ORDER BY position
+        """
+    )
+    after = cur.fetchall()
+    cur.execute(
+        "SELECT section_exercise_id, COUNT(*) FROM preset_exercise_metrics WHERE deleted = 0 GROUP BY section_exercise_id"
+    )
+    after_metrics = {row[0]: row[1] for row in cur.fetchall()}
+    conn.close()
+    editor.close()
+
+    assert {r[0] for r in before} == {r[0] for r in after}
+    before_map = {r[0]: r for r in before}
+    after_map = {r[0]: r for r in after}
+    for ex_id in before_map:
+        b = before_map[ex_id]
+        a = after_map[ex_id]
+        assert b[1] == a[1]
+        assert b[2] == a[2]
+        assert b[3] == a[3]
+    assert [r[0] for r in after] == [before[1][0], before[0][0]]
+    assert before_metrics == after_metrics
 
 
 

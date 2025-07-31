@@ -1285,7 +1285,7 @@ class PresetEditor:
         for section_id, name in cursor.fetchall():
             cursor.execute(
                 """
-                SELECT exercise_name, number_of_sets, rest_time
+                SELECT id, exercise_name, number_of_sets, rest_time
                 FROM preset_section_exercises
                 WHERE section_id = ? AND deleted = 0
                 ORDER BY position
@@ -1293,10 +1293,15 @@ class PresetEditor:
                 (section_id,),
             )
             exercises = [
-                {"name": ex_name, "sets": sets, "rest": rest}
-                for ex_name, sets, rest in cursor.fetchall()
+                {
+                    "id": ex_id,
+                    "name": ex_name,
+                    "sets": sets,
+                    "rest": rest,
+                }
+                for ex_id, ex_name, sets, rest in cursor.fetchall()
             ]
-            self.sections.append({"name": name, "exercises": exercises})
+            self.sections.append({"id": section_id, "name": name, "exercises": exercises})
 
         cursor.execute(
             """
@@ -1356,8 +1361,7 @@ class PresetEditor:
 
     def add_section(self, name: str = "Section") -> int:
         """Add a new section and return its index."""
-
-        self.sections.append({"name": name, "exercises": []})
+        self.sections.append({"id": None, "name": name, "exercises": []})
         return len(self.sections) - 1
 
     def remove_section(self, index: int) -> None:
@@ -1392,7 +1396,7 @@ class PresetEditor:
         if cursor.fetchone() is None:
             raise ValueError(f"Exercise '{exercise_name}' does not exist")
 
-        ex = {"name": exercise_name, "sets": sets, "rest": rest}
+        ex = {"id": None, "name": exercise_name, "sets": sets, "rest": rest}
         self.sections[section_index]["exercises"].append(ex)
         return ex
 
@@ -1513,11 +1517,18 @@ class PresetEditor:
 
     def to_dict(self) -> dict:
         """Return the preset data as a dictionary."""
+        sections = []
+        for sec in self.sections:
+            exercises = [
+                {"name": ex["name"], "sets": ex["sets"], "rest": ex["rest"]}
+                for ex in sec.get("exercises", [])
+            ]
+            sections.append({"name": sec.get("name"), "exercises": exercises})
 
         return copy.deepcopy(
             {
                 "name": self.preset_name,
-                "sections": self.sections,
+                "sections": sections,
                 "preset_metrics": self.preset_metrics,
             }
         )
@@ -1564,7 +1575,7 @@ class PresetEditor:
                 "SELECT id FROM preset_preset_sections WHERE preset_id = ? AND deleted = 0 ORDER BY position",
                 (preset_id,),
             )
-            sec_ids = [r[0] for r in cursor.fetchall()]
+            existing_sections = [r[0] for r in cursor.fetchall()]
             cursor.execute(
                 "UPDATE preset_presets SET name = ? WHERE id = ?",
                 (self.preset_name, preset_id),
@@ -1576,29 +1587,44 @@ class PresetEditor:
             )
             preset_id = cursor.lastrowid
             self._preset_id = preset_id
-            sec_ids = []
+            existing_sections = []
 
         for sec_pos, sec in enumerate(self.sections):
-            if sec_pos < len(sec_ids):
-                section_id = sec_ids[sec_pos]
+            sec_id = sec.get("id")
+            if sec_id and sec_id in existing_sections:
                 cursor.execute(
                     "UPDATE preset_preset_sections SET name = ?, position = ?, deleted = 0 WHERE id = ?",
-                    (sec.get("name", f"Section {sec_pos + 1}"), sec_pos, section_id),
+                    (sec.get("name", f"Section {sec_pos + 1}"), sec_pos, sec_id),
                 )
+                existing_sections.remove(sec_id)
             else:
                 cursor.execute(
                     "INSERT INTO preset_preset_sections (preset_id, name, position) VALUES (?, ?, ?)",
                     (preset_id, sec.get("name", f"Section {sec_pos + 1}"), sec_pos),
                 )
-                section_id = cursor.lastrowid
+                sec_id = cursor.lastrowid
+                sec["id"] = sec_id
 
             cursor.execute(
-                "SELECT id, library_exercise_id FROM preset_section_exercises WHERE section_id = ? AND deleted = 0 ORDER BY position",
-                (section_id,),
+                """
+                SELECT id, exercise_name, number_of_sets, rest_time,
+                       library_exercise_id, position
+                  FROM preset_section_exercises
+                 WHERE section_id = ? AND deleted = 0
+                 ORDER BY position
+                """,
+                (sec_id,),
             )
-            ex_rows = cursor.fetchall()
-            ex_ids = [r[0] for r in ex_rows]
-            old_libs = [r[1] for r in ex_rows]
+            existing_ex = {
+                row[0]: {
+                    "name": row[1],
+                    "sets": row[2],
+                    "rest": row[3],
+                    "lib_id": row[4],
+                    "position": row[5],
+                }
+                for row in cursor.fetchall()
+            }
 
             for ex_pos, ex in enumerate(sec.get("exercises", [])):
                 details = get_exercise_details(ex["name"], self.db_path)
@@ -1612,23 +1638,34 @@ class PresetEditor:
                     raise ValueError(f"Exercise '{ex['name']}' does not exist")
                 lib_id = lr[0]
 
-                if ex_pos < len(ex_ids):
-                    ex_id = ex_ids[ex_pos]
-                    old_lib_id = old_libs[ex_pos]
-                    cursor.execute(
-                        "UPDATE preset_section_exercises SET exercise_name = ?, exercise_description = ?, number_of_sets = ?, rest_time = ?, position = ?, library_exercise_id = ?, deleted = 0 WHERE id = ?",
-                        (
-                            ex["name"],
-                            desc,
-                            ex.get("sets", DEFAULT_SETS_PER_EXERCISE),
-                            ex.get("rest", DEFAULT_REST_DURATION),
-                            ex_pos,
-                            lib_id,
-                            ex_id,
-                        ),
-                    )
-
-                    if old_lib_id != lib_id:
+                ex_id = ex.get("id")
+                if ex_id and ex_id in existing_ex:
+                    current = existing_ex.pop(ex_id)
+                    updates = []
+                    params = []
+                    if ex["name"] != current["name"]:
+                        updates.extend(["exercise_name = ?", "exercise_description = ?"])
+                        params.extend([ex["name"], desc])
+                    if ex.get("sets", DEFAULT_SETS_PER_EXERCISE) != current["sets"]:
+                        updates.append("number_of_sets = ?")
+                        params.append(ex.get("sets", DEFAULT_SETS_PER_EXERCISE))
+                    if ex.get("rest", DEFAULT_REST_DURATION) != current["rest"]:
+                        updates.append("rest_time = ?")
+                        params.append(ex.get("rest", DEFAULT_REST_DURATION))
+                    if lib_id != current["lib_id"]:
+                        updates.append("library_exercise_id = ?")
+                        params.append(lib_id)
+                    if ex_pos != current["position"]:
+                        updates.append("position = ?")
+                        params.append(ex_pos)
+                    if updates:
+                        updates.append("deleted = 0")
+                        params.append(ex_id)
+                        cursor.execute(
+                            f"UPDATE preset_section_exercises SET {', '.join(updates)} WHERE id = ?",
+                            params,
+                        )
+                    if lib_id != current["lib_id"]:
                         cursor.execute(
                             "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
                             (ex_id,),
@@ -1685,7 +1722,7 @@ class PresetEditor:
                             (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id, rest_time)
                             VALUES (?, ?, ?, ?, ?, ?, ?)""",
                         (
-                            section_id,
+                            sec_id,
                             ex["name"],
                             desc,
                             ex_pos,
@@ -1695,6 +1732,7 @@ class PresetEditor:
                         ),
                     )
                     ex_id = cursor.lastrowid
+                    ex["id"] = ex_id
 
                     cursor.execute(
                         """
@@ -1743,7 +1781,7 @@ class PresetEditor:
                             ),
                         )
 
-            for old_id in ex_ids[len(sec.get("exercises", [])):]:
+            for old_id in list(existing_ex.keys()):
                 cursor.execute(
                     "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
                     (old_id,),
@@ -1752,8 +1790,9 @@ class PresetEditor:
                     "UPDATE preset_section_exercises SET deleted = 1 WHERE id = ?",
                     (old_id,),
                 )
+                existing_ex.pop(old_id, None)
 
-        for sid in sec_ids[len(self.sections):]:
+        for sid in existing_sections:
             cursor.execute(
                 "SELECT id FROM preset_section_exercises WHERE section_id = ? AND deleted = 0",
                 (sid,),
