@@ -10,6 +10,8 @@ from .presets_screen import PresetsScreen
 from .workout_active_screen import WorkoutActiveScreen
 from .preset_detail_screen import PresetDetailScreen
 
+from .edit_preset_screen import EditPresetScreen
+
 
 from .preset_detail_screen import PresetDetailScreen
 from .workout_active_screen import WorkoutActiveScreen
