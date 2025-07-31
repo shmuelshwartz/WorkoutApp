@@ -17,12 +17,12 @@ def sample_db(tmp_path):
     cur = conn.cursor()
     # metric types
     cur.execute(
-        "INSERT INTO library_metric_types (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created) "
-        "VALUES ('Reps', 'int', 'manual_text', 'post_set', 1, 'set', '', 0)"
+        "INSERT INTO library_metric_types (name, type, input_timing, is_required, scope, description, is_user_created) "
+        "VALUES ('Reps', 'int', 'post_set', 1, 'set', '', 0)"
     )
     cur.execute(
-        "INSERT INTO library_metric_types (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created) "
-        "VALUES ('Weight', 'float', 'manual_text', 'post_set', 0, 'set', '', 0)"
+        "INSERT INTO library_metric_types (name, type, input_timing, is_required, scope, description, is_user_created) "
+        "VALUES ('Weight', 'float', 'post_set', 0, 'set', '', 0)"
     )
     # exercises
     cur.execute("INSERT INTO library_exercises (name, description, is_user_created) VALUES ('Push Up', 'Upper body', 0)")
@@ -97,8 +97,7 @@ def test_get_metrics_with_override(sample_db):
 def test_add_and_remove_metric(sample_db):
     metric_id = core.add_metric_type(
         name="Tempo",
-        input_type="int",
-        source_type="manual_text",
+        metric_type="int",
         input_timing="post_set",
         scope="set",
         db_path=sample_db,
@@ -214,8 +213,7 @@ def test_override_with_user_flag(sample_db):
 def test_delete_metric_type(sample_db):
     metric_id = core.add_metric_type(
         name="Tempo",
-        input_type="int",
-        source_type="manual_text",
+        metric_type="int",
         input_timing="post_set",
         scope="set",
         db_path=sample_db,

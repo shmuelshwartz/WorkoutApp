@@ -7,8 +7,7 @@ def test_exercise_load_modify_save(sample_db):
     assert any(m["name"] == "Reps" for m in ex.metrics)
     ex.add_metric({
         "name": "Weight",
-        "input_type": "float",
-        "source_type": "manual_text",
+        "type": "float",
         "input_timing": "pre_set",
         "is_required": False,
         "scope": "set",

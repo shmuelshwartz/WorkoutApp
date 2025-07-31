@@ -208,8 +208,8 @@ def test_save_preserves_metric_overrides(db_copy):
     cur.execute(
         """
         INSERT INTO library_metric_types
-            (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
-        VALUES ('Reps', 'int', 'manual_text', 'post_set', 0, 'set', '', 0)
+            (name, type, input_timing, is_required, scope, description, is_user_created)
+        VALUES ('Reps', 'int', 'post_set', 0, 'set', '', 0)
         """
     )
     mt_id = cur.lastrowid
@@ -226,8 +226,7 @@ def test_save_preserves_metric_overrides(db_copy):
     cur.execute(
         """
         UPDATE library_exercise_metrics
-           SET input_type = 'int',
-               source_type = 'manual_text',
+           SET type = 'int',
                input_timing = 'pre_session',
                is_required = 1,
                scope = 'set'
@@ -262,8 +261,8 @@ def test_save_preset_metadata(db_copy):
     cur.execute(
         """
         INSERT INTO library_metric_types
-            (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
-        VALUES ('Difficulty', 'int', 'manual_text', 'preset', 0, 'preset', '', 0)
+            (name, type, input_timing, is_required, scope, description, is_user_created)
+        VALUES ('Difficulty', 'int', 'preset', 0, 'preset', '', 0)
         """
     )
     conn.commit()
@@ -280,7 +279,7 @@ def test_save_preset_metadata(db_copy):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT input_type, source_type, input_timing, scope, is_required, value
+        SELECT type, input_timing, scope, is_required, value
         FROM preset_preset_metrics WHERE deleted = 0
         """
     )
@@ -288,7 +287,7 @@ def test_save_preset_metadata(db_copy):
     conn.close()
     editor.close()
 
-    assert row == ("int", "manual_text", "preset", "preset", 0, "3")
+    assert row == ("int", "preset", "preset", 0, "3")
 
 
 def test_session_metric_timing_alias(db_copy):
@@ -297,8 +296,8 @@ def test_session_metric_timing_alias(db_copy):
     cur.execute(
         """
         INSERT INTO library_metric_types
-            (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
-        VALUES ('Marker', 'int', 'manual_text', 'pre_session', 0, 'session', '', 0)
+            (name, type, input_timing, is_required, scope, description, is_user_created)
+        VALUES ('Marker', 'int', 'pre_session', 0, 'session', '', 0)
         """
     )
     conn.commit()
