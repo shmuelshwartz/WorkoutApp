@@ -37,8 +37,8 @@ The `library_` tables form the **central repository** of exercise and metric def
 ### 🧠 Design Notes
 
 - `library_exercises` uses a `is_user_created` flag and a `UNIQUE(name, is_user_created)` constraint to support personalized variants.
-- `library_metric_types` defines what a metric *is*, including type, source, scope, and optional enum values (in JSON).
-- `library_exercise_metrics` links exercises to metric types and optionally overrides properties like `input_type`, `input_timing`, and `enum_values_json`.
+- `library_metric_types` defines what a metric *is*, including type, scope, and optional enum values (in JSON).
+- `library_exercise_metrics` links exercises to metric types and optionally overrides properties like `type`, `input_timing`, and `enum_values_json`.
 
 📌 All `library_` data is **global** and may be referenced by presets and sessions. However, changes here only affect presets **at creation time** — not retroactively.
 
@@ -84,7 +84,7 @@ This allows for fine-grained control of workout logic, data input timing, and UI
 - Soft deletes are implemented uniformly via a `deleted BOOLEAN DEFAULT 0` field.
 - `enum_values_json` supports customizable metric inputs like drop-downs or sliders.
 - Metrics store a `value` field, supporting pre-filled defaults in both presets and exercises.
-- Snapshotted fields like `metric_name`, `input_type`, etc., ensure the preset behaves the same even if the original metric definition changes or is deleted.
+- Snapshotted fields like `metric_name`, `type`, etc., ensure the preset behaves the same even if the original metric definition changes or is deleted.
 
 ---
 
@@ -108,8 +108,7 @@ This allows for fine-grained control of workout logic, data input timing, and UI
 | Preset  | `preset_preset_metrics`             | Adds metrics tied to the whole preset    |
 
 📌 All metric-related tables support:
-- `input_type`: What kind of value (int, float, str, bool)
-- `source_type`: How input is collected (text, enum, slider)
+- `type`: Data and input style (int, float, str, bool, enum, slider)
 - `input_timing`: When user enters it (pre/post exercise, session, etc.)
 - `scope`: Whether it applies to a set, exercise, session, or preset
 - `enum_values_json`: A JSON array of options for enums
