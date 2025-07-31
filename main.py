@@ -971,6 +971,7 @@ class EditPresetScreen(MDScreen):
     details_box = ObjectProperty(None)
     current_tab = StringProperty("sections")
     metrics_box = ObjectProperty(None)
+    session_metric_list = ObjectProperty(None)
     save_enabled = BooleanProperty(False)
     loading_dialog = ObjectProperty(None, allownone=True)
 
@@ -1204,8 +1205,24 @@ class EditPresetScreen(MDScreen):
             self.ids.details_scroll.scroll_y = 1
 
     def populate_metrics(self):
-        """Placeholder for future metrics tab population."""
-        pass
+        """Populate the Metrics tab with required session metrics."""
+        rv = self.ids.get("session_metric_list")
+        if not rv:
+            return
+
+        metrics = [
+            m
+            for m in core.get_all_metric_types()
+            if m.get("scope") == "session" and m.get("is_required")
+        ]
+        rv.data = [
+            {
+                "name": m["name"],
+                "text": m["name"],
+                "is_user_created": m.get("is_user_created", False),
+            }
+            for m in metrics
+        ]
 
     def open_add_preset_metric_popup(self):
         popup = AddPresetMetricPopup(self)
