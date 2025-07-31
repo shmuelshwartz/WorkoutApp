@@ -9,8 +9,7 @@ def test_get_all_exercises(sample_db):
     ex.name = "Custom"
     ex.add_metric({
         "name": "Reps",
-        "input_type": "int",
-        "source_type": "manual_text",
+        "type": "int",
         "input_timing": "post_set",
         "is_required": True,
         "scope": "set",
