@@ -31,6 +31,7 @@ except Exception:  # pragma: no cover - fallback for tests without kivymd
     from kivy.uix.spinner import Spinner as MDSpinner
 from kivymd.uix.button import MDRaisedButton
 from kivy.uix.screenmanager import NoTransition
+from ui.screens.preset_detail_screen import PresetDetailScreen
 from pathlib import Path
 import os
 import sys
@@ -48,6 +49,7 @@ from core import (
     DEFAULT_REST_DURATION,
     DEFAULT_DB_PATH,
 )
+from ui.screens.metric_input_screen import MetricInputScreen
 
 # Load workout presets from the database at startup
 load_workout_presets(DEFAULT_DB_PATH)
@@ -58,6 +60,8 @@ from kivy.core.window import Window
 import string
 import sqlite3
 from ui.screens.presets_screen import PresetsScreen
+from ui.screens.workout_active_screen import WorkoutActiveScreen
+
 
 if os.name == "nt" or sys.platform.startswith("win"):
     Window.size = (280, 280 * (20 / 9))
@@ -88,42 +92,6 @@ class LoadingDialog(MDDialog):
         box.add_widget(spinner)
         box.add_widget(MDLabel(text=text, halign="center"))
         super().__init__(type="custom", content_cls=box, **kwargs)
-
-
-class WorkoutActiveScreen(MDScreen):
-    """Screen that shows an active workout with a stopwatch."""
-
-    elapsed = NumericProperty(0.0)
-    start_time = NumericProperty(0.0)
-    formatted_time = StringProperty("00:00")
-    exercise_name = StringProperty("")
-    _event = None
-
-    def start_timer(self, *args):
-        """Start or resume the stopwatch."""
-        self.stop_timer()
-        self.elapsed = 0.0
-        self.formatted_time = "00:00"
-        self.start_time = time.time()
-        self._event = Clock.schedule_interval(self._update_elapsed, 0.1)
-
-    def on_pre_enter(self, *args):
-        session = MDApp.get_running_app().workout_session
-        if session:
-            self.exercise_name = session.next_exercise_display()
-        self.start_timer()
-        return super().on_pre_enter(*args)
-
-    def stop_timer(self, *args):
-        """Stop updating the stopwatch without clearing the start time."""
-        if self._event:
-            self._event.cancel()
-            self._event = None
-
-    def _update_elapsed(self, dt):
-        self.elapsed = time.time() - self.start_time
-        minutes, seconds = divmod(int(self.elapsed), 60)
-        self.formatted_time = f"{minutes:02d}:{seconds:02d}"
 
 
 class RestScreen(MDScreen):
@@ -204,7 +172,6 @@ class RestScreen(MDScreen):
             if not hasattr(self, "_event") or not self._event:
                 self._event = Clock.schedule_interval(self.update_timer, 0.1)
             self.update_timer(0)
-
 
 class MetricInputScreen(MDScreen):
     """Screen for entering workout metrics."""
@@ -391,10 +358,84 @@ class MetricInputScreen(MDScreen):
         elif self.manager:
             self.manager.current = "rest"
 
+class PresetsScreen(MDScreen):
+    """Screen to select a workout preset."""
 
+    preset_list = ObjectProperty(None)
+    selected_preset = StringProperty("")
+    selected_item = ObjectProperty(None, allownone=True)
 
-class PresetDetailScreen(MDScreen):
-    preset_name = StringProperty("")
+    _selected_color = (0, 1, 0, 1)
+    _selected_text_color = (0, 1, 0, 1)
+    _default_btn_color = ListProperty(None, allownone=True)
+
+    def on_kv_post(self, base_widget):
+        # Store the default color of the "Select" button so it can be restored
+        self._default_btn_color = self.ids.select_btn.md_bg_color
+        return super().on_kv_post(base_widget)
+
+    def clear_selection(self):
+        """Reset any selected preset and remove highlight."""
+        if self.selected_item:
+            self.selected_item.md_bg_color = (0, 0, 0, 0)
+            self.selected_item.theme_text_color = "Primary"
+        self.selected_item = None
+        self.selected_preset = ""
+        app = MDApp.get_running_app()
+        if app:
+            app.selected_preset = ""
+        if self._default_btn_color is not None:
+            self.ids.select_btn.md_bg_color = self._default_btn_color
+
+    def on_pre_enter(self, *args):
+        self.clear_selection()
+        self.populate()
+        return super().on_pre_enter(*args)
+
+    def on_leave(self, *args):
+        self.clear_selection()
+        return super().on_leave(*args)
+
+    def populate(self):
+        if not self.preset_list:
+            return
+        self.preset_list.clear_widgets()
+        for preset in core.WORKOUT_PRESETS:
+            item = OneLineListItem(text=preset["name"])
+            item.bind(
+                on_release=lambda inst, name=preset["name"]: self.select_preset(
+                    name, inst
+                )
+            )
+            self.preset_list.add_widget(item)
+
+    def select_preset(self, name, item):
+        """Select a preset from WORKOUT_PRESETS and highlight item."""
+        if self.selected_item is item:
+            # Toggle off selection if tapping the already selected item
+            item.md_bg_color = (0, 0, 0, 0)
+            item.theme_text_color = "Primary"
+            self.selected_item = None
+            self.selected_preset = ""
+            MDApp.get_running_app().selected_preset = ""
+            return
+
+        if self.selected_item:
+            self.selected_item.md_bg_color = (0, 0, 0, 0)
+            self.selected_item.theme_text_color = "Primary"
+        self.selected_item = item
+        self.selected_item.md_bg_color = self._selected_color
+        self.selected_item.theme_text_color = "Custom"
+        self.selected_item.text_color = self._selected_text_color
+        if any(p["name"] == name for p in core.WORKOUT_PRESETS):
+            self.selected_preset = name
+            MDApp.get_running_app().selected_preset = name
+
+    def confirm_selection(self):
+        if self.selected_preset and self.manager:
+            detail = self.manager.get_screen("preset_detail")
+            detail.preset_name = self.selected_preset
+            self.manager.current = "preset_detail"
 
 
 class ExerciseLibraryScreen(MDScreen):
