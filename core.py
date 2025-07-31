@@ -152,9 +152,8 @@ def get_metrics_for_exercise(
 ) -> list:
     """Return metric definitions for ``exercise_name``.
 
-    Each item in the returned list is a dictionary with ``name``, ``input_type``,
-    ``source_type`` and ``values`` keys. ``values`` will contain any allowed
-    values for ``manual_enum`` metrics.
+    Each item in the returned list is a dictionary with ``name`` and ``type``
+    keys. ``values`` will contain any allowed values for ``enum`` metrics.
     """
 
     conn = sqlite3.connect(str(db_path))
@@ -180,8 +179,7 @@ def get_metrics_for_exercise(
         """
         SELECT mt.id,
                mt.name,
-               COALESCE(em.input_type, mt.input_type),
-               COALESCE(em.source_type, mt.source_type),
+               COALESCE(em.type, mt.type),
                COALESCE(em.input_timing, mt.input_timing),
                COALESCE(em.is_required, mt.is_required),
                COALESCE(em.scope, mt.scope),
@@ -199,8 +197,7 @@ def get_metrics_for_exercise(
     for (
         metric_id,
         name,
-        input_type,
-        source_type,
+        mtype,
         input_timing,
         is_required,
         scope,
@@ -208,7 +205,7 @@ def get_metrics_for_exercise(
         description,
     ) in cursor.fetchall():
         values = []
-        if source_type == "manual_enum" and enum_json:
+        if mtype == "enum" and enum_json:
             try:
                 values = json.loads(enum_json)
             except Exception:
@@ -216,8 +213,7 @@ def get_metrics_for_exercise(
         metrics.append(
             {
                 "name": name,
-                "input_type": input_type,
-                "source_type": source_type,
+                "type": mtype,
                 "input_timing": input_timing,
                 "is_required": bool(is_required),
                 "scope": scope,
@@ -272,7 +268,7 @@ def get_all_metric_types(
     if include_user_created:
         cursor.execute(
             """
-            SELECT name, input_type, source_type, input_timing,
+            SELECT name, type, input_timing,
                    is_required, scope, description, is_user_created,
                    enum_values_json
             FROM library_metric_types
@@ -283,8 +279,7 @@ def get_all_metric_types(
         metric_types = [
             {
                 "name": name,
-                "input_type": input_type,
-                "source_type": source_type,
+                "type": mtype,
                 "input_timing": input_timing,
                 "is_required": bool(is_required),
                 "scope": scope,
@@ -294,8 +289,7 @@ def get_all_metric_types(
             }
             for (
                 name,
-                input_type,
-                source_type,
+                mtype,
                 input_timing,
                 is_required,
                 scope,
@@ -307,7 +301,7 @@ def get_all_metric_types(
     else:
         cursor.execute(
             """
-            SELECT name, input_type, source_type, input_timing,
+            SELECT name, type, input_timing,
                    is_required, scope, description, enum_values_json
             FROM library_metric_types
             WHERE deleted = 0
@@ -317,8 +311,7 @@ def get_all_metric_types(
         metric_types = [
             {
                 "name": name,
-                "input_type": input_type,
-                "source_type": source_type,
+                "type": mtype,
                 "input_timing": input_timing,
                 "is_required": bool(is_required),
                 "scope": scope,
@@ -327,8 +320,7 @@ def get_all_metric_types(
             }
             for (
                 name,
-                input_type,
-                source_type,
+                mtype,
                 input_timing,
                 is_required,
                 scope,
@@ -410,8 +402,7 @@ def is_metric_type_user_created(
 
 def add_metric_type(
     name: str,
-    input_type: str,
-    source_type: str,
+    mtype: str,
     input_timing: str,
     scope: str,
     description: str = "",
@@ -426,15 +417,14 @@ def add_metric_type(
     cursor.execute(
         """
         INSERT INTO library_metric_types
-            (name, input_type, source_type, input_timing,
+            (name, type, input_timing,
              is_required, scope, description, is_user_created,
              enum_values_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?)
         """,
         (
             name,
-            input_type,
-            source_type,
+            mtype,
             input_timing,
             int(is_required),
             scope,
@@ -530,8 +520,7 @@ def remove_metric_from_exercise(
 def update_metric_type(
     metric_type_name: str,
     *,
-    input_type: str | None = None,
-    source_type: str | None = None,
+    mtype: str | None = None,
     input_timing: str | None = None,
     scope: str | None = None,
     description: str | None = None,
@@ -561,12 +550,9 @@ def update_metric_type(
     metric_id = row[0]
     updates = []
     params: list = []
-    if input_type is not None:
-        updates.append("input_type = ?")
-        params.append(input_type)
-    if source_type is not None:
-        updates.append("source_type = ?")
-        params.append(source_type)
+    if mtype is not None:
+        updates.append("type = ?")
+        params.append(mtype)
     if input_timing is not None:
         updates.append("input_timing = ?")
         params.append(input_timing)
@@ -629,14 +615,14 @@ def set_section_exercise_metric_override(
     section_id = sections[section_index][0]
 
     cursor.execute(
-        "SELECT id, input_type, source_type FROM library_metric_types WHERE name = ? AND deleted = 0",
+        "SELECT id, type FROM library_metric_types WHERE name = ? AND deleted = 0",
         (metric_type_name,),
     )
     row = cursor.fetchone()
     if not row:
         conn.close()
         raise ValueError(f"Metric '{metric_type_name}' not found")
-    metric_type_id, def_input_type, def_source_type = row
+    metric_type_id, def_type = row
 
     cursor.execute(
         """SELECT id FROM preset_section_exercises WHERE section_id = ? AND exercise_name = ? AND deleted = 0 ORDER BY position LIMIT 1""",
@@ -668,14 +654,13 @@ def set_section_exercise_metric_override(
         cursor.execute(
             """
             INSERT INTO preset_exercise_metrics
-                (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (section_exercise_id, metric_name, type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 se_id,
                 metric_type_name,
-                def_input_type,
-                def_source_type,
+                def_type,
                 input_timing,
                 int(is_required),
                 scope,
@@ -692,8 +677,7 @@ def set_exercise_metric_override(
     metric_type_name: str,
     *,
     is_user_created: bool | None = None,
-    input_type: str | None = None,
-    source_type: str | None = None,
+    mtype: str | None = None,
     input_timing: str | None = None,
     is_required: bool | None = None,
     scope: str | None = None,
@@ -748,12 +732,9 @@ def set_exercise_metric_override(
 
     updates = []
     params: list = []
-    if input_type is not None:
-        updates.append("input_type = ?")
-        params.append(input_type)
-    if source_type is not None:
-        updates.append("source_type = ?")
-        params.append(source_type)
+    if mtype is not None:
+        updates.append("type = ?")
+        params.append(mtype)
     if input_timing is not None:
         updates.append("input_timing = ?")
         params.append(input_timing)
@@ -771,8 +752,7 @@ def set_exercise_metric_override(
         cursor.execute(
             """
             UPDATE library_exercise_metrics
-               SET input_type = NULL,
-                   source_type = NULL,
+               SET type = NULL,
                    input_timing = NULL,
                    is_required = NULL,
                    scope = NULL,
@@ -1061,50 +1041,48 @@ def save_exercise(exercise: Exercise) -> None:
 
     for position, m in enumerate(exercise.metrics):
         cursor.execute(
-            "SELECT id, source_type FROM library_metric_types WHERE name = ?",
+            "SELECT id, type FROM library_metric_types WHERE name = ?",
             (m["name"],),
         )
         mt_row = cursor.fetchone()
         if not mt_row:
             continue
-        metric_id, source_type = mt_row
+        metric_id, default_type = mt_row
+
         cursor.execute(
-            "SELECT input_type, source_type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
+            "SELECT type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
             (metric_id,),
         )
         default_row = cursor.fetchone()
-        in_type = source = timing = req = scope_val = None
+        mtype = timing = req = scope_val = None
         if default_row:
-            def_in_type, def_source, def_timing, def_req, def_scope = default_row
-            if m.get("input_type") != def_in_type:
-                in_type = m.get("input_type")
-            if m.get("source_type") != def_source:
-                source = m.get("source_type")
+            def_type, def_timing, def_req, def_scope = default_row
+            if m.get("type") != def_type:
+                mtype = m.get("type")
             if m.get("input_timing") != def_timing:
+
                 timing = m.get("input_timing")
-            if bool(m.get("is_required")) != bool(def_req):
+            if bool(m.get("is_required")) != bool(d_req):
                 req = int(m.get("is_required", False))
-            if m.get("scope") != def_scope:
+            if m.get("scope") != d_scope:
                 scope_val = m.get("scope")
 
         cursor.execute(
             """INSERT INTO library_exercise_metrics
-                (exercise_id, metric_type_id, position, input_type, source_type, input_timing, is_required, scope, enum_values_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (exercise_id, metric_type_id, position, type, input_timing, is_required, scope, enum_values_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 ex_id,
                 metric_id,
                 position,
-                in_type,
-                source,
+                mtype,
+
                 timing,
                 req,
                 scope_val,
                 (
-                    json.dumps(m.get("values"))
-                    if m.get("values")
-                    and (m.get("source_type") or source_type) == "manual_enum"
-                    else None
+                    json.dumps(m.get("values")) if m.get("values") and (m.get("type") or default_type) == "enum" else None
+
                 ),
             ),
         )
@@ -1246,8 +1224,9 @@ class PresetEditor:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT name, description, input_type, source_type,
+            SELECT name, description, type,
                    input_timing, is_required, scope, enum_values_json
+
               FROM library_metric_types
              WHERE deleted = 0 AND is_required = 1
                AND scope IN ('preset', 'session')
@@ -1257,15 +1236,14 @@ class PresetEditor:
         for (
             name,
             desc,
-            in_type,
-            source,
+            mtype,
             timing,
             req,
             scope,
             enum_json,
         ) in cursor.fetchall():
             values = []
-            if source == "manual_enum" and enum_json:
+            if mtype == "enum" and enum_json:
                 try:
                     values = json.loads(enum_json)
                 except Exception:
@@ -1273,8 +1251,7 @@ class PresetEditor:
             self.preset_metrics.append(
                 {
                     "name": name,
-                    "input_type": in_type,
-                    "source_type": source,
+                    "type": mtype,
                     "input_timing": timing,
                     "is_required": bool(req),
                     "scope": scope,
@@ -1331,7 +1308,7 @@ class PresetEditor:
 
         cursor.execute(
             """
-            SELECT mt.name, pm.value, pm.input_type, pm.source_type,
+            SELECT mt.name, pm.value, pm.type,
                    pm.input_timing, pm.is_required, pm.scope,
                    pm.enum_values_json, mt.description
               FROM preset_preset_metrics pm
@@ -1344,26 +1321,25 @@ class PresetEditor:
         for (
             name,
             value,
-            in_type,
-            source,
+            mtype,
             timing,
             req,
             scope,
             enum_json,
             desc,
         ) in cursor.fetchall():
-            if in_type == "int":
+            if mtype == "int":
                 try:
                     value = int(value)
                 except Exception:
                     value = 0
-            elif in_type == "float":
+            elif mtype in ("float", "slider"):
                 try:
                     value = float(value)
                 except Exception:
                     value = 0.0
             values = []
-            if source == "manual_enum" and enum_json:
+            if mtype == "enum" and enum_json:
                 try:
                     values = json.loads(enum_json)
                 except Exception:
@@ -1371,8 +1347,7 @@ class PresetEditor:
             self.preset_metrics.append(
                 {
                     "name": name,
-                    "input_type": in_type,
-                    "source_type": source,
+                    "type": mtype,
                     "input_timing": _from_db_timing(timing),
                     "is_required": bool(req),
                     "scope": scope,
@@ -1498,7 +1473,7 @@ class PresetEditor:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT description, input_type, source_type, input_timing,
+            SELECT description, type, input_timing,
                    scope, is_required, enum_values_json
               FROM library_metric_types
              WHERE name = ? AND deleted = 0
@@ -1510,15 +1485,14 @@ class PresetEditor:
             raise ValueError(f"Metric '{metric_name}' not found")
         (
             desc,
-            in_type,
-            source,
+            mtype,
             timing,
             scope,
             req,
             enum_json,
         ) = row
         values = []
-        if source == "manual_enum" and enum_json:
+        if mtype == "enum" and enum_json:
             try:
                 values = json.loads(enum_json)
             except Exception:
@@ -1526,8 +1500,7 @@ class PresetEditor:
         self.preset_metrics.append(
             {
                 "name": metric_name,
-                "input_type": in_type,
-                "source_type": source,
+                "type": mtype,
                 "input_timing": timing,
                 "is_required": bool(req),
                 "scope": scope,
@@ -1702,14 +1675,13 @@ class PresetEditor:
                             cursor.execute(
                             """
                             SELECT mt.name,
-                                   COALESCE(em.input_type, mt.input_type),
-                                   COALESCE(em.source_type, mt.source_type),
+                                   COALESCE(em.type, mt.type),
                                    COALESCE(em.input_timing, mt.input_timing),
                                    COALESCE(em.is_required, mt.is_required),
                                    COALESCE(em.scope, mt.scope),
                                    COALESCE(em.enum_values_json, mt.enum_values_json),
-                                   em.position,
-                                   mt.id
+                                  em.position,
+                                  mt.id
                               FROM library_exercise_metrics em
                               JOIN library_metric_types mt ON em.metric_type_id = mt.id
                              WHERE em.exercise_id = ?
@@ -1720,7 +1692,7 @@ class PresetEditor:
                         for (
                             mt_name,
                             m_input,
-                            m_source,
+
                             m_timing,
                             m_req,
                             m_scope,
@@ -1729,12 +1701,12 @@ class PresetEditor:
                             mt_id,
                         ) in cursor.fetchall():
                             cursor.execute(
-                                """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                                 (
                                     ex_id,
                                     mt_name,
                                     m_input,
-                                    m_source,
+
                                     m_timing,
                                     m_req,
                                     m_scope,
@@ -1762,8 +1734,7 @@ class PresetEditor:
                     cursor.execute(
                         """
                         SELECT mt.name,
-                               COALESCE(em.input_type, mt.input_type),
-                               COALESCE(em.source_type, mt.source_type),
+                               COALESCE(em.type, mt.type),
                                COALESCE(em.input_timing, mt.input_timing),
                                COALESCE(em.is_required, mt.is_required),
                                COALESCE(em.scope, mt.scope),
@@ -1780,7 +1751,7 @@ class PresetEditor:
                     for (
                         mt_name,
                         m_input,
-                        m_source,
+
                         m_timing,
                         m_req,
                         m_scope,
@@ -1789,12 +1760,12 @@ class PresetEditor:
                         mt_id,
                     ) in cursor.fetchall():
                         cursor.execute(
-                            """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                             (
                                 ex_id,
                                 mt_name,
                                 m_input,
-                                m_source,
+
                                 m_timing,
                                 m_req,
                                 m_scope,
@@ -1852,7 +1823,7 @@ class PresetEditor:
             mt_id = row[0]
             enum_json = (
                 json.dumps(metric.get("values"))
-                if metric.get("source_type") == "manual_enum" and metric.get("values")
+                if metric.get("type") == "enum" and metric.get("values")
                 else None
             )
 
@@ -1860,8 +1831,7 @@ class PresetEditor:
                 cursor.execute(
                     """
                     UPDATE preset_preset_metrics
-                       SET input_type = ?,
-                           source_type = ?,
+                       SET type = ?,
                            input_timing = ?,
                            scope = ?,
                            is_required = ?,
@@ -1872,8 +1842,7 @@ class PresetEditor:
                      WHERE id = ?
                     """,
                     (
-                        metric.get("input_type"),
-                        metric.get("source_type"),
+                        metric.get("type"),
                         _to_db_timing(metric.get("input_timing")),
                         metric.get("scope"),
                         int(metric.get("is_required", False)),
@@ -1890,8 +1859,7 @@ class PresetEditor:
                         (
                             preset_id,
                             library_metric_type_id,
-                            input_type,
-                            source_type,
+                            type,
                             input_timing,
                             scope,
                             is_required,
@@ -1899,13 +1867,12 @@ class PresetEditor:
                             position,
                             value
                         )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         preset_id,
                         mt_id,
-                        metric.get("input_type"),
-                        metric.get("source_type"),
+                        metric.get("type"),
                         _to_db_timing(metric.get("input_timing")),
                         metric.get("scope"),
                         int(metric.get("is_required", False)),

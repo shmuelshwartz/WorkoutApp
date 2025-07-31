@@ -20,26 +20,26 @@ def sample_db(tmp_path: Path) -> Path:
     conn.execute(
         """
         INSERT INTO library_metric_types
-            (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
-        VALUES (?, ?, ?, ?, ?, ?, '', 0)
+            (name, type, input_timing, is_required, scope, description, is_user_created)
+        VALUES (?, ?, ?, ?, ?, '', 0)
         """,
-        ("Reps", "int", "manual_text", "post_set", 1, "set"),
+        ("Reps", "int", "post_set", 1, "set"),
     )
     conn.execute(
         """
         INSERT INTO library_metric_types
-            (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
-        VALUES (?, ?, ?, ?, ?, ?, '', 0)
+            (name, type, input_timing, is_required, scope, description, is_user_created)
+        VALUES (?, ?, ?, ?, ?, '', 0)
         """,
-        ("Weight", "float", "manual_text", "pre_set", 0, "set"),
+        ("Weight", "float", "pre_set", 0, "set"),
     )
     conn.execute(
         """
         INSERT INTO library_metric_types
-            (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created)
-        VALUES (?, ?, ?, ?, ?, ?, '', 0)
+            (name, type, input_timing, is_required, scope, description, is_user_created)
+        VALUES (?, ?, ?, ?, ?, '', 0)
         """,
-        ("Machine", "str", "manual_enum", "pre_session", 0, "exercise"),
+        ("Machine", "enum", "pre_session", 0, "exercise"),
     )
 
     reps_id = conn.execute("SELECT id FROM library_metric_types WHERE name='Reps'").fetchone()[0]
@@ -119,32 +119,32 @@ def sample_db(tmp_path: Path) -> Path:
     conn.execute(
         """
         INSERT INTO preset_exercise_metrics
-            (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
-        VALUES (?, 'Reps', 'int', 'manual_text', 'post_set', 1, 'set', ?)
+            (section_exercise_id, metric_name, type, input_timing, is_required, scope, library_metric_type_id)
+        VALUES (?, 'Reps', 'int', 'post_set', 1, 'set', ?)
         """,
         (push_se_id, reps_id),
     )
     conn.execute(
         """
         INSERT INTO preset_exercise_metrics
-            (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
-        VALUES (?, 'Reps', 'int', 'manual_text', 'pre_set', 1, 'set', ?)
+            (section_exercise_id, metric_name, type, input_timing, is_required, scope, library_metric_type_id)
+        VALUES (?, 'Reps', 'int', 'pre_set', 1, 'set', ?)
         """,
         (bench_se_id, reps_id),
     )
     conn.execute(
         """
         INSERT INTO preset_exercise_metrics
-            (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, library_metric_type_id)
-        VALUES (?, 'Weight', 'float', 'manual_text', 'pre_set', 0, 'set', ?)
+            (section_exercise_id, metric_name, type, input_timing, is_required, scope, library_metric_type_id)
+        VALUES (?, 'Weight', 'float', 'pre_set', 0, 'set', ?)
         """,
         (bench_se_id, weight_id),
     )
     conn.execute(
         """
         INSERT INTO preset_exercise_metrics
-            (section_exercise_id, metric_name, input_type, source_type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
-        VALUES (?, 'Machine', 'str', 'manual_enum', 'pre_session', 0, 'exercise', ?, ?)
+            (section_exercise_id, metric_name, type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
+        VALUES (?, 'Machine', 'enum', 'pre_session', 0, 'exercise', ?, ?)
         """,
         (bench_se_id, '["A","B"]', machine_id),
     )
