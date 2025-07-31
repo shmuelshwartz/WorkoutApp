@@ -31,6 +31,7 @@ except Exception:  # pragma: no cover - fallback for tests without kivymd
     from kivy.uix.spinner import Spinner as MDSpinner
 from kivymd.uix.button import MDRaisedButton
 from kivy.uix.screenmanager import NoTransition
+from ui.screens.preset_detail_screen import PresetDetailScreen
 from pathlib import Path
 import os
 import sys
@@ -58,6 +59,8 @@ from kivy.core.window import Window
 import string
 import sqlite3
 from ui.screens.rest_screen import RestScreen
+from ui.screens.workout_active_screen import WorkoutActiveScreen
+
 
 if os.name == "nt" or sys.platform.startswith("win"):
     Window.size = (280, 280 * (20 / 9))
@@ -90,40 +93,7 @@ class LoadingDialog(MDDialog):
         super().__init__(type="custom", content_cls=box, **kwargs)
 
 
-class WorkoutActiveScreen(MDScreen):
-    """Screen that shows an active workout with a stopwatch."""
 
-    elapsed = NumericProperty(0.0)
-    start_time = NumericProperty(0.0)
-    formatted_time = StringProperty("00:00")
-    exercise_name = StringProperty("")
-    _event = None
-
-    def start_timer(self, *args):
-        """Start or resume the stopwatch."""
-        self.stop_timer()
-        self.elapsed = 0.0
-        self.formatted_time = "00:00"
-        self.start_time = time.time()
-        self._event = Clock.schedule_interval(self._update_elapsed, 0.1)
-
-    def on_pre_enter(self, *args):
-        session = MDApp.get_running_app().workout_session
-        if session:
-            self.exercise_name = session.next_exercise_display()
-        self.start_timer()
-        return super().on_pre_enter(*args)
-
-    def stop_timer(self, *args):
-        """Stop updating the stopwatch without clearing the start time."""
-        if self._event:
-            self._event.cancel()
-            self._event = None
-
-    def _update_elapsed(self, dt):
-        self.elapsed = time.time() - self.start_time
-        minutes, seconds = divmod(int(self.elapsed), 60)
-        self.formatted_time = f"{minutes:02d}:{seconds:02d}"
 
 
 class MetricInputScreen(MDScreen):
@@ -390,10 +360,6 @@ class PresetsScreen(MDScreen):
             detail = self.manager.get_screen("preset_detail")
             detail.preset_name = self.selected_preset
             self.manager.current = "preset_detail"
-
-
-class PresetDetailScreen(MDScreen):
-    preset_name = StringProperty("")
 
 
 class ExerciseLibraryScreen(MDScreen):
