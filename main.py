@@ -31,6 +31,7 @@ except Exception:  # pragma: no cover - fallback for tests without kivymd
     from kivy.uix.spinner import Spinner as MDSpinner
 from kivymd.uix.button import MDRaisedButton
 from kivy.uix.screenmanager import NoTransition
+from ui.screens.preset_detail_screen import PresetDetailScreen
 from pathlib import Path
 import os
 import sys
@@ -469,10 +470,6 @@ class PresetsScreen(MDScreen):
             detail = self.manager.get_screen("preset_detail")
             detail.preset_name = self.selected_preset
             self.manager.current = "preset_detail"
-
-
-class PresetDetailScreen(MDScreen):
-    preset_name = StringProperty("")
 
 
 class ExerciseLibraryScreen(MDScreen):
