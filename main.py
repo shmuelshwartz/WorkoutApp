@@ -101,8 +101,6 @@ class LoadingDialog(MDDialog):
 
 
 
-class PresetDetailScreen(MDScreen):
-    preset_name = StringProperty("")
 class ExerciseLibraryScreen(MDScreen):
     previous_screen = StringProperty("home")
     exercise_list = ObjectProperty(None)
