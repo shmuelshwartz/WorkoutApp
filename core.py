@@ -1135,12 +1135,25 @@ def delete_metric_type(
         if not row:
             return False
 
-
-        mt_id = row[0]
+mt_id = row[0]
 
         # Check if this metric type is referenced by any exercises or presets
         cursor.execute(
             "SELECT 1 FROM library_exercise_metrics WHERE metric_type_id = ? AND deleted = 0 LIMIT 1",
+            (mt_id,),
+        )
+        if cursor.fetchone():
+            raise ValueError("Metric type is in use and cannot be deleted")
+
+        cursor.execute(
+            "SELECT 1 FROM preset_preset_metrics WHERE library_metric_type_id = ? AND deleted = 0 LIMIT 1",
+            (mt_id,),
+        )
+        if cursor.fetchone():
+            raise ValueError("Metric type is in use and cannot be deleted")
+
+        cursor.execute(
+            "SELECT 1 FROM preset_exercise_metrics WHERE library_metric_type_id = ? AND deleted = 0 LIMIT 1",
             (mt_id,),
         )
         if cursor.fetchone():
