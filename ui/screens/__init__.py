@@ -1,58 +1,25 @@
 """UI screen modules for WorkoutApp."""
 
+from .edit_exercise_screen import EditExerciseScreen
+from .edit_preset_screen import EditPresetScreen
 from .exercise_library import ExerciseLibraryScreen
 from .metric_input_screen import MetricInputScreen
-from .workout_active_screen import WorkoutActiveScreen
 from .preset_detail_screen import PresetDetailScreen
-from .edit_exercise_screen import EditExerciseScreen
-from .workout_active_screen import WorkoutActiveScreen
-from .preset_detail_screen import PresetDetailScreen
+from .preset_overview_screen import PresetOverviewScreen
 from .presets_screen import PresetsScreen
-from .workout_summary_screen import WorkoutSummaryScreen
-from .presets_screen import PresetsScreen
-from .workout_active_screen import WorkoutActiveScreen
-from .preset_detail_screen import PresetDetailScreen
-
-from .edit_preset_screen import EditPresetScreen
-
-
-from .preset_detail_screen import PresetDetailScreen
-from .workout_active_screen import WorkoutActiveScreen
-
-from .workout_active_screen import WorkoutActiveScreen
-from .preset_detail_screen import PresetDetailScreen
-from .presets_screen import PresetsScreen
-
-
-
-
-__all__ = [
-    "ExerciseLibraryScreen",
-    "MetricInputScreen",
-    "WorkoutActiveScreen",
-    "PresetDetailScreen",
-    "EditExerciseScreen",
-]
-    "PresetsScreen",
-    "WorkoutSummaryScreen",
-]
-
-    "PresetsScreen",
-    "WorkoutActiveScreen",
-    "PresetDetailScreen",
-
-    "WorkoutActiveScreen",
-    "PresetDetailScreen",
-    "PresetsScreen",
-]
-
 from .rest_screen import RestScreen
+from .workout_active_screen import WorkoutActiveScreen
+from .workout_summary_screen import WorkoutSummaryScreen
 
 __all__ = [
+    "EditExerciseScreen",
+    "EditPresetScreen",
     "ExerciseLibraryScreen",
     "MetricInputScreen",
-    "PresetsScreen",
     "PresetDetailScreen",
+    "PresetOverviewScreen",
+    "PresetsScreen",
+    "RestScreen",
     "WorkoutActiveScreen",
-
+    "WorkoutSummaryScreen",
 ]
