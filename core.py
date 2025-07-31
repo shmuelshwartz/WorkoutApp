@@ -1645,25 +1645,37 @@ class PresetEditor:
                 if ex_id is not None and ex_id in existing:
                     row = existing[ex_id]
                     unused.discard(ex_id)
-                    cursor.execute(
-                        "UPDATE preset_section_exercises SET exercise_name = ?, exercise_description = ?, number_of_sets = ?, rest_time = ?, position = ?, library_exercise_id = ?, deleted = 0 WHERE id = ?",
-                        (
-                            ex["name"],
-                            desc,
-                            sets_val,
-                            rest_val,
-                            ex_pos,
-                            lib_id,
-                            ex_id,
-                        ),
-                    )
-
-                    if row["library_id"] != lib_id:
+                    if (
+                        row["name"] == ex["name"]
+                        and row["sets"] == sets_val
+                        and row["rest"] == rest_val
+                        and row["library_id"] == lib_id
+                    ):
+                        if row["pos"] != ex_pos:
+                            cursor.execute(
+                                "UPDATE preset_section_exercises SET position = ? WHERE id = ?",
+                                (ex_pos, ex_id),
+                            )
+                    else:
                         cursor.execute(
-                            "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
-                            (ex_id,),
+                            "UPDATE preset_section_exercises SET exercise_name = ?, exercise_description = ?, number_of_sets = ?, rest_time = ?, position = ?, library_exercise_id = ?, deleted = 0 WHERE id = ?",
+                            (
+                                ex["name"],
+                                desc,
+                                sets_val,
+                                rest_val,
+                                ex_pos,
+                                lib_id,
+                                ex_id,
+                            ),
                         )
-                        cursor.execute(
+
+                        if row["library_id"] != lib_id:
+                            cursor.execute(
+                                "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
+                                (ex_id,),
+                            )
+                            cursor.execute(
                             """
                             SELECT mt.name,
                                    COALESCE(em.input_type, mt.input_type),
