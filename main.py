@@ -2553,7 +2553,7 @@ class EditMetricTypePopup(MDDialog):
         if self.metric and self.is_user_created:
             core.update_metric_type(
                 self.metric_name,
-                type=data.get("type"),
+                mtype=data.get("type"),
                 input_timing=data.get("input_timing"),
                 scope=data.get("scope"),
                 description=data.get("description"),
