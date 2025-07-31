@@ -65,6 +65,7 @@ import string
 import sqlite3
 from ui.screens.presets_screen import PresetsScreen
 from ui.screens.workout_active_screen import WorkoutActiveScreen
+from ui.screens.workout_summary_screen import WorkoutSummaryScreen
 
 
 if os.name == "nt" or sys.platform.startswith("win"):
@@ -122,30 +123,6 @@ class LoadingDialog(MDDialog):
 
 class PresetDetailScreen(MDScreen):
     preset_name = StringProperty("")
-
-class WorkoutSummaryScreen(MDScreen):
-    summary_list = ObjectProperty(None)
-
-    def on_pre_enter(self, *args):
-        self.populate()
-        return super().on_pre_enter(*args)
-
-    def populate(self):
-        if not self.summary_list:
-            return
-        self.summary_list.clear_widgets()
-        app = MDApp.get_running_app()
-        session = app.workout_session
-        if not session:
-            return
-        print(session.summary())
-        for exercise in session.exercises:
-            self.summary_list.add_widget(OneLineListItem(text=exercise["name"]))
-            for idx, metrics in enumerate(exercise["results"], 1):
-                metrics_text = ", ".join(f"{k}: {v}" for k, v in metrics.items())
-                self.summary_list.add_widget(
-                    OneLineListItem(text=f"Set {idx}: {metrics_text}")
-                )
 
 
 class SectionWidget(MDBoxLayout):
