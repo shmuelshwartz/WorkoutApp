@@ -31,10 +31,10 @@ def populate_sample_data(db_path: Path) -> None:
     )
     # Metric types
     cur.executemany(
-        "INSERT INTO library_metric_types (name, input_type, source_type, input_timing, is_required, scope, description, is_user_created) VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
+        "INSERT INTO library_metric_types (name, type, input_timing, is_required, scope, description, is_user_created) VALUES (?, ?, ?, ?, ?, ?, 1)",
         [
-            ("Reps", "int", "manual_text", "post_set", 1, "set", "Number of reps"),
-            ("Weight", "float", "manual_text", "post_set", 0, "set", "Weight used"),
+            ("Reps", "int", "post_set", 1, "set", "Number of reps"),
+            ("Weight", "float", "post_set", 0, "set", "Weight used"),
         ],
     )
     # Preset with one section and two exercises
@@ -89,9 +89,9 @@ def sample_db(tmp_db: Path) -> Path:
 def test_get_metric_type_schema(tmp_db: Path):
     fields = core.get_metric_type_schema(db_path=tmp_db)
     names = {f["name"] for f in fields}
-    assert names == {"name", "input_type", "source_type", "input_timing", "is_required", "scope", "description", "enum_values_json"}
-    input_type_opts = next(f["options"] for f in fields if f["name"] == "input_type")
-    assert set(input_type_opts) == {"int", "float", "str", "bool"}
+    assert names == {"name", "type", "input_timing", "is_required", "scope", "description", "enum_values_json"}
+    type_opts = next(f["options"] for f in fields if f["name"] == "type")
+    assert set(type_opts) == {"int", "float", "str", "bool", "enum", "slider"}
 
 
 def test_get_all_exercises_and_details(sample_db: Path):
