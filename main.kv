@@ -693,8 +693,21 @@ ScreenManager:
                     BoxLayout:
                         orientation: "vertical"
                         MDLabel:
-                            text: "Metrics"
+                            text: "Required Session Metrics"
                             halign: "center"
+                            theme_text_color: "Custom"
+                            text_color: 0.2, 0.6, 0.86, 1
+                            size_hint_y: None
+                            height: "40dp"
+                        MDRecycleView:
+                            id: session_metric_list
+                            viewclass: "MetricRow"
+                            RecycleBoxLayout:
+                                default_size: None, dp(56)
+                                default_size_hint: 1, None
+                                size_hint_y: None
+                                height: self.minimum_height
+                                orientation: "vertical"
 
             MDBoxLayout:
                 size_hint_y: None
