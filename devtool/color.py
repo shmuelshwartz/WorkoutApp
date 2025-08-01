@@ -30,8 +30,10 @@ class EditColorsScreen(Screen):
 
         seg = MDSegmentedControl()
         for name in ("Text", "Screen BG", "Button"):
-            seg.add_widget(MDSegmentedControlItem(text=name))
-        seg.set_current("Text")
+            item = MDSegmentedControlItem(text=name)
+            seg.add_widget(item)
+            if name == "Text":
+                item.active = True  # ✅ set default selected tab here
         seg.bind(on_active=self.on_segment_switch)
         layout.add_widget(seg)
 
@@ -50,14 +52,19 @@ class EditColorsScreen(Screen):
         nav = MDBoxLayout(size_hint_y=None, height="48dp", spacing="12dp")
         prev1 = MDFlatButton(text="Preview 1")
         prev2 = MDFlatButton(text="Preview 2")
-        prev1.bind(on_release=lambda *_: self.manager.current = "preview1")
-        prev2.bind(on_release=lambda *_: self.manager.current = "preview2")
+        prev1.bind(on_release=self.go_to_preview1)
+        prev2.bind(on_release=self.go_to_preview2)
         nav.add_widget(prev1)
         nav.add_widget(prev2)
         layout.add_widget(nav)
 
         self.add_widget(layout)
 
+    def go_to_preview1(self, *args):
+        self.manager.current = "preview1"
+
+    def go_to_preview2(self, *args):
+        self.manager.current = "preview2"
     def on_segment_switch(self, control, segment):
         self.active_target = segment.text.lower().replace(" ", "_")
         self.update_fields_from_colors()
