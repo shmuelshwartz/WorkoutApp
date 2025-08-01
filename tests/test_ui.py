@@ -22,14 +22,13 @@ if kivy_available:
         RestScreen,
         MetricInputScreen,
         WorkoutActiveScreen,
-        AddMetricPopup,
-        EditMetricPopup,
         EditMetricTypePopup,
         EditExerciseScreen,
         ExerciseSelectionPanel,
         PresetsScreen,
         EditPresetScreen,
     )
+    from ui.popups import AddMetricPopup, EditMetricPopup
     import time
 
     class _DummyApp:
