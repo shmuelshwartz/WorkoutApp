@@ -600,13 +600,13 @@ def set_section_exercise_metric_override(
         section_id = sections[section_index][0]
 
         cursor.execute(
-            "SELECT id, type FROM library_metric_types WHERE name = ? AND deleted = 0",
+            "SELECT id, type, description FROM library_metric_types WHERE name = ? AND deleted = 0",
             (metric_type_name,),
         )
         row = cursor.fetchone()
         if not row:
             raise ValueError(f"Metric '{metric_type_name}' not found")
-        metric_type_id, def_type = row
+        metric_type_id, def_type, metric_desc = row
 
         cursor.execute(
             """SELECT id FROM preset_section_exercises WHERE section_id = ? AND exercise_name = ? AND deleted = 0 ORDER BY position LIMIT 1""",
@@ -637,12 +637,14 @@ def set_section_exercise_metric_override(
             cursor.execute(
                 """
                 INSERT INTO preset_exercise_metrics
-                    (section_exercise_id, metric_name, type, input_timing, is_required, scope, enum_values_json, library_metric_type_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (section_exercise_id, metric_name, metric_description, type, input_timing,
+                     is_required, scope, enum_values_json, library_metric_type_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     se_id,
                     metric_type_name,
+                    metric_desc,
                     def_type,
                     input_timing,
                     int(is_required),
@@ -1652,14 +1654,15 @@ class PresetEditor:
                             )
                             cursor.execute(
                             """
-                            SELECT mt.name,
-                                   COALESCE(em.type, mt.type),
-                                   COALESCE(em.input_timing, mt.input_timing),
-                                   COALESCE(em.is_required, mt.is_required),
-                                   COALESCE(em.scope, mt.scope),
-                                   COALESCE(em.enum_values_json, mt.enum_values_json),
-                                  em.position,
-                                  mt.id
+                              SELECT mt.name,
+                                     mt.description,
+                                     COALESCE(em.type, mt.type),
+                                     COALESCE(em.input_timing, mt.input_timing),
+                                     COALESCE(em.is_required, mt.is_required),
+                                     COALESCE(em.scope, mt.scope),
+                                     COALESCE(em.enum_values_json, mt.enum_values_json),
+                                     em.position,
+                                     mt.id
                               FROM library_exercise_metrics em
                               JOIN library_metric_types mt ON em.metric_type_id = mt.id
                              WHERE em.exercise_id = ?
@@ -1669,6 +1672,7 @@ class PresetEditor:
                         )
                         for (
                             mt_name,
+                            mt_desc,
                             m_input,
 
                             m_timing,
@@ -1679,10 +1683,11 @@ class PresetEditor:
                             mt_id,
                         ) in cursor.fetchall():
                             cursor.execute(
-                                """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, metric_description, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                                 (
                                     ex_id,
                                     mt_name,
+                                    mt_desc,
                                     m_input,
 
                                     m_timing,
@@ -1712,6 +1717,7 @@ class PresetEditor:
                     cursor.execute(
                         """
                         SELECT mt.name,
+                               mt.description,
                                COALESCE(em.type, mt.type),
                                COALESCE(em.input_timing, mt.input_timing),
                                COALESCE(em.is_required, mt.is_required),
@@ -1728,6 +1734,7 @@ class PresetEditor:
                     )
                     for (
                         mt_name,
+                        mt_desc,
                         m_input,
 
                         m_timing,
@@ -1738,10 +1745,11 @@ class PresetEditor:
                         mt_id,
                     ) in cursor.fetchall():
                         cursor.execute(
-                            """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, metric_description, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                             (
                                 ex_id,
                                 mt_name,
+                                mt_desc,
                                 m_input,
 
                                 m_timing,
