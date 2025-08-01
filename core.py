@@ -791,6 +791,11 @@ class WorkoutSession:
         self.last_set_time = self.start_time
         self.rest_target_time = self.last_set_time + self.rest_duration
 
+        # retain DB path for metric lookups during the session
+        self.db_path = Path(db_path)
+        # store metrics entered prior to the upcoming set
+        self.pending_pre_set_metrics: dict[str, object] = {}
+
     def mark_set_completed(self) -> None:
         """Record the completion time for the current set."""
         self.last_set_time = time.time()
@@ -834,11 +839,44 @@ class WorkoutSession:
             return f"{ex['name']} set {set_idx + 1} of {ex['sets']}"
         return ""
 
+    # --------------------------------------------------------------
+    # Pre-set metric helpers
+    # --------------------------------------------------------------
+
+    def required_pre_set_metric_names(self) -> list[str]:
+        """Return names of required pre-set metrics for the next set."""
+
+        metrics = get_metrics_for_exercise(
+            self.next_exercise_name(),
+            db_path=self.db_path,
+            preset_name=self.preset_name,
+        )
+        return [
+            m["name"]
+            for m in metrics
+            if m.get("input_timing") == "pre_set" and m.get("is_required")
+        ]
+
+    def has_required_pre_set_metrics(self) -> bool:
+        """Return ``True`` if all required pre-set metrics have been entered."""
+
+        required = self.required_pre_set_metric_names()
+        return all(name in self.pending_pre_set_metrics for name in required)
+
+    def set_pre_set_metrics(self, metrics: dict) -> None:
+        """Store metrics to be applied to the upcoming set."""
+
+        self.pending_pre_set_metrics = metrics.copy()
+
     def record_metrics(self, metrics):
         if self.current_exercise >= len(self.exercises):
             if self.end_time is None:
                 self.end_time = time.time()
             return True
+
+        # merge any metrics entered before starting this set
+        metrics = {**self.pending_pre_set_metrics, **metrics}
+        self.pending_pre_set_metrics = {}
 
         ex = self.exercises[self.current_exercise]
         ex["results"].append(metrics)
