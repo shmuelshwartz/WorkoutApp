@@ -96,7 +96,7 @@ ScreenManager:
             text: "Back to Home"
             on_release: app.root.current = "home"
 
-<PresetDetailScreen@MDScreen>:
+<PresetDetailScreen>:
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -790,7 +790,7 @@ ScreenManager:
             pos_hint: {"center_y": 0.5}  # center vertically
             on_touch_down: if self.collide_point(*args[1].pos): root.remove_self()
 
-<ExerciseSelectionPanel@MDBoxLayout>:
+<ExerciseSelectionPanel>:
     exercise_list: exercise_list
     search_field: search_field
     orientation: "vertical"
