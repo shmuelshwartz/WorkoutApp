@@ -318,7 +318,7 @@ class EditPresetScreen(MDScreen):
             ]
 
         for m in metrics:
-            name = m.get("name")
+            name = m.get("metric_name") or m.get("name")
             mtype = m.get("type")
             enum_vals = m.get("values") or []
             value = m.get("value")
@@ -406,9 +406,12 @@ class EditPresetScreen(MDScreen):
 
         rv.data = [
             {
-                "name": m["name"],
-                "text": m["name"],
-                "is_user_created": all_defs.get(m["name"], {}).get(
+                "name": m.get("metric_name") or m.get("name"),
+                "text": m.get("metric_name") or m.get("name"),
+                "is_user_created": all_defs.get(
+                    m.get("metric_name") or m.get("name"),
+                    {},
+                ).get(
                     "is_user_created", False
                 ),
             }
@@ -726,11 +729,16 @@ class AddPresetMetricPopup(MDDialog):
         app = MDApp.get_running_app()
         existing = set()
         if app and app.preset_editor:
-            existing = {m.get("name") for m in app.preset_editor.preset_metrics}
+            existing = {
+                m.get("metric_name") or m.get("name")
+                for m in app.preset_editor.preset_metrics
+            }
         metrics = [
             m
             for m in core.get_all_metric_types()
-            if m.get("scope") == "preset" and m.get("name") not in existing
+            if m.get("scope") == "preset" and (
+                m.get("name") not in existing and m.get("metric_name") not in existing
+            )
         ]
 
         list_view = MDList()
@@ -773,11 +781,16 @@ class AddSessionMetricPopup(MDDialog):
         app = MDApp.get_running_app()
         existing = set()
         if app and app.preset_editor:
-            existing = {m.get("name") for m in app.preset_editor.preset_metrics}
+            existing = {
+                m.get("metric_name") or m.get("name")
+                for m in app.preset_editor.preset_metrics
+            }
         metrics = [
             m
             for m in core.get_all_metric_types()
-            if m.get("scope") == "session" and m.get("name") not in existing
+            if m.get("scope") == "session" and (
+                m.get("name") not in existing and m.get("metric_name") not in existing
+            )
         ]
 
         list_view = MDList()
