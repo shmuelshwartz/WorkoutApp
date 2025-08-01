@@ -1287,13 +1287,12 @@ class PresetEditor:
 
         cursor.execute(
             """
-            SELECT mt.name, pm.value, pm.type,
-                   pm.input_timing, pm.is_required, pm.scope,
-                   pm.enum_values_json, mt.description
-              FROM preset_preset_metrics pm
-              JOIN library_metric_types mt ON mt.id = pm.library_metric_type_id
-             WHERE pm.preset_id = ? AND pm.deleted = 0 AND mt.deleted = 0
-             ORDER BY pm.position
+            SELECT metric_name, value, type,
+                   input_timing, is_required, scope,
+                   enum_values_json, metric_description
+              FROM preset_preset_metrics
+             WHERE preset_id = ? AND deleted = 0
+             ORDER BY position
             """,
             (preset_id,),
         )
@@ -1813,6 +1812,8 @@ class PresetEditor:
                        SET type = ?,
                            input_timing = ?,
                            scope = ?,
+                           metric_name = ?,
+                           metric_description = ?,
                            is_required = ?,
                            enum_values_json = ?,
                            position = ?,
@@ -1824,6 +1825,8 @@ class PresetEditor:
                         metric.get("type"),
                         _to_db_timing(metric.get("input_timing")),
                         metric.get("scope"),
+                        metric.get("name"),
+                        metric.get("description"),
                         int(metric.get("is_required", False)),
                         enum_json,
                         pos,
@@ -1838,6 +1841,8 @@ class PresetEditor:
                         (
                             preset_id,
                             library_metric_type_id,
+                            metric_name,
+                            metric_description,
                             type,
                             input_timing,
                             scope,
@@ -1846,11 +1851,13 @@ class PresetEditor:
                             position,
                             value
                         )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         preset_id,
                         mt_id,
+                        metric.get("name"),
+                        metric.get("description"),
                         metric.get("type"),
                         _to_db_timing(metric.get("input_timing")),
                         metric.get("scope"),
