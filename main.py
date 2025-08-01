@@ -375,6 +375,8 @@ class WorkoutApp(MDApp):
     editing_exercise_index: int = -1
     # True when metrics being entered correspond to a newly completed set
     record_new_set = False
+    # True when entering metrics for the upcoming set
+    record_pre_set = False
     # Incremented whenever an exercise is added, edited or deleted
     exercise_library_version: int = 0
     # Incremented when a metric type is added or edited

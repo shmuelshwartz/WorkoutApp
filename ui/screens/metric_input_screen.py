@@ -42,6 +42,8 @@ class MetricInputScreen(MDScreen):
             self.exercise_name = app.workout_session.next_exercise_name()
         else:
             self.exercise_name = ""
+        if app and getattr(app, "record_pre_set", False):
+            self.current_tab = "next"
         self.update_header()
         return super().on_pre_enter(*args)
 
@@ -50,6 +52,8 @@ class MetricInputScreen(MDScreen):
         app = MDApp.get_running_app()
         if hasattr(app, "record_new_set"):
             app.record_new_set = False
+        if hasattr(app, "record_pre_set"):
+            app.record_pre_set = False
         return super().on_leave(*args)
 
     def update_header(self):
@@ -154,9 +158,9 @@ class MetricInputScreen(MDScreen):
 
         self.update_header()
 
-    def save_metrics(self):
-        metrics = {}
-        for row in reversed(self.prev_metric_list.children):
+    def _collect_metrics(self, widget_list):
+        data = {}
+        for row in reversed(widget_list.children):
             name = getattr(row, "metric_name", "")
             widget = getattr(row, "input_widget", None)
             mtype = getattr(row, "type", "str")
@@ -181,11 +185,25 @@ class MetricInputScreen(MDScreen):
                     value = float(value)
                 except ValueError:
                     value = 0.0
-            metrics[name] = value
+            data[name] = value
+        return data
+
+    def save_metrics(self):
+        prev_metrics = self._collect_metrics(self.prev_metric_list)
+        next_metrics = self._collect_metrics(self.next_metric_list)
         app = MDApp.get_running_app()
+        if app.workout_session and getattr(app, "record_pre_set", False):
+            app.workout_session.set_pre_set_metrics(next_metrics)
+            app.record_pre_set = False
+            if self.manager:
+                self.manager.current = "rest"
+            return
+        metrics = prev_metrics
         if app.workout_session and getattr(app, "record_new_set", False):
             finished = app.workout_session.record_metrics(metrics)
             app.record_new_set = False
+            if next_metrics:
+                app.workout_session.set_pre_set_metrics(next_metrics)
             if finished and self.manager:
                 self.manager.current = "workout_summary"
             elif self.manager:

@@ -35,6 +35,12 @@ class RestScreen(MDScreen):
         return super().on_leave(*args)
 
     def toggle_ready(self):
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
+        if session and not self.is_ready:
+            if not session.has_required_pre_set_metrics():
+                self.flash_record_button()
+                return
         self.is_ready = not self.is_ready
         self.timer_color = (0, 1, 0, 1) if self.is_ready else (1, 0, 0, 1)
         if self.is_ready and self.target_time <= time.time():
@@ -43,6 +49,14 @@ class RestScreen(MDScreen):
                 self._event = None
             if self.manager:
                 self.manager.current = "workout_active"
+
+    def flash_record_button(self):
+        btn = self.ids.get("record_btn")
+        if not btn:
+            return
+        orig = btn.md_bg_color
+        btn.md_bg_color = (1, 0, 0, 1)
+        Clock.schedule_once(lambda dt: setattr(btn, "md_bg_color", orig), 3)
 
     def on_touch_down(self, touch):
         if self.ids.timer_label.collide_point(*touch.pos):

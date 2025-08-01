@@ -389,9 +389,11 @@ ScreenManager:
             size_hint_y: None
             height: "20dp"
         MDRaisedButton:
+            id: record_btn
             text: "Record Metrics"
             on_release:
                 app.record_new_set = False
+                app.record_pre_set = True
                 app.root.current = "metric_input"
         MDRaisedButton:
             text: "Edit Workout"
