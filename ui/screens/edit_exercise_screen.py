@@ -22,6 +22,7 @@ from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton, MDRaisedButton
 from kivymd.uix.card import MDSeparator
 from kivymd.uix.dialog import MDDialog
+from ui.popups import AddMetricPopup, EditMetricPopup
 
 import os
 import string
