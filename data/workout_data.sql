@@ -111,7 +111,8 @@ INSERT INTO "library_metric_types" VALUES (15,'Day Number','The Day number the p
 INSERT INTO "library_metric_types" VALUES (16,'Macrocycle','The longest phase in your training plan, typically spanning several months and focused on your overall goal.','int','pre_session','session',1,NULL,1,0);
 INSERT INTO "library_metric_types" VALUES (17,'Mesocycle','A cycle within the macrocycle designed to develop targeted physical qualities.','int','pre_session','session',1,NULL,1,0);
 INSERT INTO "library_metric_types" VALUES (18,'Microcycle','The smallest structural unit within a mesocycle, typically one week long, used to organize training sessions.','int','pre_session','session',1,NULL,1,0);
-INSERT INTO "library_metric_types" VALUES (20,'Preset Focus','','str','preset','preset',0,NULL,1,0);
+INSERT INTO "library_metric_types" VALUES (20,'Preset Focus','','str','preset','preset',1,NULL,1,0);
+INSERT INTO "library_metric_types" VALUES (21,'Notes','Write down notes on anything','str','post_session','session',1,NULL,1,0);
 INSERT INTO "preset_exercise_metrics" VALUES (457,128,1,'Reps',NULL,'int','post_set','set',1,NULL,1,0,NULL);
 INSERT INTO "preset_exercise_metrics" VALUES (458,128,2,'Weight',NULL,'float','pre_set','set',1,NULL,2,0,NULL);
 INSERT INTO "preset_exercise_metrics" VALUES (459,128,4,'RPE',NULL,'slider','post_set','set',0,NULL,3,0,NULL);
@@ -160,11 +161,12 @@ INSERT INTO "preset_exercise_metrics" VALUES (510,130,2,'Weight',NULL,'float','p
 INSERT INTO "preset_exercise_metrics" VALUES (511,130,3,'Tempo',NULL,'str','preset','exercise',0,NULL,3,0,NULL);
 INSERT INTO "preset_exercise_metrics" VALUES (512,130,4,'RPE',NULL,'slider','post_set','set',0,NULL,4,0,NULL);
 INSERT INTO "preset_exercise_metrics" VALUES (513,130,6,'Performing Side',NULL,'enum','pre_set','set',1,'["Right", "Left"]',5,0,NULL);
-INSERT INTO "preset_preset_metrics" VALUES (22,1,15,'Day Number','The Day number the preset is in your workout plan','int','preset','preset',1,NULL,0,0,'1');
-INSERT INTO "preset_preset_metrics" VALUES (23,1,20,'Preset Focus','','str','preset','preset',0,NULL,1,0,'Calisthenics');
-INSERT INTO "preset_preset_metrics" VALUES (24,1,16,'Macrocycle','The longest phase in your training plan, typically spanning several months and focused on your overall goal.','int','pre_workout','session',1,NULL,2,0,NULL);
-INSERT INTO "preset_preset_metrics" VALUES (25,1,17,'Mesocycle','A cycle within the macrocycle designed to develop targeted physical qualities.','int','pre_workout','session',1,NULL,3,0,NULL);
-INSERT INTO "preset_preset_metrics" VALUES (26,1,18,'Microcycle','The smallest structural unit within a mesocycle, typically one week long, used to organize training sessions.','int','pre_workout','session',1,NULL,4,0,NULL);
+INSERT INTO "preset_preset_metrics" VALUES (19,1,16,'Macrocycle','The longest phase in your training plan, typically spanning several months and focused on your overall goal.','int','pre_workout','session',1,NULL,0,0,'0');
+INSERT INTO "preset_preset_metrics" VALUES (20,1,17,'Mesocycle','A cycle within the macrocycle designed to develop targeted physical qualities.','int','pre_workout','session',1,NULL,1,0,'0');
+INSERT INTO "preset_preset_metrics" VALUES (21,1,18,'Microcycle','The smallest structural unit within a mesocycle, typically one week long, used to organize training sessions.','int','pre_workout','session',1,NULL,2,0,'0');
+INSERT INTO "preset_preset_metrics" VALUES (22,1,15,'Day Number','The Day number the preset is in your workout plan','int','preset','preset',1,NULL,3,0,'1');
+INSERT INTO "preset_preset_metrics" VALUES (23,1,20,'Preset Focus','','str','preset','preset',0,NULL,4,0,'Calisthenics');
+INSERT INTO "preset_preset_metrics" VALUES (24,1,21,'Notes','Write down notes on anything','str','post_workout','session',1,NULL,5,0,NULL);
 INSERT INTO "preset_preset_sections" VALUES (1,1,'Workout',0,0);
 INSERT INTO "preset_preset_sections" VALUES (2,1,'Skill work',1,0);
 INSERT INTO "preset_preset_sections" VALUES (3,1,'Workout',2,0);
