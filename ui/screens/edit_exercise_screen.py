@@ -136,6 +136,8 @@ class EditExerciseScreen(MDScreen):
         if os.environ.get("KIVY_UNITTEST"):
             self._load_exercise()
         else:
+            from main import LoadingDialog  # local import to avoid circular dependency
+
             self.loading_dialog = LoadingDialog()
             self.loading_dialog.open()
             Clock.schedule_once(lambda dt: self._load_exercise(), 0)
