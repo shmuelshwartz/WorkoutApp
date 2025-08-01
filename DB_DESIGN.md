@@ -60,7 +60,7 @@ Presets represent **workout templates** made up of sections, exercises, and per-
 | `preset_preset_sections`  | Named sections within a preset (e.g., “Warm-Up”, “Main Set”)     |
 | `preset_section_exercises`| Exercises within a section, with full local copies of name, etc. |
 | `preset_exercise_metrics` | Metrics for each exercise — snapshotted and editable             |
-| `preset_preset_metrics`   | Metrics that apply to the entire preset/session (e.g., RPE, Duration) |
+| `preset_preset_metrics`   | Metrics that apply to the entire preset/session (e.g., RPE, Duration); stores `metric_name` and `metric_description` snapshots |
 
 ---
 
@@ -84,7 +84,7 @@ This allows for fine-grained control of workout logic, data input timing, and UI
 - Soft deletes are implemented uniformly via a `deleted BOOLEAN DEFAULT 0` field.
 - `enum_values_json` supports customizable metric inputs like drop-downs or sliders.
 - Metrics store a `value` field, supporting pre-filled defaults in both presets and exercises.
-- Snapshotted fields like `metric_name`, `type`, etc., ensure the preset behaves the same even if the original metric definition changes or is deleted.
+- Snapshotted fields like `metric_name`, `metric_description`, `type`, etc., ensure the preset behaves the same even if the original metric definition changes or is deleted.
 
 ---
 
