@@ -1,7 +1,8 @@
 # App to visualize and test color palettes for the Workout app
 
 from kivymd.app import MDApp
-from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.screenmanager import ScreenManager
+from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRaisedButton, MDFlatButton
 from kivymd.uix.label import MDLabel
@@ -11,7 +12,7 @@ from kivymd.uix.segmentedcontrol import MDSegmentedControl, MDSegmentedControlIt
 from kivy.properties import StringProperty
 
 
-class EditColorsScreen(Screen):
+class EditColorsScreen(MDScreen):
     """Screen for editing colors."""
 
     active_target = StringProperty("text")
@@ -81,14 +82,14 @@ class EditColorsScreen(Screen):
         app.apply_colors()
 
 
-class PreviewScreen(Screen):
+class PreviewScreen(MDScreen):
     """Base class for preview screens."""
 
     label_text = StringProperty("")
 
     def build(self):
         layout = MDBoxLayout(orientation="vertical", padding="12dp", spacing="12dp")
-        self.label = MDLabel(text=self.label_text, halign="center")
+        self.label = MDLabel(text=self.label_text, halign="center", theme_text_color="Custom")
         self.text_field = MDTextField(hint_text="Enter text")
         self.button = MDRaisedButton(text="Button", pos_hint={"center_x": 0.5})
         self.slider = MDSlider()
@@ -148,6 +149,7 @@ class ColorApp(MDApp):
         bg = self.colors["screen_bg"]
         btn = self.colors["button"]
         for screen in (self.preview1, self.preview2):
+            screen.label.theme_text_color = "Custom"
             screen.label.text_color = t
             screen.text_field.text_color = t
             screen.text_field.hint_text_color = t
