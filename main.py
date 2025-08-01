@@ -409,9 +409,16 @@ class WorkoutApp(MDApp):
             self.preset_editor = None
         self.selected_preset = ""
 
-    def start_workout(self, exercises):
-        if exercises:
-            self.workout_session = WorkoutSession(exercises)
+    def start_workout(self, preset_name: str):
+        """Initialize a :class:`WorkoutSession` for ``preset_name``.
+
+        The entire preset is loaded from the database when the session is
+        created so no further database access is required while the workout
+        is in progress.
+        """
+
+        if preset_name:
+            self.workout_session = WorkoutSession(preset_name, db_path=DEFAULT_DB_PATH)
         else:
             self.workout_session = None
 

@@ -750,11 +750,11 @@ def set_exercise_metric_override(
 class WorkoutSession:
     """In-memory representation of a workout session.
 
-    The session loads the selected preset from the database when it is
-    created.  While the workout is running it manages state in memory and
-    never writes to the database.  It may read additional information from
-    the database if needed but will not modify any tables until the workout
-    is finished, at which point the completed session is saved.
+    The entire preset is fetched from the database when the session is
+    created.  Once initialized all workout progress is kept purely in
+    memory and the database is not accessed again.  Future versions may
+    consult the database when adding unplanned exercises, but that
+    functionality is not yet implemented.
     """
 
     def __init__(
