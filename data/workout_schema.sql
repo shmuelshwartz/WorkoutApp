@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS "preset_preset_metrics" (
 	"id"	INTEGER,
 	"preset_id"	INTEGER NOT NULL,
 	"library_metric_type_id"	INTEGER,
+        "metric_name"   TEXT NOT NULL,
+        "metric_description"    TEXT,
 	"type"	TEXT NOT NULL CHECK("type" IN ('int', 'float', 'str', 'bool', 'enum', 'slider')),
 	"input_timing"	TEXT NOT NULL CHECK("input_timing" IN ('library', 'preset', 'pre_workout', 'post_workout')),
 	"scope"	TEXT NOT NULL CHECK("scope" IN ('preset', 'session')),
