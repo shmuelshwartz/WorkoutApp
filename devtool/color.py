@@ -4,7 +4,7 @@ from kivymd.app import MDApp
 from kivy.uix.screenmanager import ScreenManager
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDRaisedButton, MDFlatButton
+from kivymd.uix.button import MDRaisedButton, MDFlatButton, MDIconButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.slider import MDSlider
@@ -30,11 +30,19 @@ class EditColorsScreen(MDScreen):
         layout = MDBoxLayout(orientation="vertical", padding="12dp", spacing="12dp")
 
         seg = MDSegmentedControl()
-        for name in ("Text", "Screen BG", "Button"):
+        for name in (
+            "Text",
+            "Hint Text",
+            "Screen BG",
+            "Button BG",
+            "Button Text",
+            "Icon",
+            "Slider",
+        ):
             item = MDSegmentedControlItem(text=name)
             seg.add_widget(item)
             if name == "Text":
-                item.active = True  # ✅ set default selected tab here
+                item.active = True  # set default selected tab here
         seg.bind(on_active=self.on_segment_switch)
         layout.add_widget(seg)
 
@@ -91,16 +99,18 @@ class PreviewScreen(MDScreen):
         layout = MDBoxLayout(orientation="vertical", padding="12dp", spacing="12dp")
         self.label = MDLabel(text=self.label_text, halign="center", theme_text_color="Custom")
         self.text_field = MDTextField(hint_text="Enter text")
-        self.button = MDRaisedButton(text="Button", pos_hint={"center_x": 0.5})
+        self.button = MDRaisedButton(text="Button", pos_hint={"center_x": 0.5}, theme_text_color="Custom")
+        self.icon = MDIconButton(icon="star", theme_text_color="Custom")
         self.slider = MDSlider()
         layout.add_widget(self.label)
         layout.add_widget(self.text_field)
         layout.add_widget(self.button)
+        layout.add_widget(self.icon)
         layout.add_widget(self.slider)
 
         nav = MDBoxLayout(size_hint_y=None, height="48dp", spacing="12dp")
-        self.btn_edit = MDFlatButton(text="Edit Colors")
-        self.btn_other = MDFlatButton(text="Other Preview")
+        self.btn_edit = MDFlatButton(text="Edit Colors", theme_text_color="Custom")
+        self.btn_other = MDFlatButton(text="Other Preview", theme_text_color="Custom")
         nav.add_widget(self.btn_edit)
         nav.add_widget(self.btn_other)
         layout.add_widget(nav)
@@ -113,8 +123,12 @@ class ColorApp(MDApp):
 
     colors = {
         "text": [1, 1, 1, 1],
+        "hint_text": [0.7, 0.7, 0.7, 1],
         "screen_bg": [0, 0, 0, 1],
-        "button": [0.2, 0.6, 0.86, 1],
+        "button_bg": [0.2, 0.6, 0.86, 1],
+        "button_text": [1, 1, 1, 1],
+        "icon": [1, 0.84, 0, 1],
+        "slider": [0.2, 0.6, 0.86, 1],
     }
 
     def build(self):
@@ -146,16 +160,26 @@ class ColorApp(MDApp):
 
     def apply_colors(self):
         t = self.colors["text"]
+        hint = self.colors["hint_text"]
         bg = self.colors["screen_bg"]
-        btn = self.colors["button"]
+        btn_bg = self.colors["button_bg"]
+        btn_text = self.colors["button_text"]
+        icon = self.colors["icon"]
+        slider = self.colors["slider"]
+
         for screen in (self.preview1, self.preview2):
             screen.label.theme_text_color = "Custom"
             screen.label.text_color = t
             screen.text_field.text_color = t
-            screen.text_field.hint_text_color = t
-            screen.button.md_bg_color = btn
-            screen.slider.color = btn
+            screen.text_field.hint_text_color = hint
+            screen.button.md_bg_color = btn_bg
+            screen.button.text_color = btn_text
+            screen.slider.color = slider
+            screen.icon.text_color = icon
+            screen.btn_edit.text_color = t
+            screen.btn_other.text_color = t
             screen.md_bg_color = bg
+
         self.edit_screen.md_bg_color = bg
 
 
