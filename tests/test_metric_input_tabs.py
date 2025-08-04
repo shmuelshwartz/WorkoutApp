@@ -23,6 +23,7 @@ class _Prop:
 kivy_modules["kivy.properties"].ObjectProperty = _Prop
 kivy_modules["kivy.properties"].StringProperty = _Prop
 kivy_modules["kivy.properties"].BooleanProperty = _Prop
+kivy_modules["kivy.properties"].ListProperty = _Prop
 
 for name, module in kivy_modules.items():
     module.__spec__ = ModuleSpec(name, loader=None)
