@@ -80,7 +80,7 @@ def test_optional_metrics_populated():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_populate_uses_last_set_metrics(monkeypatch):
+def test_populate_blank_for_new_set(monkeypatch):
     from kivy.lang import Builder
     from pathlib import Path
     import ui.screens.metric_input_screen as mis
@@ -107,15 +107,18 @@ def test_populate_uses_last_set_metrics(monkeypatch):
     class DummySession:
         preset_name = "Test"
         pending_pre_set_metrics = {}
+        current_exercise = 0
+        current_set = 1
+        awaiting_post_set_metrics = True
+        exercises = [
+            {"name": "Bench", "sets": 3, "results": [{"Weight": 100, "Notes": "prev"}]}
+        ]
 
         def next_exercise_name(self):
             return "Bench"
 
         def upcoming_exercise_name(self):
             return "Bench"
-
-        def last_recorded_set_metrics(self):
-            return {"Weight": 100, "Notes": "prev"}
 
     dummy_app = _DummyApp()
     dummy_app.workout_session = DummySession()
@@ -133,17 +136,7 @@ def test_populate_uses_last_set_metrics(monkeypatch):
     weight_row = next(
         r for r in screen.prev_metric_list.children if getattr(r, "metric_name", "") == "Weight"
     )
-    assert getattr(weight_row.input_widget, "text", "") == "100"
-
-    notes_prev = next(
-        r for r in screen.prev_optional_list.children if getattr(r, "metric_name", "") == "Notes"
-    )
-    assert getattr(notes_prev.input_widget, "text", "") == "prev"
-
-    notes_next = next(
-        r for r in screen.next_optional_list.children if getattr(r, "metric_name", "") == "Notes"
-    )
-    assert getattr(notes_next.input_widget, "text", "") == ""
+    assert getattr(weight_row.input_widget, "text", "") == ""
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
