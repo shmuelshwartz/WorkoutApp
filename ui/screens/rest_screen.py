@@ -19,7 +19,7 @@ class RestScreen(MDScreen):
     is_ready = BooleanProperty(False)
     timer_color = ListProperty([1, 0, 0, 1])
 
-    def on_enter(self, *args):
+    def on_pre_enter(self, *args):
         session = MDApp.get_running_app().workout_session
         if session:
             ex_name = session.next_exercise_name()
@@ -44,6 +44,9 @@ class RestScreen(MDScreen):
         self.update_timer(0)
         self._event = Clock.schedule_interval(self.update_timer, 0.1)
         self.update_record_button_color()
+        return super().on_pre_enter(*args)
+
+    def on_enter(self, *args):
         return super().on_enter(*args)
 
     def on_leave(self, *args):
