@@ -57,13 +57,10 @@ class RestScreen(MDScreen):
     def toggle_ready(self):
         app = MDApp.get_running_app()
         session = app.workout_session if app else None
-        if session and not self.is_ready:
-            if not (
-                session.has_required_pre_set_metrics()
-                and session.has_required_post_set_metrics()
-            ):
-                self.update_record_button_color()
-                return
+        # Allow toggling ready state regardless of whether required metrics
+        # have been recorded. Previously, missing required metrics prevented
+        # the user from proceeding. Removing the guard ensures the "ready"
+        # button always works.
         self.is_ready = not self.is_ready
         self.timer_color = (0, 1, 0, 1) if self.is_ready else (1, 0, 0, 1)
         if self.is_ready and self.target_time <= time.time():
