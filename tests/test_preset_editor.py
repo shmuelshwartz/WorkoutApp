@@ -1,5 +1,6 @@
 import shutil
 import sqlite3
+import copy
 from pathlib import Path
 import sys
 
@@ -383,6 +384,30 @@ def test_move_exercise_updates_position_only(sample_db):
     editor.close()
     assert rows == [(orig_ids[1], 0), (orig_ids[0], 1)]
     assert deleted == 0
+
+
+def test_save_after_copy_between_presets(db_copy):
+    editor1 = PresetEditor(db_path=db_copy)
+    editor1.preset_name = "Preset1"
+    editor1.add_section("Sec")
+    editor1.add_exercise(0, "Push ups")
+    editor1.save()
+
+    editor2 = PresetEditor(db_path=db_copy)
+    editor2.preset_name = "Preset2"
+    editor2.add_section("Sec")
+    editor2.add_exercise(0, "Push ups")
+    editor2.save()
+
+    editor2.sections[0]["exercises"].append(copy.deepcopy(editor1.sections[0]["exercises"][0]))
+
+    try:
+        editor2.save()
+    except sqlite3.IntegrityError as exc:
+        pytest.fail(f"save() raised IntegrityError: {exc}")
+
+    editor1.close()
+    editor2.close()
 
 
 
