@@ -1522,7 +1522,7 @@ def uses_default_metric(
             SELECT em.type, em.input_timing, em.is_required, em.scope, em.enum_values_json
               FROM library_exercise_metrics em
               JOIN library_metric_types mt ON em.metric_type_id = mt.id
-             WHERE em.exercise_id = ? AND mt.name = ? AND em.deleted = 0
+             WHERE em.exercise_id = ? AND mt.name = ? AND em.deleted = 0 AND mt.deleted = 0
             """,
             (ex_id, metric_type_name),
         )
@@ -2047,8 +2047,8 @@ class PresetEditor:
     # ------------------------------------------------------------------
     # Persistence
     # ------------------------------------------------------------------
-    def save(self) -> None:
-        """Write the current preset to the database."""
+    def validate(self) -> None:
+        """Run checks to ensure the preset can be saved without writing to the database."""
 
         if not self.preset_name.strip():
             raise ValueError("Preset name cannot be empty")
@@ -2062,18 +2062,31 @@ class PresetEditor:
         if row and (self._preset_id is None or row[0] != self._preset_id):
             raise ValueError("A preset with that name already exists")
 
-        if row:
-            preset_id = row[0]
-            self._preset_id = preset_id
+        for sec in self.sections:
+            for ex in sec.get("exercises", []):
+                cursor.execute(
+                    "SELECT 1 FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
+                    (ex.get("name"),),
+                )
+                if cursor.fetchone() is None:
+                    raise ValueError(f"Exercise '{ex['name']}' does not exist")
+
+    def save(self) -> None:
+        """Write the current preset to the database. Assumes validation has been performed."""
+
+        cursor = self.conn.cursor()
+
+        if self._preset_id is not None:
+            preset_id = self._preset_id
+            cursor.execute(
+                "UPDATE preset_presets SET name = ? WHERE id = ?",
+                (self.preset_name, preset_id),
+            )
             cursor.execute(
                 "SELECT id FROM preset_preset_sections WHERE preset_id = ? AND deleted = 0 ORDER BY position",
                 (preset_id,),
             )
             sec_ids = [r[0] for r in cursor.fetchall()]
-            cursor.execute(
-                "UPDATE preset_presets SET name = ? WHERE id = ?",
-                (self.preset_name, preset_id),
-            )
         else:
             cursor.execute(
                 "INSERT INTO preset_presets (name) VALUES (?)",
@@ -2120,7 +2133,7 @@ class PresetEditor:
                 )
                 lr = cursor.fetchone()
                 if lr is None:
-                    raise ValueError(f"Exercise '{ex['name']}' does not exist")
+                    raise RuntimeError(f"Exercise '{ex['name']}' not found during save")
                 lib_id, desc = lr[0], lr[1] or ""
 
                 ex_id = ex.get("id")
@@ -2179,15 +2192,36 @@ class PresetEditor:
                                      mt.id
                               FROM library_exercise_metrics em
                               JOIN library_metric_types mt ON em.metric_type_id = mt.id
+
                              WHERE em.exercise_id = ?
+                               AND em.deleted = 0 AND mt.deleted = 0
+
                              ORDER BY em.position
                             """,
                                 (lib_id,),
                             )
                             lib_metrics = cursor.fetchall()
                             cursor.execute(
-                                "SELECT id, metric_name FROM preset_exercise_metrics WHERE section_exercise_id = ? AND deleted = 0",
-                                (ex_id,),
+
+                                "SELECT 1 FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ? AND deleted = 0",
+                                (ex_id, mt_name),
+                            )
+                            if cursor.fetchone():
+                                continue
+                            cursor.execute(
+                                """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, metric_description, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                (
+                                    ex_id,
+                                    mt_name,
+                                    mt_desc,
+                                    m_input,
+                                    m_timing,
+                                    m_req,
+                                    m_scope,
+                                    m_enum_json,
+                                    mpos,
+                                    mt_id,
+                                ),
                             )
                             existing_metrics = {name: mid for mid, name in cursor.fetchall()}
                             for (
@@ -2255,7 +2289,10 @@ class PresetEditor:
                                mt.id
                           FROM library_exercise_metrics em
                           JOIN library_metric_types mt ON em.metric_type_id = mt.id
+
                          WHERE em.exercise_id = ?
+                           AND em.deleted = 0 AND mt.deleted = 0
+
                          ORDER BY em.position
                         """,
                         (lib_id,),
@@ -2282,6 +2319,12 @@ class PresetEditor:
                                 "UPDATE preset_exercise_metrics SET deleted = 1 WHERE id = ?",
                                 (existing_metrics.pop(mt_name),),
                             )
+                        cursor.execute(
+                            "SELECT 1 FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ? AND deleted = 0",
+                            (ex_id, mt_name),
+                        )
+                        if cursor.fetchone():
+                            continue
                         cursor.execute(
                             """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, metric_description, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                             (
