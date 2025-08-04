@@ -901,6 +901,17 @@ class WorkoutSession:
             return f"{ex['name']} set {set_idx + 1} of {ex['sets']}"
         return ""
 
+    def last_recorded_set_metrics(self) -> dict:
+        """Return metrics from the most recently completed set.
+
+        If no sets have been completed yet, an empty dict is returned.
+        """
+
+        for ex in reversed(self.exercises[: self.current_exercise + 1]):
+            if ex["results"]:
+                return ex["results"][-1]
+        return {}
+
     # --------------------------------------------------------------
     # Pre-set metric helpers
     # --------------------------------------------------------------
