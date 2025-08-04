@@ -1,5 +1,4 @@
 #:import NoTransition kivy.uix.screenmanager.NoTransition
-#:import MDTabsBase kivymd.uix.tab.MDTabsBase
 ScreenManager:
     WelcomeScreen:
         name: "welcome"
@@ -858,13 +857,13 @@ ScreenManager:
             id: exercise_list
 
 
-<DetailsTab@MDBoxLayout+MDTabsBase>:
+<DetailsTab@Tab>:
     orientation: "vertical"
     ScrollView:
         MDList:
             id: details_list
 
-<WorkoutTab@MDBoxLayout+MDTabsBase>:
+<WorkoutTab@Tab>:
     orientation: "vertical"
     ScrollView:
         MDList:
