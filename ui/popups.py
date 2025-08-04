@@ -46,7 +46,9 @@ class AddMetricPopup(MDDialog):
         else:
             content, buttons, title = self._build_choice_widgets()
 
-        super().__init__(title=title, type="custom", content_cls=content, buttons=buttons, **kwargs)
+        super().__init__(
+            title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
+        )
 
     # ------------------------------------------------------------------
     # Building widgets for both modes
@@ -54,7 +56,11 @@ class AddMetricPopup(MDDialog):
     def _build_select_widgets(self):
         metrics = core.get_all_metric_types()
         existing = {m.get("name") for m in self.screen.exercise_obj.metrics}
-        metrics = [m for m in metrics if m["name"] not in existing and m.get("scope") in ("set", "exercise")]
+        metrics = [
+            m
+            for m in metrics
+            if m["name"] not in existing and m.get("scope") in ("set", "exercise")
+        ]
         list_view = MDList()
         for m in metrics:
             item = OneLineListItem(text=m["name"])
@@ -64,7 +70,9 @@ class AddMetricPopup(MDDialog):
         scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
         scroll.add_widget(list_view)
 
-        new_btn = MDRaisedButton(text="New Metric", on_release=self.show_new_metric_form)
+        new_btn = MDRaisedButton(
+            text="New Metric", on_release=self.show_new_metric_form
+        )
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
         buttons = [new_btn, cancel_btn]
         return scroll, buttons, "Select Metric"
@@ -78,25 +86,38 @@ class AddMetricPopup(MDDialog):
             schema = [
                 {"name": "name"},
                 {"name": "description"},
-                {"name": "type", "options": ["int", "float", "str", "bool", "enum", "slider"]},
+                {
+                    "name": "type",
+                    "options": ["int", "float", "str", "bool", "enum", "slider"],
+                },
                 {
                     "name": "input_timing",
-                    "options": ["preset", "pre_session", "post_session", "pre_set", "post_set"],
+                    "options": [
+                        "preset",
+                        "pre_session",
+                        "post_session",
+                        "pre_set",
+                        "post_set",
+                    ],
                 },
                 {"name": "scope", "options": ["session", "section", "exercise", "set"]},
                 {"name": "is_required"},
             ]
         else:
             order_map = {field["name"]: field for field in schema}
-            schema = [order_map[name] for name in METRIC_FIELD_ORDER if name in order_map] + [
-                field for field in schema if field["name"] not in METRIC_FIELD_ORDER
-            ]
+            schema = [
+                order_map[name] for name in METRIC_FIELD_ORDER if name in order_map
+            ] + [field for field in schema if field["name"] not in METRIC_FIELD_ORDER]
 
         form = MDBoxLayout(orientation="vertical", spacing="8dp", size_hint_y=None)
         form.bind(minimum_height=form.setter("height"))
 
         def enable_auto_resize(text_field: MDTextField):
-            text_field.bind(text=lambda inst, val: setattr(inst, "height", max(default_height, inst.minimum_height)))
+            text_field.bind(
+                text=lambda inst, val: setattr(
+                    inst, "height", max(default_height, inst.minimum_height)
+                )
+            )
 
         for field in schema:
             name = field["name"]
@@ -104,16 +125,28 @@ class AddMetricPopup(MDDialog):
                 continue
             options = field.get("options")
             if name == "is_required":
-                row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
+                row = MDBoxLayout(
+                    orientation="horizontal", size_hint_y=None, height="40dp"
+                )
                 widget = MDCheckbox(size_hint_y=None, height=default_height)
                 row.add_widget(widget)
                 row.add_widget(MDLabel(text="Required"))
                 form.add_widget(row)
             elif options:
-                widget = Spinner(text=options[0], values=options, size_hint_y=None, height=default_height)
+                widget = Spinner(
+                    text=options[0],
+                    values=options,
+                    size_hint_y=None,
+                    height=default_height,
+                )
                 form.add_widget(widget)
             else:
-                widget = MDTextField(hint_text=name.replace("_", " ").title(), size_hint_y=None, height=default_height, multiline=True)
+                widget = MDTextField(
+                    hint_text=name.replace("_", " ").title(),
+                    size_hint_y=None,
+                    height=default_height,
+                    multiline=True,
+                )
                 widget.hint_text_font_size = "12sp"
                 enable_auto_resize(widget)
                 form.add_widget(widget)
@@ -154,7 +187,9 @@ class AddMetricPopup(MDDialog):
             self.enum_values_field.input_filter = _filter
 
         if "type" in self.input_widgets:
-            self.input_widgets["type"].bind(text=lambda *a: (update_enum_visibility(), update_enum_filter()))
+            self.input_widgets["type"].bind(
+                text=lambda *a: (update_enum_visibility(), update_enum_filter())
+            )
             update_enum_visibility()
             update_enum_filter()
 
@@ -169,7 +204,9 @@ class AddMetricPopup(MDDialog):
     def _build_choice_widgets(self):
         label = MDLabel(text="Choose an option", halign="center")
         add_btn = MDRaisedButton(text="Add Metric", on_release=self.show_metric_list)
-        new_btn = MDRaisedButton(text="New Metric", on_release=self.show_new_metric_form)
+        new_btn = MDRaisedButton(
+            text="New Metric", on_release=self.show_new_metric_form
+        )
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
         content = MDBoxLayout(orientation="vertical", spacing="8dp")
         content.add_widget(label)
@@ -280,7 +317,9 @@ class EditMetricPopup(MDDialog):
         self.screen = screen
         self.metric = metric
         content, buttons, title = self._build_widgets()
-        super().__init__(title=title, type="custom", content_cls=content, buttons=buttons, **kwargs)
+        super().__init__(
+            title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
+        )
 
     def _build_widgets(self):
         default_height = dp(48)
@@ -291,25 +330,38 @@ class EditMetricPopup(MDDialog):
             schema = [
                 {"name": "name"},
                 {"name": "description"},
-                {"name": "type", "options": ["int", "float", "str", "bool", "enum", "slider"]},
+                {
+                    "name": "type",
+                    "options": ["int", "float", "str", "bool", "enum", "slider"],
+                },
                 {
                     "name": "input_timing",
-                    "options": ["preset", "pre_session", "post_session", "pre_set", "post_set"],
+                    "options": [
+                        "preset",
+                        "pre_session",
+                        "post_session",
+                        "pre_set",
+                        "post_set",
+                    ],
                 },
                 {"name": "scope", "options": ["session", "section", "exercise", "set"]},
                 {"name": "is_required"},
             ]
         else:
             order_map = {field["name"]: field for field in schema}
-            schema = [order_map[name] for name in METRIC_FIELD_ORDER if name in order_map] + [
-                field for field in schema if field["name"] not in METRIC_FIELD_ORDER
-            ]
+            schema = [
+                order_map[name] for name in METRIC_FIELD_ORDER if name in order_map
+            ] + [field for field in schema if field["name"] not in METRIC_FIELD_ORDER]
 
         form = MDBoxLayout(orientation="vertical", spacing="8dp", size_hint_y=None)
         form.bind(minimum_height=form.setter("height"))
 
         def enable_auto_resize(text_field: MDTextField):
-            text_field.bind(text=lambda inst, val: setattr(inst, "height", max(default_height, inst.minimum_height)))
+            text_field.bind(
+                text=lambda inst, val: setattr(
+                    inst, "height", max(default_height, inst.minimum_height)
+                )
+            )
 
         for field in schema:
             name = field["name"]
@@ -317,16 +369,28 @@ class EditMetricPopup(MDDialog):
                 continue
             options = field.get("options")
             if name == "is_required":
-                row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height="40dp")
+                row = MDBoxLayout(
+                    orientation="horizontal", size_hint_y=None, height="40dp"
+                )
                 widget = MDCheckbox(size_hint_y=None, height=default_height)
                 row.add_widget(widget)
                 row.add_widget(MDLabel(text="Required"))
                 form.add_widget(row)
             elif options:
-                widget = Spinner(text=options[0], values=options, size_hint_y=None, height=default_height)
+                widget = Spinner(
+                    text=options[0],
+                    values=options,
+                    size_hint_y=None,
+                    height=default_height,
+                )
                 form.add_widget(widget)
             else:
-                widget = MDTextField(hint_text=name.replace("_", " ").title(), size_hint_y=None, height=default_height, multiline=True)
+                widget = MDTextField(
+                    hint_text=name.replace("_", " ").title(),
+                    size_hint_y=None,
+                    height=default_height,
+                    multiline=True,
+                )
                 enable_auto_resize(widget)
                 form.add_widget(widget)
             self.input_widgets[name] = widget
@@ -386,7 +450,9 @@ class EditMetricPopup(MDDialog):
             self.enum_values_field.input_filter = _filter
 
         if "type" in self.input_widgets:
-            self.input_widgets["type"].bind(text=lambda *a: (update_enum_filter(), update_enum_visibility()))
+            self.input_widgets["type"].bind(
+                text=lambda *a: (update_enum_filter(), update_enum_visibility())
+            )
             update_enum_visibility()
             update_enum_filter()
 
@@ -461,8 +527,12 @@ class EditMetricPopup(MDDialog):
                 if dialog:
                     dialog.dismiss()
 
-            cb_type = MDCheckbox(group="apply", size_hint=(None, None), height="40dp", width="40dp")
-            cb_ex = MDCheckbox(group="apply", size_hint=(None, None), height="40dp", width="40dp")
+            cb_type = MDCheckbox(
+                group="apply", size_hint=(None, None), height="40dp", width="40dp"
+            )
+            cb_ex = MDCheckbox(
+                group="apply", size_hint=(None, None), height="40dp", width="40dp"
+            )
             cb_preset = MDCheckbox(
                 group="apply",
                 size_hint=(None, None),
@@ -470,16 +540,26 @@ class EditMetricPopup(MDDialog):
                 width="40dp",
                 active=True,
             )
-            row1 = MDBoxLayout(orientation="horizontal", spacing="8dp", size_hint_y=None, height="40dp")
+            row1 = MDBoxLayout(
+                orientation="horizontal", spacing="8dp", size_hint_y=None, height="40dp"
+            )
             row1.add_widget(cb_type)
             row1.add_widget(MDLabel(text="Set as default metric type", halign="left"))
-            row2 = MDBoxLayout(orientation="horizontal", spacing="8dp", size_hint_y=None, height="40dp")
+            row2 = MDBoxLayout(
+                orientation="horizontal", spacing="8dp", size_hint_y=None, height="40dp"
+            )
             row2.add_widget(cb_ex)
-            row2.add_widget(MDLabel(text="Apply to all instances of this exercise", halign="left"))
-            row3 = MDBoxLayout(orientation="horizontal", spacing="8dp", size_hint_y=None, height="40dp")
+            row2.add_widget(
+                MDLabel(text="Apply to all instances of this exercise", halign="left")
+            )
+            row3 = MDBoxLayout(
+                orientation="horizontal", spacing="8dp", size_hint_y=None, height="40dp"
+            )
             row3.add_widget(cb_preset)
             row3.add_widget(MDLabel(text="Apply only to this preset", halign="left"))
-            content = MDBoxLayout(orientation="vertical", spacing="8dp", size_hint_y=None)
+            content = MDBoxLayout(
+                orientation="vertical", spacing="8dp", size_hint_y=None
+            )
             content.add_widget(row1)
             content.add_widget(row2)
             content.add_widget(row3)
@@ -545,10 +625,142 @@ class EditMetricPopup(MDDialog):
 
             def _on_open(instance):
                 if hasattr(instance, "ids") and "buttons" in instance.ids:
-                    instance.ids.buttons.orientation = "vertical" if Window.width < dp(400) else "horizontal"
+                    instance.ids.buttons.orientation = (
+                        "vertical" if Window.width < dp(400) else "horizontal"
+                    )
 
             dialog.bind(on_open=_on_open)
             dialog.open()
+        elif self.screen.previous_screen == "exercise_library":
+            dialog = None
+
+            def cancel_action(*a):
+                if dialog:
+                    dialog.dismiss()
+
+            rows = []
+            cb_default = None
+            if core.is_metric_type_user_created(
+                self.metric["name"], db_path=db_path
+            ) and core.uses_default_metric(
+                self.screen.exercise_obj.name,
+                self.metric["name"],
+                is_user_created=self.screen.exercise_obj.is_user_created,
+                db_path=db_path,
+            ):
+                cb_default = MDCheckbox(
+                    size_hint=(None, None), height="40dp", width="40dp"
+                )
+                row = MDBoxLayout(
+                    orientation="horizontal",
+                    spacing="8dp",
+                    size_hint_y=None,
+                    height="40dp",
+                )
+                row.add_widget(cb_default)
+                row.add_widget(
+                    MDLabel(
+                        text="Make this the new default metric for all exercises",
+                        halign="left",
+                    )
+                )
+                rows.append(row)
+
+            presets = core.find_presets_using_exercise(
+                self.screen.exercise_obj.name, db_path=db_path
+            )
+            cb_presets = None
+            if presets:
+                cb_presets = MDCheckbox(
+                    size_hint=(None, None), height="40dp", width="40dp"
+                )
+                row = MDBoxLayout(
+                    orientation="horizontal",
+                    spacing="8dp",
+                    size_hint_y=None,
+                    height="40dp",
+                )
+                row.add_widget(cb_presets)
+                row.add_widget(
+                    MDLabel(
+                        text="Apply this metric change to all presets that use this exercise",
+                        halign="left",
+                    )
+                )
+                rows.append(row)
+
+            if rows:
+                content = MDBoxLayout(
+                    orientation="vertical", spacing="8dp", size_hint_y=None
+                )
+                for r in rows:
+                    content.add_widget(r)
+
+                def on_save(*a):
+                    metric_saved = self.screen.exercise_obj.had_metric(
+                        self.metric["name"]
+                    )
+                    if cb_default and cb_default.active:
+                        core.update_metric_type(
+                            self.metric["name"],
+                            mtype=updates.get("type"),
+                            input_timing=updates.get("input_timing"),
+                            scope=updates.get("scope"),
+                            description=updates.get("description"),
+                            is_required=updates.get("is_required"),
+                            enum_values=updates.get("values"),
+                            db_path=db_path,
+                        )
+                        if metric_saved:
+                            core.set_exercise_metric_override(
+                                self.screen.exercise_obj.name,
+                                self.metric["name"],
+                                is_user_created=self.screen.exercise_obj.is_user_created,
+                                db_path=db_path,
+                            )
+                    else:
+                        if metric_saved:
+                            core.set_exercise_metric_override(
+                                self.screen.exercise_obj.name,
+                                self.metric["name"],
+                                mtype=updates.get("type"),
+                                input_timing=updates.get("input_timing"),
+                                is_required=updates.get("is_required"),
+                                scope=updates.get("scope"),
+                                enum_values=updates.get("values"),
+                                is_user_created=self.screen.exercise_obj.is_user_created,
+                                db_path=db_path,
+                            )
+                    if cb_presets and cb_presets.active:
+                        core.apply_exercise_changes_to_presets(
+                            self.screen.exercise_obj,
+                            presets,
+                            db_path=db_path,
+                        )
+                    cancel_action()
+                    apply_updates()
+
+                dialog = MDDialog(
+                    title="Save Metric",
+                    type="custom",
+                    content_cls=content,
+                    buttons=[
+                        MDRaisedButton(text="Cancel", on_release=cancel_action),
+                        MDRaisedButton(text="Save", on_release=on_save),
+                    ],
+                )
+
+                def _on_open(instance):
+                    if hasattr(instance, "ids") and "buttons" in instance.ids:
+                        instance.ids.buttons.orientation = (
+                            "vertical" if Window.width < dp(400) else "horizontal"
+                        )
+
+                dialog.bind(on_open=_on_open)
+                dialog.open()
+            else:
+                apply_updates()
+
         elif core.is_metric_type_user_created(self.metric["name"], db_path=db_path):
             dialog = None
 
@@ -557,8 +769,12 @@ class EditMetricPopup(MDDialog):
                     dialog.dismiss()
 
             checkbox = MDCheckbox(size_hint=(None, None), height="40dp", width="40dp")
-            label = MDLabel(text="Apply changes to all exercises using this metric", halign="left")
-            content = MDBoxLayout(orientation="horizontal", spacing="8dp", size_hint_y=None, height="40dp")
+            label = MDLabel(
+                text="Apply changes to all exercises using this metric", halign="left"
+            )
+            content = MDBoxLayout(
+                orientation="horizontal", spacing="8dp", size_hint_y=None, height="40dp"
+            )
             content.add_widget(checkbox)
             content.add_widget(label)
 
@@ -609,10 +825,11 @@ class EditMetricPopup(MDDialog):
 
             def _on_open(instance):
                 if hasattr(instance, "ids") and "buttons" in instance.ids:
-                    instance.ids.buttons.orientation = "vertical" if Window.width < dp(400) else "horizontal"
+                    instance.ids.buttons.orientation = (
+                        "vertical" if Window.width < dp(400) else "horizontal"
+                    )
 
             dialog.bind(on_open=_on_open)
             dialog.open()
         else:
             apply_updates()
-

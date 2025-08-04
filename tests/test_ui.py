@@ -113,7 +113,9 @@ def test_add_metric_popup_has_single_enum_field():
     popup.input_widgets["type"].text = "enum"
     children = popup.content_cls.children[0].children
     enum_fields = [
-        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+        c
+        for c in children
+        if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
     ]
     assert len(enum_fields) == 1
 
@@ -149,13 +151,17 @@ def test_edit_metric_popup_has_single_enum_field():
 
     children = popup.content_cls.children[0].children
     enum_fields = [
-        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+        c
+        for c in children
+        if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
     ]
     assert len(enum_fields) == 0
     popup.input_widgets["type"].text = "enum"
     children = popup.content_cls.children[0].children
     enum_fields = [
-        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+        c
+        for c in children
+        if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
     ]
     assert len(enum_fields) == 1
 
@@ -479,13 +485,17 @@ def test_edit_metric_type_popup_enum_field_visibility():
     popup = EditMetricTypePopup(DummyScreen(), "Speed", True)
     children = popup.content_cls.children[0].children
     enum_fields = [
-        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+        c
+        for c in children
+        if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
     ]
     assert len(enum_fields) == 0
     popup.input_widgets["type"].text = "enum"
     children = popup.content_cls.children[0].children
     enum_fields = [
-        c for c in children if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
+        c
+        for c in children
+        if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
     ]
     assert len(enum_fields) == 1
 
@@ -498,12 +508,36 @@ def test_edit_metric_type_popup_loads_enum_values():
                 "name": "Side",
                 "type": "enum",
                 "is_user_created": True,
-                "enum_values_json": "[\"Left\", \"Right\", \"None\"]",
+                "enum_values_json": '["Left", "Right", "None"]',
             }
         ]
 
     popup = EditMetricTypePopup(DummyScreen(), "Side", True)
     assert popup.enum_values_field.text == "Left, Right, None"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_type_popup_shows_affected(monkeypatch):
+    class DummyScreen:
+        all_metrics = [
+            {
+                "name": "Speed",
+                "type": "int",
+                "is_user_created": True,
+            }
+        ]
+
+    monkeypatch.setattr(
+        core, "find_exercises_using_metric_type", lambda *a, **k: ["A", "B"]
+    )
+    popup = EditMetricTypePopup(DummyScreen(), "Speed", True)
+    labels = [
+        c.text
+        for c in popup.content_cls.children
+        if hasattr(c, "text") and isinstance(c.text, str)
+    ]
+    assert any("Affects 2" in t for t in labels)
+
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_preset_select_button_color(monkeypatch):

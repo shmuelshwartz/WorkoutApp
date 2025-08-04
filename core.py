@@ -56,7 +56,7 @@ def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
         presets = []
         for preset_id, preset_name in cursor.fetchall():
             cursor.execute(
-            """
+                """
             SELECT se.exercise_name, se.number_of_sets, se.rest_time
             FROM preset_preset_sections s
             JOIN preset_section_exercises se ON se.section_id = s.id
@@ -173,7 +173,7 @@ def get_metrics_for_exercise(
         exercise_id = row[0]
 
         cursor.execute(
-        """
+            """
         SELECT mt.id,
                mt.name,
                COALESCE(em.type, mt.type),
@@ -192,14 +192,14 @@ def get_metrics_for_exercise(
 
         metrics = []
         for (
-        metric_id,
-        name,
-        mtype,
-        input_timing,
-        is_required,
-        scope,
-        enum_json,
-        description,
+            metric_id,
+            name,
+            mtype,
+            input_timing,
+            is_required,
+            scope,
+            enum_json,
+            description,
         ) in cursor.fetchall():
             values = []
             if mtype == "enum" and enum_json:
@@ -208,21 +208,21 @@ def get_metrics_for_exercise(
                 except Exception:
                     values = []
             metrics.append(
-            {
-                "name": name,
-                "type": mtype,
-                "input_timing": input_timing,
-                "is_required": bool(is_required),
-                "scope": scope,
-                "description": description,
-                "values": values,
-            }
+                {
+                    "name": name,
+                    "type": mtype,
+                    "input_timing": input_timing,
+                    "is_required": bool(is_required),
+                    "scope": scope,
+                    "description": description,
+                    "values": values,
+                }
             )
 
         # Apply overrides for a specific preset if requested
         if preset_name:
             cursor.execute(
-            """
+                """
             SELECT sem.metric_name, sem.input_timing, sem.is_required, sem.scope
             FROM preset_exercise_metrics sem
             JOIN preset_section_exercises se ON sem.section_exercise_id = se.id
@@ -562,8 +562,6 @@ def update_metric_type(
             conn.commit()
 
 
-
-
 def set_section_exercise_metric_override(
     preset_name: str,
     section_index: int,
@@ -654,6 +652,8 @@ def set_section_exercise_metric_override(
                 ),
             )
         conn.commit()
+
+
 def set_exercise_metric_override(
     exercise_name: str,
     metric_type_name: str,
@@ -726,7 +726,7 @@ def set_exercise_metric_override(
         if enum_values is not None:
             updates.append("enum_values_json = ?")
             params.append(json.dumps(enum_values))
-    
+
         if not updates:
             cursor.execute(
                 """
@@ -1054,7 +1054,7 @@ def save_exercise(exercise: Exercise) -> None:
                 (exercise.name, exercise.description),
             )
             ex_id = cursor.lastrowid
-    
+
         for position, m in enumerate(exercise.metrics):
             cursor.execute(
                 "SELECT id, type FROM library_metric_types WHERE name = ?",
@@ -1064,7 +1064,7 @@ def save_exercise(exercise: Exercise) -> None:
             if not mt_row:
                 continue
             metric_id, default_type = mt_row
-    
+
             cursor.execute(
                 "SELECT type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
                 (metric_id,),
@@ -1076,13 +1076,13 @@ def save_exercise(exercise: Exercise) -> None:
                 if m.get("type") != def_type:
                     mtype = m.get("type")
                 if m.get("input_timing") != def_timing:
-    
+
                     timing = m.get("input_timing")
                 if bool(m.get("is_required")) != bool(def_req):
                     req = int(m.get("is_required", False))
                 if m.get("scope") != def_scope:
                     scope_val = m.get("scope")
-    
+
             cursor.execute(
                 """INSERT INTO library_exercise_metrics
                     (exercise_id, metric_type_id, position, type, input_timing, is_required, scope, enum_values_json)
@@ -1092,17 +1092,17 @@ def save_exercise(exercise: Exercise) -> None:
                     metric_id,
                     position,
                     mtype,
-    
                     timing,
                     req,
                     scope_val,
                     (
-                        json.dumps(m.get("values")) if m.get("values") and (m.get("type") or default_type) == "enum" else None
-    
+                        json.dumps(m.get("values"))
+                        if m.get("values") and (m.get("type") or default_type) == "enum"
+                        else None
                     ),
                 ),
             )
-    
+
         conn.commit()
 
     exercise.is_user_created = True
@@ -1134,8 +1134,8 @@ def delete_exercise(
         ex_id = row[0]
 
         cursor.execute(
-        "SELECT 1 FROM preset_section_exercises WHERE library_exercise_id = ? AND deleted = 0 LIMIT 1",
-        (ex_id,),
+            "SELECT 1 FROM preset_section_exercises WHERE library_exercise_id = ? AND deleted = 0 LIMIT 1",
+            (ex_id,),
         )
         if cursor.fetchone():
             raise ValueError("Exercise is in use and cannot be deleted")
@@ -1145,8 +1145,8 @@ def delete_exercise(
             (ex_id,),
         )
         cursor.execute(
-        "UPDATE library_exercises SET deleted = 1 WHERE id = ?",
-        (ex_id,),
+            "UPDATE library_exercises SET deleted = 1 WHERE id = ?",
+            (ex_id,),
         )
         conn.commit()
         return True
@@ -1212,6 +1212,196 @@ def delete_metric_type(
         )
         conn.commit()
         return True
+
+
+def uses_default_metric(
+    exercise_name: str,
+    metric_type_name: str,
+    *,
+    is_user_created: bool | None = None,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> bool:
+    """Return ``True`` if ``exercise_name`` uses ``metric_type_name`` defaults."""
+
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        if is_user_created is None:
+            cursor.execute(
+                "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
+                (exercise_name,),
+            )
+        else:
+            cursor.execute(
+                "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
+                (exercise_name, int(is_user_created)),
+            )
+        row = cursor.fetchone()
+        if not row:
+            return False
+        ex_id = row[0]
+        cursor.execute(
+            """
+            SELECT em.type, em.input_timing, em.is_required, em.scope, em.enum_values_json
+              FROM library_exercise_metrics em
+              JOIN library_metric_types mt ON em.metric_type_id = mt.id
+             WHERE em.exercise_id = ? AND mt.name = ? AND em.deleted = 0
+            """,
+            (ex_id, metric_type_name),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return False
+        return all(val is None for val in row)
+
+
+def find_presets_using_exercise(
+    exercise_name: str,
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> list[str]:
+    """Return a list of preset names referencing ``exercise_name``."""
+
+    with sqlite3.connect(str(db_path)) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
+            (exercise_name,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return []
+        lib_id = row[0]
+        cur.execute(
+            """
+            SELECT DISTINCT p.name
+              FROM preset_section_exercises se
+              JOIN preset_preset_sections s ON se.section_id = s.id
+              JOIN preset_presets p ON s.preset_id = p.id
+             WHERE se.library_exercise_id = ? AND se.deleted = 0 AND s.deleted = 0 AND p.deleted = 0
+            """,
+            (lib_id,),
+        )
+        return [r[0] for r in cur.fetchall()]
+
+
+def apply_exercise_changes_to_presets(
+    exercise: Exercise,
+    presets: list[str],
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> None:
+    """Update ``presets`` to use the details from ``exercise``."""
+
+    with sqlite3.connect(str(db_path)) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
+            (exercise.name, int(exercise.is_user_created)),
+        )
+        row = cur.fetchone()
+        if not row:
+            return
+        lib_id = row[0]
+
+        cur.execute(
+            "SELECT mt.id, mt.name, mt.description, mt.type, mt.input_timing, mt.is_required, mt.scope, mt.enum_values_json, em.position"
+            " FROM library_exercise_metrics em JOIN library_metric_types mt ON em.metric_type_id = mt.id"
+            " WHERE em.exercise_id = ? AND em.deleted = 0 AND mt.deleted = 0 ORDER BY em.position",
+            (lib_id,),
+        )
+        metric_rows = cur.fetchall()
+
+        for preset in presets:
+            cur.execute(
+                "SELECT id FROM preset_presets WHERE name = ? AND deleted = 0",
+                (preset,),
+            )
+            prow = cur.fetchone()
+            if not prow:
+                continue
+            pid = prow[0]
+            cur.execute(
+                "SELECT id FROM preset_preset_sections WHERE preset_id = ? AND deleted = 0",
+                (pid,),
+            )
+            section_ids = [r[0] for r in cur.fetchall()]
+            for sid in section_ids:
+                cur.execute(
+                    "SELECT id FROM preset_section_exercises WHERE section_id = ? AND library_exercise_id = ? AND deleted = 0",
+                    (sid, lib_id),
+                )
+                ex_ids = [r[0] for r in cur.fetchall()]
+                for se_id in ex_ids:
+                    cur.execute(
+                        "UPDATE preset_section_exercises SET exercise_name = ?, exercise_description = ? WHERE id = ?",
+                        (exercise.name, exercise.description, se_id),
+                    )
+                    cur.execute(
+                        "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
+                        (se_id,),
+                    )
+                    for (
+                        mt_id,
+                        mt_name,
+                        mt_desc,
+                        mtype,
+                        timing,
+                        req,
+                        scope,
+                        enum_json,
+                        pos,
+                    ) in metric_rows:
+                        cur.execute(
+                            """
+                            INSERT INTO preset_exercise_metrics
+                                (section_exercise_id, metric_name, metric_description, type, input_timing,
+                                 is_required, scope, enum_values_json, position, library_metric_type_id)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            (
+                                se_id,
+                                mt_name,
+                                mt_desc,
+                                mtype,
+                                timing,
+                                req,
+                                scope,
+                                enum_json,
+                                pos,
+                                mt_id,
+                            ),
+                        )
+        conn.commit()
+
+
+def find_exercises_using_metric_type(
+    metric_name: str,
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> list[str]:
+    """Return exercise names that include ``metric_name``."""
+
+    with sqlite3.connect(str(db_path)) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0",
+            (metric_name,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return []
+        mt_id = row[0]
+        cur.execute(
+            """
+            SELECT e.name
+              FROM library_exercise_metrics em
+              JOIN library_exercises e ON em.exercise_id = e.id
+             WHERE em.metric_type_id = ? AND em.deleted = 0 AND e.deleted = 0
+            """,
+            (mt_id,),
+        )
+        return [r[0] for r in cur.fetchall()]
+
 
 class PresetEditor:
     """Helper for creating or editing workout presets in memory."""
@@ -1531,7 +1721,9 @@ class PresetEditor:
     def remove_metric(self, metric_name: str) -> None:
         """Remove metric with ``metric_name`` if present."""
 
-        self.preset_metrics = [m for m in self.preset_metrics if m.get("name") != metric_name]
+        self.preset_metrics = [
+            m for m in self.preset_metrics if m.get("name") != metric_name
+        ]
 
     def update_metric(self, metric_name: str, **updates) -> None:
         """Update metric named ``metric_name`` with ``updates``."""
@@ -1691,7 +1883,7 @@ class PresetEditor:
                                 (ex_id,),
                             )
                             cursor.execute(
-                            """
+                                """
                               SELECT mt.name,
                                      mt.description,
                                      COALESCE(em.type, mt.type),
@@ -1706,13 +1898,12 @@ class PresetEditor:
                              WHERE em.exercise_id = ?
                              ORDER BY em.position
                             """,
-                            (lib_id,),
-                        )
+                                (lib_id,),
+                            )
                         for (
                             mt_name,
                             mt_desc,
                             m_input,
-
                             m_timing,
                             m_req,
                             m_scope,
@@ -1727,7 +1918,6 @@ class PresetEditor:
                                     mt_name,
                                     mt_desc,
                                     m_input,
-
                                     m_timing,
                                     m_req,
                                     m_scope,
@@ -1774,7 +1964,6 @@ class PresetEditor:
                         mt_name,
                         mt_desc,
                         m_input,
-
                         m_timing,
                         m_req,
                         m_scope,
@@ -1789,7 +1978,6 @@ class PresetEditor:
                                 mt_name,
                                 mt_desc,
                                 m_input,
-
                                 m_timing,
                                 m_req,
                                 m_scope,
@@ -1809,7 +1997,7 @@ class PresetEditor:
                     (old_id,),
                 )
 
-        for sid in sec_ids[len(self.sections):]:
+        for sid in sec_ids[len(self.sections) :]:
             cursor.execute(
                 "SELECT id FROM preset_section_exercises WHERE section_id = ? AND deleted = 0",
                 (sid,),
@@ -1876,7 +2064,11 @@ class PresetEditor:
                         int(metric.get("is_required", False)),
                         enum_json,
                         pos,
-                        str(metric.get("value")) if metric.get("value") is not None else None,
+                        (
+                            str(metric.get("value"))
+                            if metric.get("value") is not None
+                            else None
+                        ),
                         existing.pop(mt_id),
                     ),
                 )
@@ -1910,7 +2102,11 @@ class PresetEditor:
                         int(metric.get("is_required", False)),
                         enum_json,
                         pos,
-                        str(metric.get("value")) if metric.get("value") is not None else None,
+                        (
+                            str(metric.get("value"))
+                            if metric.get("value") is not None
+                            else None
+                        ),
                     ),
                 )
 

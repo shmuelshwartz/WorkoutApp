@@ -102,11 +102,6 @@ class LoadingDialog(MDDialog):
         super().__init__(type="custom", content_cls=box, **kwargs)
 
 
-
-
-
-
-
 class EditMetricTypePopup(MDDialog):
     """Popup for editing or creating metric types from the library."""
 
@@ -270,12 +265,14 @@ class EditMetricTypePopup(MDDialog):
             self.enum_values_field.input_filter = _filter
 
         if "type" in self.input_widgets:
-            self.input_widgets["type"].bind(text=lambda *a: (update_enum_filter(), update_enum_visibility()))
+            self.input_widgets["type"].bind(
+                text=lambda *a: (update_enum_filter(), update_enum_visibility())
+            )
             update_enum_visibility()
             update_enum_filter()
 
         layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
-        info_box = None
+        info_widgets = []
         if self.metric and not self.is_user_created:
             has_copy = False
             if self.screen and self.metric_name:
@@ -284,33 +281,38 @@ class EditMetricTypePopup(MDDialog):
                         has_copy = True
                         break
             if has_copy:
-                msg = (
-                    "Built-in metric. Saving will overwrite your existing user copy."
-                )
+                msg = "Built-in metric. Saving will overwrite your existing user copy."
             else:
-                msg = (
-                    "Built-in metric. Saving will create a user copy you can edit."
-                )
-            info_box = MDLabel(text=msg, halign="center")
+                msg = "Built-in metric. Saving will create a user copy you can edit."
+            info_widgets.append(MDLabel(text=msg, halign="center"))
         elif self.metric and self.is_user_created:
             msg = (
                 "Changes here update the metric defaults. Exercises using this "
                 "metric without overrides will reflect the changes."
             )
-            info_box = MDLabel(text=msg, halign="center")
+            info_widgets.append(MDLabel(text=msg, halign="center"))
+
+        if self.metric:
+            affected = core.find_exercises_using_metric_type(self.metric_name)
+            if affected:
+                label = MDLabel(
+                    text=f"Affects {len(affected)} exercises", halign="center"
+                )
+                info_widgets.append(label)
         layout.add_widget(form)
         buttons = [
             MDRaisedButton(text="Save", on_release=self.save_metric),
             MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss()),
         ]
-        if info_box:
+        if info_widgets:
             wrapper = MDBoxLayout(
                 orientation="vertical",
                 spacing="8dp",
                 size_hint_y=None,
             )
             wrapper.bind(minimum_height=wrapper.setter("height"))
-            wrapper.add_widget(info_box)
+            for widget in info_widgets:
+                wrapper.add_widget(widget)
             wrapper.add_widget(layout)
             return wrapper, buttons, "Edit Metric"
         return layout, buttons, "Edit Metric" if self.metric else "New Metric"
