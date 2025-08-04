@@ -97,6 +97,7 @@ ScreenManager:
             on_release: app.root.current = "home"
 
 <PresetDetailScreen>:
+    summary_list: summary_list
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -106,6 +107,12 @@ ScreenManager:
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
+        ScrollView:
+            MDList:
+                id: summary_list
+        MDRaisedButton:
+            text: "Edit Preset"
+            on_release: app.root.current = "edit_preset"
         MDRaisedButton:
             text: "Go to Preset Overview"
             on_release: app.root.current = "preset_overview"

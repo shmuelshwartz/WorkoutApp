@@ -1,6 +1,7 @@
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.list import OneLineListItem
+from kivymd.uix.list import TwoLineListItem
+from kivymd.uix.label import MDLabel
 from kivy.properties import ObjectProperty
 import core
 
@@ -20,19 +21,39 @@ class PresetOverviewScreen(MDScreen):
             return
         self.overview_list.clear_widgets()
         app = MDApp.get_running_app()
+        app.init_preset_editor()
         preset_name = app.selected_preset
         self.preset_label.text = (
             preset_name
             if preset_name
             else "Preset Overview - summary of the chosen preset"
         )
-        for p in core.WORKOUT_PRESETS:
-            if p["name"] == preset_name:
-                for ex in p["exercises"]:
-                    self.overview_list.add_widget(
-                        OneLineListItem(text=f"{ex['name']} - sets: {ex['sets']}")
-                    )
-                break
+        editor = app.preset_editor
+        if not editor:
+            return
+        for section in editor.sections:
+            self.overview_list.add_widget(
+                MDLabel(text=f"Section: {section['name']}")
+            )
+            for ex in section.get("exercises", []):
+                desc_info = core.get_exercise_details(ex["name"])
+                desc = desc_info.get("description", "") if desc_info else ""
+                metrics = core.get_metrics_for_exercise(
+                    ex["name"], preset_name=preset_name
+                )
+                metrics_text = ", ".join(m["name"] for m in metrics)
+                secondary_parts = []
+                if desc:
+                    secondary_parts.append(desc)
+                if metrics_text:
+                    secondary_parts.append(f"Metrics: {metrics_text}")
+                secondary = " | ".join(secondary_parts)
+                sets = ex.get("sets", 0) or 0
+                label = "set" if sets == 1 else "sets"
+                text = f"{ex['name']} - {sets} {label}"
+                self.overview_list.add_widget(
+                    TwoLineListItem(text=text, secondary_text=secondary)
+                )
 
     def start_workout(self):
         app = MDApp.get_running_app()
