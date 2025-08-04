@@ -534,27 +534,39 @@ ScreenManager:
             orientation: "horizontal"
             size_hint_y: None
             height: "40dp"
-            spacing: "10dp"
+            spacing: "5dp"
             padding: "0dp", "10dp"
             MDFlatButton:
+                id: required_btn
                 text: "Required"
-                theme_text_color: "Custom"
-                text_color: root.filter_color('required')
+                size_hint_x: 0.25
+                font_size: "14sp"
+                md_bg_color: root.required_color
+                text_color: 1, 1, 1, 1
                 on_release: root.toggle_filter('required')
             MDFlatButton:
+                id: additional_btn
                 text: "Additional"
-                theme_text_color: "Custom"
-                text_color: root.filter_color('additional')
+                size_hint_x: 0.25
+                font_size: "14sp"
+                md_bg_color: root.additional_color
+                text_color: 1, 1, 1, 1
                 on_release: root.toggle_filter('additional')
             MDFlatButton:
+                id: pre_btn
                 text: "Pre Set"
-                theme_text_color: "Custom"
-                text_color: root.filter_color('pre')
+                size_hint_x: 0.25
+                font_size: "14sp"
+                md_bg_color: root.pre_color
+                text_color: 1, 1, 1, 1
                 on_release: root.toggle_filter('pre')
             MDFlatButton:
+                id: post_btn
                 text: "Post Set"
-                theme_text_color: "Custom"
-                text_color: root.filter_color('post')
+                size_hint_x: 0.25
+                font_size: "14sp"
+                md_bg_color: root.post_color
+                text_color: 1, 1, 1, 1
                 on_release: root.toggle_filter('post')
         ScrollView:
             MDList:

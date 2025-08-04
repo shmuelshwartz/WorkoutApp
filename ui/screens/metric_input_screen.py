@@ -4,6 +4,7 @@ from kivy.properties import (
     ObjectProperty,
     StringProperty,
     BooleanProperty,
+    ListProperty,
 )
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -11,6 +12,7 @@ from kivymd.uix.textfield import MDTextField
 from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
+from kivymd.uix.selectioncontrol import MDCheckbox
 
 
 class MetricInputScreen(MDScreen):
@@ -26,6 +28,11 @@ class MetricInputScreen(MDScreen):
     show_pre = BooleanProperty(True)
     show_post = BooleanProperty(True)
 
+    required_color = ListProperty([0, 1, 0, 1])
+    additional_color = ListProperty([0, 0, 0, 1])
+    pre_color = ListProperty([0, 1, 0, 1])
+    post_color = ListProperty([0, 1, 0, 1])
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.session = None
@@ -40,6 +47,7 @@ class MetricInputScreen(MDScreen):
         self.show_additional = False
         self.show_pre = True
         self.show_post = True
+        self._update_filter_colors()
 
     # ------------------------------------------------------------------
     # Navigation
@@ -110,6 +118,7 @@ class MetricInputScreen(MDScreen):
         }.get(name)
         if attr:
             setattr(self, attr, not getattr(self, attr))
+            self._update_filter_colors()
             self.update_metrics()
 
     def filter_color(self, name: str):
@@ -120,6 +129,12 @@ class MetricInputScreen(MDScreen):
             "post": "show_post",
         }.get(name)
         return (0, 1, 0, 1) if attr and getattr(self, attr) else (0, 0, 0, 1)
+
+    def _update_filter_colors(self):
+        self.required_color = self.filter_color("required")
+        self.additional_color = self.filter_color("additional")
+        self.pre_color = self.filter_color("pre")
+        self.post_color = self.filter_color("post")
 
     # ------------------------------------------------------------------
     # Metrics
@@ -220,6 +235,8 @@ class MetricInputScreen(MDScreen):
                 text=str(value) if value not in (None, "") else "",
                 values=values,
             )
+        elif mtype == "bool":
+            widget = MDCheckbox(active=bool(value))
         else:  # manual_text
             input_filter = None
             if mtype == "int":
@@ -254,6 +271,8 @@ class MetricInputScreen(MDScreen):
                 value = widget.value
             elif isinstance(widget, Spinner):
                 value = widget.text
+            elif isinstance(widget, MDCheckbox):
+                value = widget.active
             if value in (None, ""):
                 value = 0 if mtype in ("int", "float", "slider") else ""
             if mtype == "int":
