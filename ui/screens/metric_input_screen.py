@@ -78,12 +78,23 @@ class MetricInputScreen(MDScreen):
             return
 
         if self.current_tab == "previous":
-            if session.current_exercise >= len(session.exercises):
+            ex_name = ""
+            set_number = 0
+            if session.awaiting_post_set_metrics:
+                if session.current_exercise < len(session.exercises):
+                    ex = session.exercises[session.current_exercise]
+                    ex_name = ex["name"]
+                    set_number = session.current_set + 1
+            else:
+                for ex in reversed(session.exercises[: session.current_exercise + 1]):
+                    if ex.get("results"):
+                        ex_name = ex["name"]
+                        set_number = len(ex["results"])
+                        break
+            if ex_name:
+                self.header_text = f"Previous Set Metrics {ex_name} Set {set_number}"
+            else:
                 self.header_text = "Previous Set Metrics"
-                return
-            ex = session.exercises[session.current_exercise]
-            set_number = session.current_set + 1
-            self.header_text = f"Previous Set Metrics {ex['name']} Set {set_number}"
         else:
             # upcoming set info
             ex_idx = session.current_exercise
@@ -108,17 +119,22 @@ class MetricInputScreen(MDScreen):
         upcoming_ex = ""
         if app.workout_session:
             session = app.workout_session
-            curr_ex = session.next_exercise_name()
-            self.exercise_name = curr_ex
-            all_metrics = get_metrics_for_exercise(
-                curr_ex, preset_name=session.preset_name
+            prev_values = session.last_recorded_set_metrics()
+            if session.awaiting_post_set_metrics:
+                prev_ex = session.next_exercise_name()
+            else:
+                prev_ex = ""
+                for ex in reversed(session.exercises[: session.current_exercise + 1]):
+                    if ex.get("results"):
+                        prev_ex = ex["name"]
+                        break
+            self.exercise_name = prev_ex
+            all_metrics = (
+                get_metrics_for_exercise(prev_ex, preset_name=session.preset_name)
+                if prev_ex
+                else []
             )
             prev_metrics = [m for m in all_metrics if m.get("input_timing") == "post_set"]
-            prev_values = {}
-            if session.current_exercise < len(session.exercises):
-                ex = session.exercises[session.current_exercise]
-                if session.current_set < len(ex.get("results", [])):
-                    prev_values = ex["results"][session.current_set]
 
             upcoming_ex = session.upcoming_exercise_name()
             next_all = (
