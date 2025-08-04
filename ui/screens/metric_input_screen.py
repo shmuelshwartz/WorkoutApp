@@ -128,7 +128,7 @@ class MetricInputScreen(MDScreen):
             "pre": "show_pre",
             "post": "show_post",
         }.get(name)
-        return (0, 1, 0, 1) if attr and getattr(self, attr) else (0, 0, 0, 1)
+        return (0, 1, 0, 1) if attr and getattr(self, attr) else (1, 1, 1, 1)
 
     def _update_filter_colors(self):
         self.required_color = self.filter_color("required")
