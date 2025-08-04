@@ -525,7 +525,9 @@ def test_preset_overview_screen_populate(monkeypatch):
             self.children.append(widget)
 
     screen = PresetOverviewScreen()
-    screen.overview_list = DummyList()
+    screen.details_list = DummyList()
+    screen.workout_list = DummyList()
+    screen.preset_label = type("L", (), {"text": ""})()
 
     class DummyApp:
         selected_preset = "Test"
@@ -536,8 +538,12 @@ def test_preset_overview_screen_populate(monkeypatch):
                 (),
                 {
                     "sections": [
-                        {"name": "Sec", "exercises": [{"name": "Push", "sets": 1}]}
-                    ]
+                        {
+                            "name": "Sec",
+                            "exercises": [{"name": "Push", "sets": 1, "rest": 0}],
+                        }
+                    ],
+                    "preset_metrics": [{"name": "PM", "scope": "preset", "value": "V"}],
                 },
             )()
 
@@ -553,10 +559,18 @@ def test_preset_overview_screen_populate(monkeypatch):
             "is_user_created": False,
         },
     )
+    monkeypatch.setattr(
+        core,
+        "get_metrics_for_exercise",
+        lambda name, *a, **k: [{"name": "M1"}, {"name": "M2"}],
+    )
     screen.populate()
 
-    entries = [getattr(c, "text", "") for c in screen.overview_list.children]
-    assert "Push\nsets 1 | rest: 0s\nDesc" in entries
+    workout_entries = [getattr(c, "text", "") for c in screen.workout_list.children]
+    assert "Push\nsets 1 | rest: 0s\nDesc\nM1, M2" in workout_entries
+
+    detail_entries = [getattr(c, "text", "") for c in screen.details_list.children]
+    assert "PM: V" in detail_entries
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")

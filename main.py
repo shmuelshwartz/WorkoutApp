@@ -87,7 +87,7 @@ if os.name == "nt" or sys.platform.startswith("win"):
     Window.size = (280, 280 * (20 / 9))
 
 
-class Tab(MDFloatLayout, MDTabsBase):
+class Tab(MDBoxLayout, MDTabsBase):
     """A basic tab for use with :class:`~kivymd.uix.tab.MDTabs`."""
 
 

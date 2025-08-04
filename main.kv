@@ -857,8 +857,21 @@ ScreenManager:
             id: exercise_list
 
 
+<DetailsTab@Tab>:
+    orientation: "vertical"
+    ScrollView:
+        MDList:
+            id: details_list
+
+<WorkoutTab@Tab>:
+    orientation: "vertical"
+    ScrollView:
+        MDList:
+            id: workout_list
+
 <PresetOverviewScreen>:
-    overview_list: overview_list
+    details_list: details_tab.ids.details_list
+    workout_list: workout_tab.ids.workout_list
     preset_label: preset_label
     BoxLayout:
         orientation: "vertical"
@@ -870,9 +883,14 @@ ScreenManager:
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
-        ScrollView:
-            MDList:
-                id: overview_list
+        MDTabs:
+            id: tabs
+            DetailsTab:
+                id: details_tab
+                title: "Details"
+            WorkoutTab:
+                id: workout_tab
+                title: "Workout"
         MDRaisedButton:
             text: "Back to Detail"
             on_release: app.root.current = "preset_detail"
