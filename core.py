@@ -2173,7 +2173,10 @@ class PresetEditor:
                                      mt.id
                               FROM library_exercise_metrics em
                               JOIN library_metric_types mt ON em.metric_type_id = mt.id
-                             WHERE em.exercise_id = ? AND em.deleted = 0 AND mt.deleted = 0
+
+                             WHERE em.exercise_id = ?
+                               AND em.deleted = 0 AND mt.deleted = 0
+
                              ORDER BY em.position
                             """,
                                 (lib_id,),
@@ -2239,7 +2242,10 @@ class PresetEditor:
                                mt.id
                           FROM library_exercise_metrics em
                           JOIN library_metric_types mt ON em.metric_type_id = mt.id
-                         WHERE em.exercise_id = ? AND em.deleted = 0 AND mt.deleted = 0
+
+                         WHERE em.exercise_id = ?
+                           AND em.deleted = 0 AND mt.deleted = 0
+
                          ORDER BY em.position
                         """,
                         (lib_id,),
