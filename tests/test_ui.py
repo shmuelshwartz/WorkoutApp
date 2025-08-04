@@ -31,6 +31,7 @@ if kivy_available:
         PresetOverviewScreen,
     )
     from ui.popups import AddMetricPopup, EditMetricPopup
+    from ui.expandable_list_item import ExerciseSummaryItem
     import time
 
     class _DummyApp:
@@ -918,3 +919,14 @@ def test_fallback_input_timing_options(monkeypatch):
         "pre_set",
         "post_set",
     ]
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_exercise_summary_item_toggle_expands_and_collapses():
+    """ExerciseSummaryItem toggles without errors and updates state."""
+
+    item = ExerciseSummaryItem(name="Push Ups", sets=2)
+    item._toggle()  # expand
+    assert item._expanded is True
+    item._toggle()  # collapse
+    assert item._expanded is False
