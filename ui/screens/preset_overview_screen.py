@@ -1,9 +1,9 @@
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.list import TwoLineListItem
 from kivymd.uix.label import MDLabel
 from kivy.properties import ObjectProperty
 import core
+from ui.expandable_list_item import ExpandableListItem
 
 
 class PresetOverviewScreen(MDScreen):
@@ -44,18 +44,14 @@ class PresetOverviewScreen(MDScreen):
                 metrics_text = ", ".join(m["name"] for m in metrics)
                 sets = ex.get("sets", 0) or 0
                 rest = ex.get("rest", 0) or 0
-                secondary_parts = []
-                if desc:
-                    secondary_parts.append(desc)
-                secondary_parts.append(f"Sets: {sets}")
-                secondary_parts.append(f"Rest: {rest}s")
+                lines = [ex["name"]]
+                lines.append(desc if desc else "")
+                info_parts = [f"sets {sets}", f"rest: {rest}s"]
                 if metrics_text:
-                    secondary_parts.append(f"Metrics: {metrics_text}")
-                secondary = " | ".join(secondary_parts)
-                text = ex["name"]
-                self.overview_list.add_widget(
-                    TwoLineListItem(text=text, secondary_text=secondary)
-                )
+                    info_parts.append(f"metrics: {metrics_text}")
+                lines.append(" | ".join(info_parts))
+                text = "\n".join(lines)
+                self.overview_list.add_widget(ExpandableListItem(text=text))
 
     def start_workout(self):
         app = MDApp.get_running_app()
