@@ -20,3 +20,11 @@ Add new entries below as issues are encountered. Over time this becomes a refere
 - **Problem** – App crashed with `ValueError: No valid Icon was found. No valid Title was found.`
 - **Fix** – Added titles for `DetailsTab` and `WorkoutTab` in `main.kv`
 - **Lesson** – Always specify a title or icon for each KivyMD tab to satisfy initialization requirements
+
+### MDFlatButton width calculation crash
+
+- **Context** – MetricInputScreen filter buttons in `main.kv`
+- **Mistake** – Used `self.texture_size` to set button width even though `MDFlatButton` lacks this attribute
+- **Problem** – App raised `AttributeError: 'MDFlatButton' object has no attribute 'texture_size'`
+- **Fix** – Removed dependency on `texture_size` and assigned fixed widths using `dp(110)`
+- **Lesson** – MDFlatButton doesn't expose `texture_size`; prefer fixed dimensions or other sizing methods
