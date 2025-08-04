@@ -114,7 +114,11 @@ class MetricInputScreen(MDScreen):
                 curr_ex, preset_name=session.preset_name
             )
             prev_metrics = [m for m in all_metrics if m.get("input_timing") == "post_set"]
-            prev_values = session.last_recorded_set_metrics()
+            prev_values = {}
+            if session.current_exercise < len(session.exercises):
+                ex = session.exercises[session.current_exercise]
+                if session.current_set < len(ex.get("results", [])):
+                    prev_values = ex["results"][session.current_set]
 
             upcoming_ex = session.upcoming_exercise_name()
             next_all = (
