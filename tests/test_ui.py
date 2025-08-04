@@ -58,6 +58,31 @@ def test_switch_tab_updates_current_tab():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_toggle_optional_shows_and_hides_metrics():
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    screen = MetricInputScreen()
+    screen.populate_metrics(
+        [
+            {
+                "name": "RPE",
+                "type": "int",
+                "input_timing": "post_set",
+                "is_required": False,
+            }
+        ]
+    )
+    assert len(screen.prev_optional_list.children) == 0
+    screen.toggle_optional("previous")
+    assert len(screen.prev_optional_list.children) == 1
+    screen.toggle_optional("previous")
+    assert len(screen.prev_optional_list.children) == 0
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_rest_screen_toggle_ready_changes_state():
     screen = RestScreen()
     screen.is_ready = False

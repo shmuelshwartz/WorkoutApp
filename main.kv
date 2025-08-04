@@ -445,6 +445,10 @@ ScreenManager:
     on_pre_enter: root.populate_metrics()
     prev_metric_list: prev_metric_list
     next_metric_list: next_metric_list
+    prev_optional_list: prev_optional_list
+    next_optional_list: next_optional_list
+    prev_toggle_button: prev_toggle_button
+    next_toggle_button: next_toggle_button
     metrics_scroll: metrics_scroll
     BoxLayout:
         orientation: "vertical"
@@ -479,16 +483,52 @@ ScreenManager:
                 orientation: "vertical"
                 size_hint_y: None
                 height: self.minimum_height
-                MDList:
-                    id: prev_metric_list
+                MDBoxLayout:
+                    orientation: "vertical"
                     size_hint_y: None
                     height: self.minimum_height if root.current_tab == "previous" else 0
                     opacity: 1 if root.current_tab == "previous" else 0
-                MDList:
-                    id: next_metric_list
+                    MDList:
+                        id: prev_metric_list
+                        size_hint_y: None
+                        height: self.minimum_height
+                    MDBoxLayout:
+                        id: prev_optional_box
+                        orientation: "vertical"
+                        size_hint_y: None
+                        height: prev_toggle_button.height + prev_optional_list.height
+                        MDRaisedButton:
+                            id: prev_toggle_button
+                            text: "Show more metrics"
+                            on_release: root.toggle_optional("previous")
+                        MDList:
+                            id: prev_optional_list
+                            size_hint_y: None
+                            height: self.minimum_height if root.prev_optional_shown else 0
+                            opacity: 1 if root.prev_optional_shown else 0
+                MDBoxLayout:
+                    orientation: "vertical"
                     size_hint_y: None
                     height: self.minimum_height if root.current_tab == "next" else 0
                     opacity: 1 if root.current_tab == "next" else 0
+                    MDList:
+                        id: next_metric_list
+                        size_hint_y: None
+                        height: self.minimum_height
+                    MDBoxLayout:
+                        id: next_optional_box
+                        orientation: "vertical"
+                        size_hint_y: None
+                        height: next_toggle_button.height + next_optional_list.height
+                        MDRaisedButton:
+                            id: next_toggle_button
+                            text: "Show more metrics"
+                            on_release: root.toggle_optional("next")
+                        MDList:
+                            id: next_optional_list
+                            size_hint_y: None
+                            height: self.minimum_height if root.next_optional_shown else 0
+                            opacity: 1 if root.next_optional_shown else 0
         MDRaisedButton:
             text: "Save Metrics"
             on_release: root.save_metrics()

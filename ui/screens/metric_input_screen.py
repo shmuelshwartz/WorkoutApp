@@ -1,6 +1,6 @@
 from kivymd.app import MDApp
 from kivy.metrics import dp
-from kivy.properties import ObjectProperty, StringProperty
+from kivy.properties import BooleanProperty, ObjectProperty, StringProperty
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
@@ -15,10 +15,21 @@ class MetricInputScreen(MDScreen):
 
     prev_metric_list = ObjectProperty(None)
     next_metric_list = ObjectProperty(None)
+    prev_optional_list = ObjectProperty(None)
+    next_optional_list = ObjectProperty(None)
+    prev_toggle_button = ObjectProperty(None)
+    next_toggle_button = ObjectProperty(None)
     metrics_scroll = ObjectProperty(None)
     current_tab = StringProperty("previous")
     header_text = StringProperty("")
     exercise_name = StringProperty("")
+    prev_optional_shown = BooleanProperty(False)
+    next_optional_shown = BooleanProperty(False)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._prev_optional_metrics = []
+        self._next_optional_metrics = []
 
     def on_slider_touch_down(self, instance, touch):
         if instance.collide_point(*touch.pos) and self.metrics_scroll:
@@ -115,51 +126,97 @@ class MetricInputScreen(MDScreen):
             return
         self.prev_metric_list.clear_widgets()
         self.next_metric_list.clear_widgets()
+        if self.prev_optional_list:
+            self.prev_optional_list.clear_widgets()
+        if self.next_optional_list:
+            self.next_optional_list.clear_widgets()
 
-        def _create_row(metric):
-            if isinstance(metric, str):
-                name = metric
-                mtype = "str"
-                values = []
-            else:
-                name = metric.get("name")
-                mtype = metric.get("type", "str")
-                values = metric.get("values", [])
+        prev_required = [m for m in prev_metrics if m.get("is_required")]
+        prev_optional = [m for m in prev_metrics if not m.get("is_required")]
+        next_required = [m for m in next_metrics if m.get("is_required")]
+        next_optional = [m for m in next_metrics if not m.get("is_required")]
 
-            row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
-            row.metric_name = name
-            row.type = mtype
-            row.add_widget(MDLabel(text=name, size_hint_x=0.4))
+        for m in prev_required:
+            self.prev_metric_list.add_widget(self._create_row(m))
+        for m in next_required:
+            self.next_metric_list.add_widget(self._create_row(m))
 
-            if mtype == "slider":
-                widget = MDSlider(min=0, max=1, value=0)
-                widget.bind(
-                    on_touch_down=self.on_slider_touch_down,
-                    on_touch_up=self.on_slider_touch_up,
-                )
-            elif mtype == "enum":
-                widget = Spinner(text=values[0] if values else "", values=values)
-            else:  # manual_text
-                input_filter = None
-                if mtype == "int":
-                    input_filter = "int"
-                elif mtype == "float":
-                    input_filter = "float"
-                widget = MDTextField(multiline=False, input_filter=input_filter)
-
-            row.input_widget = widget
-            row.add_widget(widget)
-            return row
-
-        for m in prev_metrics:
-            self.prev_metric_list.add_widget(_create_row(m))
-        for m in next_metrics:
-            self.next_metric_list.add_widget(_create_row(m))
+        self._prev_optional_metrics = prev_optional
+        self._next_optional_metrics = next_optional
+        self.prev_optional_shown = False
+        self.next_optional_shown = False
+        if self.prev_toggle_button:
+            self.prev_toggle_button.text = "Show more metrics"
+        if self.next_toggle_button:
+            self.next_toggle_button.text = "Show more metrics"
 
         self.update_header()
 
+    def _create_row(self, metric):
+        if isinstance(metric, str):
+            name = metric
+            mtype = "str"
+            values = []
+        else:
+            name = metric.get("name")
+            mtype = metric.get("type", "str")
+            values = metric.get("values", [])
+
+        row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
+        row.metric_name = name
+        row.type = mtype
+        row.add_widget(MDLabel(text=name, size_hint_x=0.4))
+
+        if mtype == "slider":
+            widget = MDSlider(min=0, max=1, value=0)
+            widget.bind(
+                on_touch_down=self.on_slider_touch_down,
+                on_touch_up=self.on_slider_touch_up,
+            )
+        elif mtype == "enum":
+            widget = Spinner(text=values[0] if values else "", values=values)
+        else:  # manual_text
+            input_filter = None
+            if mtype == "int":
+                input_filter = "int"
+            elif mtype == "float":
+                input_filter = "float"
+            widget = MDTextField(multiline=False, input_filter=input_filter)
+
+        row.input_widget = widget
+        row.add_widget(widget)
+        return row
+
+    def toggle_optional(self, tab):
+        if tab == "previous":
+            self.prev_optional_shown = not self.prev_optional_shown
+            if self.prev_toggle_button:
+                self.prev_toggle_button.text = (
+                    "Hide more metrics" if self.prev_optional_shown else "Show more metrics"
+                )
+            if self.prev_optional_shown:
+                self.prev_optional_list.clear_widgets()
+                for m in self._prev_optional_metrics:
+                    self.prev_optional_list.add_widget(self._create_row(m))
+            else:
+                self.prev_optional_list.clear_widgets()
+        elif tab == "next":
+            self.next_optional_shown = not self.next_optional_shown
+            if self.next_toggle_button:
+                self.next_toggle_button.text = (
+                    "Hide more metrics" if self.next_optional_shown else "Show more metrics"
+                )
+            if self.next_optional_shown:
+                self.next_optional_list.clear_widgets()
+                for m in self._next_optional_metrics:
+                    self.next_optional_list.add_widget(self._create_row(m))
+            else:
+                self.next_optional_list.clear_widgets()
+
     def _collect_metrics(self, widget_list):
         data = {}
+        if not widget_list:
+            return data
         for row in reversed(widget_list.children):
             name = getattr(row, "metric_name", "")
             widget = getattr(row, "input_widget", None)
@@ -190,7 +247,9 @@ class MetricInputScreen(MDScreen):
 
     def save_metrics(self):
         prev_metrics = self._collect_metrics(self.prev_metric_list)
+        prev_metrics.update(self._collect_metrics(self.prev_optional_list))
         next_metrics = self._collect_metrics(self.next_metric_list)
+        next_metrics.update(self._collect_metrics(self.next_optional_list))
         app = MDApp.get_running_app()
         if app.workout_session and getattr(app, "record_pre_set", False):
             app.workout_session.set_pre_set_metrics(next_metrics)
