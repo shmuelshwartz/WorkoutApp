@@ -2174,6 +2174,7 @@ class PresetEditor:
                               FROM library_exercise_metrics em
                               JOIN library_metric_types mt ON em.metric_type_id = mt.id
                              WHERE em.exercise_id = ?
+                               AND em.deleted = 0 AND mt.deleted = 0
                              ORDER BY em.position
                             """,
                                 (lib_id,),
@@ -2189,6 +2190,12 @@ class PresetEditor:
                             mpos,
                             mt_id,
                         ) in cursor.fetchall():
+                            cursor.execute(
+                                "SELECT 1 FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ? AND deleted = 0",
+                                (ex_id, mt_name),
+                            )
+                            if cursor.fetchone():
+                                continue
                             cursor.execute(
                                 """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, metric_description, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                                 (
@@ -2234,6 +2241,7 @@ class PresetEditor:
                           FROM library_exercise_metrics em
                           JOIN library_metric_types mt ON em.metric_type_id = mt.id
                          WHERE em.exercise_id = ?
+                           AND em.deleted = 0 AND mt.deleted = 0
                          ORDER BY em.position
                         """,
                         (lib_id,),
@@ -2249,6 +2257,12 @@ class PresetEditor:
                         mpos,
                         mt_id,
                     ) in cursor.fetchall():
+                        cursor.execute(
+                            "SELECT 1 FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ? AND deleted = 0",
+                            (ex_id, mt_name),
+                        )
+                        if cursor.fetchone():
+                            continue
                         cursor.execute(
                             """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, metric_description, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                             (
