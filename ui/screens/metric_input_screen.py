@@ -150,9 +150,24 @@ class MetricInputScreen(MDScreen):
         self.metrics_list.clear_widgets()
         if not self.session or self.exercise_idx >= len(self.session.exercises):
             return
-        metrics = self.session.exercises[self.exercise_idx].get("metric_defs", [])
+        exercise = self.session.exercises[self.exercise_idx]
+        metrics = exercise.get("metric_defs", [])
+        # Determine any previously recorded values for this set
+        values = {}
+        results = exercise.get("results", [])
+        if self.set_idx < len(results):
+            values = results[self.set_idx].get("metrics", {})
+        elif (
+            getattr(self.session, "current_exercise", None) == self.exercise_idx
+            and getattr(self.session, "current_set", None) == self.set_idx
+        ):
+            # show pending pre-set metrics for the upcoming set
+            values = getattr(self.session, "pending_pre_set_metrics", {})
         for metric in self._apply_filters(metrics):
-            self.metrics_list.add_widget(self._create_row(metric))
+            name = metric.get("name")
+            self.metrics_list.add_widget(
+                self._create_row(metric, values.get(name))
+            )
 
     # ------------------------------------------------------------------
     # Metric row helpers
