@@ -24,6 +24,8 @@ from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.card import MDSeparator
 from kivymd.uix.dialog import MDDialog
+from kivymd.uix.floatlayout import MDFloatLayout
+from kivymd.uix.tab import MDTabsBase
 
 try:
     from kivymd.uix.spinner import MDSpinner
@@ -83,6 +85,10 @@ from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
 
 if os.name == "nt" or sys.platform.startswith("win"):
     Window.size = (280, 280 * (20 / 9))
+
+
+class Tab(MDFloatLayout, MDTabsBase):
+    """A basic tab for use with :class:`~kivymd.uix.tab.MDTabs`."""
 
 
 class LoadingDialog(MDDialog):
