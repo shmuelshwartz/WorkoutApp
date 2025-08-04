@@ -37,6 +37,7 @@ kivymd_modules = {
     "kivymd.uix.textfield": types.ModuleType("kivymd.uix.textfield"),
     "kivymd.uix.slider": types.ModuleType("kivymd.uix.slider"),
     "kivymd.uix.label": types.ModuleType("kivymd.uix.label"),
+    "kivymd.uix.selectioncontrol": types.ModuleType("kivymd.uix.selectioncontrol"),
 }
 
 class _DummyWidget:
@@ -55,11 +56,22 @@ class _Spinner(_DummyWidget):
         self.text = text
         self.values = values
 
+class _TextField(_DummyWidget):
+    def __init__(self, text="", **kwargs):
+        self.text = text
+
+class _Slider(_DummyWidget):
+    def __init__(self, value=0, **kwargs):
+        self.value = value
+
+kivymd_modules["kivymd.uix.selectioncontrol"].MDCheckbox = type(
+    "_Checkbox", (_DummyWidget,), {"__init__": lambda self, active=False, **k: setattr(self, "active", active)}
+)
 kivymd_modules["kivymd.app"].MDApp = _DummyWidget
 kivymd_modules["kivymd.uix.screen"].MDScreen = _DummyWidget
 kivymd_modules["kivymd.uix.boxlayout"].MDBoxLayout = _BoxLayout
-kivymd_modules["kivymd.uix.textfield"].MDTextField = _DummyWidget
-kivymd_modules["kivymd.uix.slider"].MDSlider = _DummyWidget
+kivymd_modules["kivymd.uix.textfield"].MDTextField = _TextField
+kivymd_modules["kivymd.uix.slider"].MDSlider = _Slider
 kivymd_modules["kivymd.uix.label"].MDLabel = _DummyWidget
 kivy_modules["kivy.uix.spinner"].Spinner = _Spinner
 kivy_modules["kivy.uix.scrollview"].ScrollView = _DummyWidget
@@ -157,6 +169,7 @@ def test_save_future_metrics_preserves_session_state():
     dummy_app = types.SimpleNamespace(workout_session=dummy_session)
     metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
 
+
     class DummyList:
         def __init__(self):
             self.children = []
@@ -177,3 +190,4 @@ def test_save_future_metrics_preserves_session_state():
     assert dummy_session.current_exercise == 0
     assert dummy_session.current_set == 0
     assert len(dummy_session.exercises[1]["results"]) == 1
+

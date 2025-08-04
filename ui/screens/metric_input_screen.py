@@ -12,6 +12,7 @@ from kivymd.uix.textfield import MDTextField
 from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
+from kivymd.uix.selectioncontrol import MDCheckbox
 
 
 class MetricInputScreen(MDScreen):
@@ -127,7 +128,7 @@ class MetricInputScreen(MDScreen):
             "pre": "show_pre",
             "post": "show_post",
         }.get(name)
-        return (0, 1, 0, 1) if attr and getattr(self, attr) else (0, 0, 0, 1)
+        return (0, 1, 0, 1) if attr and getattr(self, attr) else (1, 1, 1, 1)
 
     def _update_filter_colors(self):
         self.required_color = self.filter_color("required")
@@ -164,9 +165,24 @@ class MetricInputScreen(MDScreen):
         self.metrics_list.clear_widgets()
         if not self.session or self.exercise_idx >= len(self.session.exercises):
             return
-        metrics = self.session.exercises[self.exercise_idx].get("metric_defs", [])
+        exercise = self.session.exercises[self.exercise_idx]
+        metrics = exercise.get("metric_defs", [])
+        # Determine any previously recorded values for this set
+        values = {}
+        results = exercise.get("results", [])
+        if self.set_idx < len(results):
+            values = results[self.set_idx].get("metrics", {})
+        elif (
+            getattr(self.session, "current_exercise", None) == self.exercise_idx
+            and getattr(self.session, "current_set", None) == self.set_idx
+        ):
+            # show pending pre-set metrics for the upcoming set
+            values = getattr(self.session, "pending_pre_set_metrics", {})
         for metric in self._apply_filters(metrics):
-            self.metrics_list.add_widget(self._create_row(metric))
+            name = metric.get("name")
+            self.metrics_list.add_widget(
+                self._create_row(metric, values.get(name))
+            )
 
     # ------------------------------------------------------------------
     # Metric row helpers
@@ -219,6 +235,8 @@ class MetricInputScreen(MDScreen):
                 text=str(value) if value not in (None, "") else "",
                 values=values,
             )
+        elif mtype == "bool":
+            widget = MDCheckbox(active=bool(value))
         else:  # manual_text
             input_filter = None
             if mtype == "int":
@@ -253,6 +271,8 @@ class MetricInputScreen(MDScreen):
                 value = widget.value
             elif isinstance(widget, Spinner):
                 value = widget.text
+            elif isinstance(widget, MDCheckbox):
+                value = widget.active
             if value in (None, ""):
                 value = 0 if mtype in ("int", "float", "slider") else ""
             if mtype == "int":
