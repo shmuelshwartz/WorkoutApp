@@ -175,6 +175,27 @@ class MetricInputScreen(MDScreen):
             )
 
         self.update_header()
+        self.highlight_missing_metrics()
+
+    def _set_tab_color(self, tab, red: bool):
+        if not tab:
+            return
+        tab.tab_label.theme_text_color = "Custom"
+        tab.tab_label.text_color = (1, 0, 0, 1) if red else (1, 1, 1, 1)
+
+    def highlight_missing_metrics(self):
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
+        missing_prev = False
+        missing_next = False
+        if session:
+            missing_prev = not session.has_required_post_set_metrics()
+            missing_next = not session.has_required_pre_set_metrics()
+        ids = self.ids
+        self._set_tab_color(ids.get("prev_tab"), missing_prev)
+        self._set_tab_color(ids.get("prev_required_tab"), missing_prev)
+        self._set_tab_color(ids.get("next_tab"), missing_next)
+        self._set_tab_color(ids.get("next_required_tab"), missing_next)
 
     def _create_row(self, metric, value=None):
         if isinstance(metric, str):

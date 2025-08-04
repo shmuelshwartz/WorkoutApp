@@ -69,3 +69,11 @@ def test_rest_time_uses_next_exercise(sample_db):
     session.record_metrics({"Reps": 8})
     session.mark_set_completed()
     assert session.rest_duration == 30
+
+
+def test_required_post_set_metrics(sample_db):
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session.mark_set_completed()
+    assert not session.has_required_post_set_metrics()
+    session.record_metrics({"Reps": 10})
+    assert session.has_required_post_set_metrics()

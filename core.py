@@ -854,6 +854,8 @@ class WorkoutSession:
         self.session_metrics: dict[str, object] = {}
         # store metrics entered prior to the upcoming set
         self.pending_pre_set_metrics: dict[str, object] = {}
+        # track whether post-set metrics still need to be recorded
+        self.awaiting_post_set_metrics: bool = False
 
     def mark_set_completed(self) -> None:
         """Record completion time and update rest timer for the next set."""
@@ -862,6 +864,7 @@ class WorkoutSession:
             upcoming = self.exercises[self.current_exercise]
             self.rest_duration = upcoming.get("rest", self.rest_duration)
         self.rest_target_time = self.last_set_time + self.rest_duration
+        self.awaiting_post_set_metrics = True
 
     def next_exercise_name(self):
         if self.current_exercise < len(self.exercises):
@@ -936,6 +939,39 @@ class WorkoutSession:
         required = self.required_pre_set_metric_names()
         return all(name in self.pending_pre_set_metrics for name in required)
 
+    # --------------------------------------------------------------
+    # Post-set metric helpers
+    # --------------------------------------------------------------
+
+    def required_post_set_metric_names(self) -> list[str]:
+        """Return names of required post-set metrics for the last set."""
+
+        if self.current_exercise >= len(self.exercises):
+            ex_idx = len(self.exercises) - 1
+        else:
+            ex_idx = self.current_exercise
+        if ex_idx < 0:
+            return []
+        ex_name = self.exercises[ex_idx]["name"]
+        metrics = get_metrics_for_exercise(
+            ex_name,
+            db_path=self.db_path,
+            preset_name=self.preset_name,
+        )
+        return [
+            m["name"]
+            for m in metrics
+            if m.get("input_timing") == "post_set" and m.get("is_required")
+        ]
+
+    def has_required_post_set_metrics(self) -> bool:
+        """Return ``True`` if any required post-set metrics have been recorded."""
+
+        if not self.awaiting_post_set_metrics:
+            return True
+        required = self.required_post_set_metric_names()
+        return len(required) == 0
+
     def set_pre_set_metrics(self, metrics: dict) -> None:
         """Store metrics to be applied to the upcoming set."""
 
@@ -959,6 +995,7 @@ class WorkoutSession:
         ex = self.exercises[self.current_exercise]
         ex["results"].append(metrics)
         self.current_set += 1
+        self.awaiting_post_set_metrics = False
 
         if self.current_set >= ex["sets"]:
             self.current_set = 0
