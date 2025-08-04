@@ -456,9 +456,6 @@ ScreenManager:
     next_metric_list: next_metric_list
     prev_optional_list: prev_optional_list
     next_optional_list: next_optional_list
-    prev_toggle_button: prev_toggle_button
-    next_toggle_button: next_toggle_button
-    metrics_scroll: metrics_scroll
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -468,76 +465,57 @@ ScreenManager:
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
-        MDBoxLayout:
-            size_hint_y: None
-            height: "40dp"
-            spacing: "10dp"
-            MDRaisedButton:
-                text: "Previous Set"
-                md_bg_color: app.theme_cls.primary_color if root.current_tab == "previous" else (.5, .5, .5, 1)
-                on_release: root.switch_tab("previous")
-            MDRaisedButton:
-                text: "Next Set"
-                md_bg_color: app.theme_cls.primary_color if root.current_tab == "next" else (.5, .5, .5, 1)
-                on_release: root.switch_tab("next")
-        MDLabel:
-            id: tab_header
-            text: root.header_text
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-        ScrollView:
-            id: metrics_scroll
-            MDBoxLayout:
-                orientation: "vertical"
-                size_hint_y: None
-                height: self.minimum_height
+        MDTabs:
+            id: set_tabs
+            on_tab_switch: root.switch_tab(args[1].title.split()[0].lower())
+            Tab:
+                title: "Previous Set"
                 MDBoxLayout:
                     orientation: "vertical"
-                    size_hint_y: None
-                    height: self.minimum_height if root.current_tab == "previous" else 0
-                    opacity: 1 if root.current_tab == "previous" else 0
-                    MDList:
-                        id: prev_metric_list
-                        size_hint_y: None
-                        height: self.minimum_height
-                    MDBoxLayout:
-                        id: prev_optional_box
-                        orientation: "vertical"
-                        size_hint_y: None
-                        height: prev_toggle_button.height + prev_optional_list.height
-                        MDRaisedButton:
-                            id: prev_toggle_button
-                            text: "Show more metrics"
-                            on_release: root.toggle_optional("previous")
-                        MDList:
-                            id: prev_optional_list
-                            size_hint_y: None
-                            height: self.minimum_height if root.prev_optional_shown else 0
-                            opacity: 1 if root.prev_optional_shown else 0
+                    MDLabel:
+                        text: root.header_text
+                        halign: "center"
+                        theme_text_color: "Custom"
+                        text_color: 0.2, 0.6, 0.86, 1
+                    MDTabs:
+                        Tab:
+                            title: "Required Metrics"
+                            ScrollView:
+                                MDList:
+                                    id: prev_metric_list
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                        Tab:
+                            title: "More Metrics"
+                            ScrollView:
+                                MDList:
+                                    id: prev_optional_list
+                                    size_hint_y: None
+                                    height: self.minimum_height
+            Tab:
+                title: "Next Set"
                 MDBoxLayout:
                     orientation: "vertical"
-                    size_hint_y: None
-                    height: self.minimum_height if root.current_tab == "next" else 0
-                    opacity: 1 if root.current_tab == "next" else 0
-                    MDList:
-                        id: next_metric_list
-                        size_hint_y: None
-                        height: self.minimum_height
-                    MDBoxLayout:
-                        id: next_optional_box
-                        orientation: "vertical"
-                        size_hint_y: None
-                        height: next_toggle_button.height + next_optional_list.height
-                        MDRaisedButton:
-                            id: next_toggle_button
-                            text: "Show more metrics"
-                            on_release: root.toggle_optional("next")
-                        MDList:
-                            id: next_optional_list
-                            size_hint_y: None
-                            height: self.minimum_height if root.next_optional_shown else 0
-                            opacity: 1 if root.next_optional_shown else 0
+                    MDLabel:
+                        text: root.header_text
+                        halign: "center"
+                        theme_text_color: "Custom"
+                        text_color: 0.2, 0.6, 0.86, 1
+                    MDTabs:
+                        Tab:
+                            title: "Required Metrics"
+                            ScrollView:
+                                MDList:
+                                    id: next_metric_list
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                        Tab:
+                            title: "More Metrics"
+                            ScrollView:
+                                MDList:
+                                    id: next_optional_list
+                                    size_hint_y: None
+                                    height: self.minimum_height
         MDRaisedButton:
             text: "Save Metrics"
             on_release: root.save_metrics()

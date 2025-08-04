@@ -1,6 +1,6 @@
 from kivymd.app import MDApp
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, ObjectProperty, StringProperty
+from kivy.properties import ObjectProperty, StringProperty
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
@@ -17,28 +17,31 @@ class MetricInputScreen(MDScreen):
     next_metric_list = ObjectProperty(None)
     prev_optional_list = ObjectProperty(None)
     next_optional_list = ObjectProperty(None)
-    prev_toggle_button = ObjectProperty(None)
-    next_toggle_button = ObjectProperty(None)
-    metrics_scroll = ObjectProperty(None)
     current_tab = StringProperty("previous")
     header_text = StringProperty("")
     exercise_name = StringProperty("")
-    prev_optional_shown = BooleanProperty(False)
-    next_optional_shown = BooleanProperty(False)
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._prev_optional_metrics = []
-        self._next_optional_metrics = []
+    def _parent_scroll(self, widget):
+        from kivy.uix.scrollview import ScrollView
+
+        parent = widget.parent
+        while parent:
+            if isinstance(parent, ScrollView):
+                return parent
+            parent = parent.parent
+        return None
 
     def on_slider_touch_down(self, instance, touch):
-        if instance.collide_point(*touch.pos) and self.metrics_scroll:
-            self.metrics_scroll.do_scroll_y = False
+        if instance.collide_point(*touch.pos):
+            scroll = self._parent_scroll(instance)
+            if scroll:
+                scroll.do_scroll_y = False
         return False
 
     def on_slider_touch_up(self, instance, touch):
-        if self.metrics_scroll:
-            self.metrics_scroll.do_scroll_y = True
+        scroll = self._parent_scroll(instance)
+        if scroll:
+            scroll.do_scroll_y = True
         return False
 
     def switch_tab(self, tab: str):
@@ -140,15 +143,10 @@ class MetricInputScreen(MDScreen):
             self.prev_metric_list.add_widget(self._create_row(m))
         for m in next_required:
             self.next_metric_list.add_widget(self._create_row(m))
-
-        self._prev_optional_metrics = prev_optional
-        self._next_optional_metrics = next_optional
-        self.prev_optional_shown = False
-        self.next_optional_shown = False
-        if self.prev_toggle_button:
-            self.prev_toggle_button.text = "Show more metrics"
-        if self.next_toggle_button:
-            self.next_toggle_button.text = "Show more metrics"
+        for m in prev_optional:
+            self.prev_optional_list.add_widget(self._create_row(m))
+        for m in next_optional:
+            self.next_optional_list.add_widget(self._create_row(m))
 
         self.update_header()
 
@@ -186,32 +184,6 @@ class MetricInputScreen(MDScreen):
         row.input_widget = widget
         row.add_widget(widget)
         return row
-
-    def toggle_optional(self, tab):
-        if tab == "previous":
-            self.prev_optional_shown = not self.prev_optional_shown
-            if self.prev_toggle_button:
-                self.prev_toggle_button.text = (
-                    "Hide more metrics" if self.prev_optional_shown else "Show more metrics"
-                )
-            if self.prev_optional_shown:
-                self.prev_optional_list.clear_widgets()
-                for m in self._prev_optional_metrics:
-                    self.prev_optional_list.add_widget(self._create_row(m))
-            else:
-                self.prev_optional_list.clear_widgets()
-        elif tab == "next":
-            self.next_optional_shown = not self.next_optional_shown
-            if self.next_toggle_button:
-                self.next_toggle_button.text = (
-                    "Hide more metrics" if self.next_optional_shown else "Show more metrics"
-                )
-            if self.next_optional_shown:
-                self.next_optional_list.clear_widgets()
-                for m in self._next_optional_metrics:
-                    self.next_optional_list.add_widget(self._create_row(m))
-            else:
-                self.next_optional_list.clear_widgets()
 
     def _collect_metrics(self, widget_list):
         data = {}

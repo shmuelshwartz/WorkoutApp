@@ -58,7 +58,7 @@ def test_switch_tab_updates_current_tab():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_toggle_optional_shows_and_hides_metrics():
+def test_optional_metrics_populated():
     from kivy.lang import Builder
     from pathlib import Path
 
@@ -75,11 +75,7 @@ def test_toggle_optional_shows_and_hides_metrics():
             }
         ]
     )
-    assert len(screen.prev_optional_list.children) == 0
-    screen.toggle_optional("previous")
     assert len(screen.prev_optional_list.children) == 1
-    screen.toggle_optional("previous")
-    assert len(screen.prev_optional_list.children) == 0
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
