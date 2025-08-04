@@ -777,6 +777,7 @@ class WorkoutSession:
             {
                 "name": ex["name"],
                 "sets": ex.get("sets", DEFAULT_SETS_PER_EXERCISE),
+                "rest": ex.get("rest", rest_duration),
                 "results": [],
             }
             for ex in preset["exercises"]
@@ -787,7 +788,10 @@ class WorkoutSession:
         self.start_time = time.time()
         self.end_time = None
 
-        self.rest_duration = rest_duration
+        initial_rest = (
+            self.exercises[0]["rest"] if self.exercises else rest_duration
+        )
+        self.rest_duration = initial_rest
         self.last_set_time = self.start_time
         self.rest_target_time = self.last_set_time + self.rest_duration
 
@@ -797,8 +801,11 @@ class WorkoutSession:
         self.pending_pre_set_metrics: dict[str, object] = {}
 
     def mark_set_completed(self) -> None:
-        """Record the completion time for the current set."""
+        """Record completion time and update rest timer for the next set."""
         self.last_set_time = time.time()
+        if self.current_exercise < len(self.exercises):
+            upcoming = self.exercises[self.current_exercise]
+            self.rest_duration = upcoming.get("rest", self.rest_duration)
         self.rest_target_time = self.last_set_time + self.rest_duration
 
     def next_exercise_name(self):
