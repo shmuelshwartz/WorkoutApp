@@ -248,6 +248,59 @@ def get_metrics_for_exercise(
         return metrics
 
 
+def get_metrics_for_preset(
+    preset_name: str, db_path: Path = DEFAULT_DB_PATH
+) -> list:
+    """Return preset-level metric definitions for ``preset_name``."""
+
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id FROM preset_presets WHERE name = ? AND deleted = 0",
+            (preset_name,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return []
+        preset_id = row[0]
+        cursor.execute(
+            """
+            SELECT metric_name, type, input_timing, is_required,
+                   scope, enum_values_json
+              FROM preset_preset_metrics
+             WHERE preset_id = ? AND deleted = 0
+             ORDER BY position
+            """,
+            (preset_id,),
+        )
+        metrics = []
+        for (
+            name,
+            mtype,
+            timing,
+            is_required,
+            scope,
+            enum_json,
+        ) in cursor.fetchall():
+            values = []
+            if mtype == "enum" and enum_json:
+                try:
+                    values = json.loads(enum_json)
+                except Exception:
+                    values = []
+            metrics.append(
+                {
+                    "name": name,
+                    "type": mtype,
+                    "input_timing": _from_db_timing(timing),
+                    "is_required": bool(is_required),
+                    "scope": scope,
+                    "values": values,
+                }
+            )
+    return metrics
+
+
 def get_all_metric_types(
     db_path: Path = DEFAULT_DB_PATH,
     *,
@@ -797,6 +850,8 @@ class WorkoutSession:
 
         # retain DB path for metric lookups during the session
         self.db_path = Path(db_path)
+        # store session-level metrics
+        self.session_metrics: dict[str, object] = {}
         # store metrics entered prior to the upcoming set
         self.pending_pre_set_metrics: dict[str, object] = {}
 
@@ -874,6 +929,11 @@ class WorkoutSession:
         """Store metrics to be applied to the upcoming set."""
 
         self.pending_pre_set_metrics = metrics.copy()
+
+    def set_session_metrics(self, metrics: dict) -> None:
+        """Store metrics that apply to the entire session."""
+
+        self.session_metrics = metrics.copy()
 
     def record_metrics(self, metrics):
         if self.current_exercise >= len(self.exercises):
