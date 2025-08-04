@@ -397,6 +397,40 @@ def test_preset_select_button_updates(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_presets_screen_preserves_selection_on_leave(monkeypatch):
+    """Leaving the Presets screen keeps the app's selected preset."""
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    # Ensure the preset exists
+    monkeypatch.setattr(core, "WORKOUT_PRESETS", [{"name": "Sample", "exercises": []}])
+
+    # Provide an app instance with a selected_preset attribute
+    class DummyApp:
+        selected_preset = ""
+
+    dummy_app = DummyApp()
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+
+    screen = PresetsScreen()
+    dummy_item = type(
+        "Obj",
+        (),
+        {"md_bg_color": (0, 0, 0, 0), "theme_text_color": "Primary", "text_color": (0, 0, 0, 1)},
+    )()
+
+    # Select a preset and verify the app reflects it
+    screen.select_preset("Sample", dummy_item)
+    assert dummy_app.selected_preset == "Sample"
+
+    # Leaving the screen should not clear the app's selection
+    screen.on_leave()
+    assert dummy_app.selected_preset == "Sample"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_preset_detail_screen_populate(monkeypatch):
     from kivy.lang import Builder
     from pathlib import Path

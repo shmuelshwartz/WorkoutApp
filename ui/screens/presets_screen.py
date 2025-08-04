@@ -21,16 +21,24 @@ class PresetsScreen(MDScreen):
         self._default_btn_color = self.ids.select_btn.md_bg_color
         return super().on_kv_post(base_widget)
 
-    def clear_selection(self):
-        """Reset any selected preset and remove highlight."""
+    def clear_selection(self, reset_app: bool = True):
+        """Reset any selected preset and remove highlight.
+
+        ``reset_app`` controls whether the app-level ``selected_preset``
+        attribute is cleared. When leaving this screen for another screen,
+        we want to preserve the global selection so the detail or edit
+        screens can load the chosen preset. When entering this screen
+        anew, we clear the global selection so no stale state remains.
+        """
         if self.selected_item:
             self.selected_item.md_bg_color = (0, 0, 0, 0)
             self.selected_item.theme_text_color = "Primary"
         self.selected_item = None
         self.selected_preset = ""
-        app = MDApp.get_running_app()
-        if app:
-            app.selected_preset = ""
+        if reset_app:
+            app = MDApp.get_running_app()
+            if app:
+                app.selected_preset = ""
         if self._default_btn_color is not None:
             self.ids.select_btn.md_bg_color = self._default_btn_color
 
@@ -40,7 +48,9 @@ class PresetsScreen(MDScreen):
         return super().on_pre_enter(*args)
 
     def on_leave(self, *args):
-        self.clear_selection()
+        # Preserve app.selected_preset so other screens know which preset
+        # was chosen when navigating away from this screen.
+        self.clear_selection(reset_app=False)
         return super().on_leave(*args)
 
     def populate(self):
