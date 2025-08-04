@@ -192,7 +192,7 @@ def get_metrics_for_exercise(
 
         metrics = []
         for (
-            metric_id,
+            metric_type_id,
             name,
             mtype,
             input_timing,
@@ -216,6 +216,8 @@ def get_metrics_for_exercise(
                     "scope": scope,
                     "description": description,
                     "values": values,
+                    "library_metric_type_id": metric_type_id,
+                    "preset_exercise_metric_id": None,
                 }
             )
 
@@ -223,27 +225,65 @@ def get_metrics_for_exercise(
         if preset_name:
             cursor.execute(
                 """
-            SELECT sem.metric_name, sem.input_timing, sem.is_required, sem.scope
+            SELECT sem.id,
+                   sem.metric_name,
+                   COALESCE(sem.type, mt.type),
+                   COALESCE(sem.input_timing, mt.input_timing),
+                   COALESCE(sem.is_required, mt.is_required),
+                   COALESCE(sem.scope, mt.scope),
+                   COALESCE(sem.enum_values_json, mt.enum_values_json),
+                   COALESCE(sem.metric_description, mt.description),
+                   COALESCE(sem.library_metric_type_id, mt.id)
             FROM preset_exercise_metrics sem
             JOIN preset_section_exercises se ON sem.section_exercise_id = se.id
             JOIN preset_preset_sections s ON se.section_id = s.id
             JOIN preset_presets p ON s.preset_id = p.id
+            LEFT JOIN library_metric_types mt ON sem.library_metric_type_id = mt.id
             WHERE p.name = ? AND se.exercise_name = ?
               AND sem.deleted = 0 AND se.deleted = 0 AND s.deleted = 0 AND p.deleted = 0
+            ORDER BY sem.position
             """,
                 (preset_name, exercise_name),
             )
-            overrides = {
-                name: {
+            overrides: dict[str, dict] = {}
+            for (
+                sem_id,
+                name,
+                mtype,
+                input_timing,
+                is_required,
+                scope,
+                enum_json,
+                description,
+                lib_type_id,
+            ) in cursor.fetchall():
+                values = []
+                if mtype == "enum" and enum_json:
+                    try:
+                        values = json.loads(enum_json)
+                    except Exception:
+                        values = []
+                overrides[name] = {
+                    "preset_exercise_metric_id": sem_id,
+                    "type": mtype,
                     "input_timing": input_timing,
                     "is_required": bool(is_required),
                     "scope": scope,
+                    "values": values,
+                    "description": description,
+                    "library_metric_type_id": lib_type_id,
                 }
-                for name, input_timing, is_required, scope in cursor.fetchall()
-            }
+            names = {m["name"] for m in metrics}
             for m in metrics:
-                if m["name"] in overrides:
-                    m.update(overrides[m["name"]])
+                o = overrides.get(m["name"])
+                if o:
+                    for k, v in o.items():
+                        if k == "library_metric_type_id" and v is None:
+                            continue
+                        m[k] = v
+            for name, data in overrides.items():
+                if name not in names:
+                    metrics.append({"name": name, **data})
 
         return metrics
 
@@ -265,17 +305,28 @@ def get_metrics_for_preset(
         preset_id = row[0]
         cursor.execute(
             """
-            SELECT metric_name, type, input_timing, is_required,
-                   scope, enum_values_json
-              FROM preset_preset_metrics
-             WHERE preset_id = ? AND deleted = 0
-             ORDER BY position
+            SELECT pm.id,
+                   COALESCE(pm.library_metric_type_id, mt.id),
+                   pm.metric_name,
+                   COALESCE(pm.metric_description, mt.description),
+                   COALESCE(pm.type, mt.type),
+                   COALESCE(pm.input_timing, mt.input_timing),
+                   COALESCE(pm.is_required, mt.is_required),
+                   COALESCE(pm.scope, mt.scope),
+                   COALESCE(pm.enum_values_json, mt.enum_values_json)
+              FROM preset_preset_metrics pm
+              LEFT JOIN library_metric_types mt ON pm.library_metric_type_id = mt.id
+             WHERE pm.preset_id = ? AND pm.deleted = 0
+             ORDER BY pm.position
             """,
             (preset_id,),
         )
         metrics = []
         for (
+            pm_id,
+            lib_type_id,
             name,
+            description,
             mtype,
             timing,
             is_required,
@@ -296,6 +347,9 @@ def get_metrics_for_preset(
                     "is_required": bool(is_required),
                     "scope": scope,
                     "values": values,
+                    "description": description,
+                    "library_metric_type_id": lib_type_id,
+                    "preset_metric_id": pm_id,
                 }
             )
     return metrics
@@ -821,25 +875,72 @@ class WorkoutSession:
         """Load ``preset_name`` from ``db_path`` and prepare the session."""
 
         self.preset_name = preset_name
-        presets = load_workout_presets(db_path)
-        preset = next((p for p in presets if p["name"] == preset_name), None)
-        if not preset:
-            raise ValueError(f"Preset '{preset_name}' not found")
+        self.db_path = Path(db_path)
 
-        self.exercises = [
-            {
-                "name": ex["name"],
-                "sets": ex.get("sets", DEFAULT_SETS_PER_EXERCISE),
-                "rest": ex.get("rest", rest_duration),
-                "results": [],
-            }
-            for ex in preset["exercises"]
-        ]
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id FROM preset_presets WHERE name = ? AND deleted = 0",
+                (preset_name,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise ValueError(f"Preset '{preset_name}' not found")
+            self.preset_id = row[0]
+
+            cursor.execute(
+                """
+                SELECT se.id,
+                       se.exercise_name,
+                       se.number_of_sets,
+                       se.rest_time,
+                       se.library_exercise_id,
+                       se.exercise_description
+                  FROM preset_preset_sections ps
+                  JOIN preset_section_exercises se
+                        ON se.section_id = ps.id AND se.deleted = 0
+                 WHERE ps.preset_id = ? AND ps.deleted = 0
+                 ORDER BY ps.position, se.position
+                """,
+                (self.preset_id,),
+            )
+            exercises = []
+            for (
+                se_id,
+                name,
+                sets,
+                rest,
+                lib_ex_id,
+                desc,
+            ) in cursor.fetchall():
+                metric_defs = get_metrics_for_exercise(
+                    name,
+                    db_path=self.db_path,
+                    preset_name=preset_name,
+                )
+                exercises.append(
+                    {
+                        "name": name,
+                        "sets": sets or DEFAULT_SETS_PER_EXERCISE,
+                        "rest": rest or rest_duration,
+                        "results": [],
+                        "library_exercise_id": lib_ex_id,
+                        "preset_section_exercise_id": se_id,
+                        "exercise_description": desc or "",
+                        "metric_defs": metric_defs,
+                    }
+                )
+
+        self.exercises = exercises
+        self.session_metric_defs = get_metrics_for_preset(
+            preset_name, db_path=self.db_path
+        )
 
         self.current_exercise = 0
         self.current_set = 0
         self.start_time = time.time()
         self.end_time = None
+        self.current_set_start_time = self.start_time
 
         initial_rest = (
             self.exercises[0]["rest"] if self.exercises else rest_duration
@@ -848,8 +949,6 @@ class WorkoutSession:
         self.last_set_time = self.start_time
         self.rest_target_time = self.last_set_time + self.rest_duration
 
-        # retain DB path for metric lookups during the session
-        self.db_path = Path(db_path)
         # store session-level metrics
         self.session_metrics: dict[str, object] = {}
         # store metrics entered prior to the upcoming set
@@ -914,7 +1013,7 @@ class WorkoutSession:
 
         for ex in reversed(self.exercises[: self.current_exercise + 1]):
             if ex["results"]:
-                return ex["results"][-1]
+                return ex["results"][-1]["metrics"]
         return {}
 
     # --------------------------------------------------------------
@@ -990,12 +1089,23 @@ class WorkoutSession:
                 self.end_time = time.time()
             return True
 
-        # merge any metrics entered before starting this set
         metrics = {**self.pending_pre_set_metrics, **metrics}
         self.pending_pre_set_metrics = {}
 
+        end_time = time.time()
+        start_time = self.current_set_start_time
+        notes = str(metrics.get("Notes", ""))
+
         ex = self.exercises[self.current_exercise]
-        ex["results"].append(metrics)
+        ex["results"].append(
+            {
+                "metrics": metrics,
+                "started_at": start_time,
+                "ended_at": end_time,
+                "notes": notes,
+            }
+        )
+        self.current_set_start_time = end_time
         self.current_set += 1
         self.awaiting_post_set_metrics = False
 
@@ -1004,7 +1114,7 @@ class WorkoutSession:
             self.current_exercise += 1
 
         if self.current_exercise >= len(self.exercises):
-            self.end_time = time.time()
+            self.end_time = end_time
             return True
 
         return False
@@ -1036,8 +1146,10 @@ class WorkoutSession:
         lines.append(f"Duration: {m}m {s}s")
         for ex in self.exercises:
             lines.append(f"\n{ex['name']}")
-            for idx, metrics in enumerate(ex["results"], 1):
-                metrics_text = ", ".join(f"{k}: {v}" for k, v in metrics.items())
+            for idx, result in enumerate(ex["results"], 1):
+                metrics_text = ", ".join(
+                    f"{k}: {v}" for k, v in result["metrics"].items()
+                )
                 lines.append(f"  Set {idx}: {metrics_text}")
         return "\n".join(lines)
 
@@ -1072,10 +1184,15 @@ def save_completed_session(
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO session_sessions (preset_name, started_at, ended_at)
-            VALUES (?, ?, ?)
+            INSERT INTO session_sessions (preset_id, preset_name, started_at, ended_at)
+            VALUES (?, ?, ?, ?)
             """,
-            (session.preset_name, session.start_time, session.end_time or time.time()),
+            (
+                session.preset_id,
+                session.preset_name,
+                session.start_time,
+                session.end_time or time.time(),
+            ),
         )
         session_id = cursor.lastrowid
 
@@ -1089,10 +1206,7 @@ def save_completed_session(
         section_id = cursor.lastrowid
 
         if session.session_metrics:
-            preset_metrics = get_metrics_for_preset(
-                session.preset_name, db_path=path
-            )
-            metric_map = {m["name"]: m for m in preset_metrics}
+            metric_map = {m["name"]: m for m in session.session_metric_defs}
             for pos, (name, value) in enumerate(
                 session.session_metrics.items(), 1
             ):
@@ -1100,13 +1214,17 @@ def save_completed_session(
                 cursor.execute(
                     """
                     INSERT INTO session_session_metrics
-                        (session_id, metric_name, type, input_timing, scope,
-                         is_required, enum_values_json, value, position)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (session_id, library_metric_type_id, preset_preset_metric_id, metric_name,
+                         metric_description, type, input_timing, scope, is_required,
+                         enum_values_json, value, position)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         session_id,
+                        mdef.get("library_metric_type_id"),
+                        mdef.get("preset_metric_id"),
                         name,
+                        mdef.get("description"),
                         mdef.get("type", "str"),
                         _to_db_timing(mdef.get("input_timing")),
                         mdef.get("scope", "session"),
@@ -1123,33 +1241,39 @@ def save_completed_session(
             cursor.execute(
                 """
                 INSERT INTO session_section_exercises
-                    (section_id, exercise_name, number_of_sets, rest_time, position)
-                VALUES (?, ?, ?, ?, ?)
+                    (section_id, library_exercise_id, preset_section_exercise_id,
+                     exercise_name, exercise_description, number_of_sets, rest_time, position)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     section_id,
+                    ex.get("library_exercise_id"),
+                    ex.get("preset_section_exercise_id"),
                     ex.get("name"),
+                    ex.get("exercise_description"),
                     ex.get("sets", 0),
                     ex.get("rest", session.rest_duration),
                     ex_pos,
                 ),
             )
             session_ex_id = cursor.lastrowid
-            metric_defs = get_metrics_for_exercise(
-                ex.get("name"), db_path=path, preset_name=session.preset_name
-            )
+            metric_defs = ex.get("metric_defs", [])
             metric_ids: dict[str, int] = {}
             for m_pos, m in enumerate(metric_defs, 1):
                 cursor.execute(
                     """
                     INSERT INTO session_exercise_metrics
-                        (session_exercise_id, metric_name, type, input_timing, scope,
+                        (session_exercise_id, library_metric_type_id, preset_exercise_metric_id,
+                         metric_name, metric_description, type, input_timing, scope,
                          is_required, enum_values_json, position)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         session_ex_id,
+                        m.get("library_metric_type_id"),
+                        m.get("preset_exercise_metric_id"),
                         m["name"],
+                        m.get("description"),
                         m.get("type", "str"),
                         _to_db_timing(m.get("input_timing")),
                         m.get("scope", "set"),
@@ -1162,15 +1286,22 @@ def save_completed_session(
                 )
                 metric_ids[m["name"]] = cursor.lastrowid
 
-            for set_idx, metrics in enumerate(ex.get("results", []), 1):
+            for set_idx, result in enumerate(ex.get("results", []), 1):
                 cursor.execute(
                     """
-                    INSERT INTO session_exercise_sets (section_exercise_id, set_number)
-                    VALUES (?, ?)
+                    INSERT INTO session_exercise_sets (section_exercise_id, set_number, started_at, ended_at, notes)
+                    VALUES (?, ?, ?, ?, ?)
                     """,
-                    (session_ex_id, set_idx),
+                    (
+                        session_ex_id,
+                        set_idx,
+                        result.get("started_at"),
+                        result.get("ended_at"),
+                        result.get("notes"),
+                    ),
                 )
                 set_id = cursor.lastrowid
+                metrics = result.get("metrics", {})
                 for name, value in metrics.items():
                     metric_id = metric_ids.get(name)
                     if metric_id is None:

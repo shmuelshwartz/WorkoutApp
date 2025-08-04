@@ -45,7 +45,7 @@ def test_pre_set_metrics_flow(sample_db):
     session.set_pre_set_metrics({"Reps": 5})
     assert session.has_required_pre_set_metrics()
     session.record_metrics({"Weight": 100})
-    assert session.exercises[1]["results"][0] == {"Reps": 5, "Weight": 100}
+    assert session.exercises[1]["results"][0]["metrics"] == {"Reps": 5, "Weight": 100}
 
 
 def test_rest_time_uses_next_exercise(sample_db):
