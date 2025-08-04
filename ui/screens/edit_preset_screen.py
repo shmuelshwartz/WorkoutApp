@@ -434,8 +434,9 @@ class EditPresetScreen(MDScreen):
 
         try:
             # Validate before confirmation to show immediate error
-            app.preset_editor.save()
-        except (ValueError, sqlite3.IntegrityError, Exception) as exc:
+            app.preset_editor.validate()
+        except ValueError as exc:
+
             dialog = MDDialog(
                 title="Error",
                 text=str(exc),
