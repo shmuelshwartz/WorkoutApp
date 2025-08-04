@@ -36,6 +36,7 @@ kivymd_modules = {
     "kivymd.uix.textfield": types.ModuleType("kivymd.uix.textfield"),
     "kivymd.uix.slider": types.ModuleType("kivymd.uix.slider"),
     "kivymd.uix.label": types.ModuleType("kivymd.uix.label"),
+    "kivymd.uix.selectioncontrol": types.ModuleType("kivymd.uix.selectioncontrol"),
 }
 
 class _DummyWidget:
@@ -54,11 +55,22 @@ class _Spinner(_DummyWidget):
         self.text = text
         self.values = values
 
+class _TextField(_DummyWidget):
+    def __init__(self, text="", **kwargs):
+        self.text = text
+
+class _Slider(_DummyWidget):
+    def __init__(self, value=0, **kwargs):
+        self.value = value
+
+kivymd_modules["kivymd.uix.selectioncontrol"].MDCheckbox = type(
+    "_Checkbox", (_DummyWidget,), {"__init__": lambda self, active=False, **k: setattr(self, "active", active)}
+)
 kivymd_modules["kivymd.app"].MDApp = _DummyWidget
 kivymd_modules["kivymd.uix.screen"].MDScreen = _DummyWidget
 kivymd_modules["kivymd.uix.boxlayout"].MDBoxLayout = _BoxLayout
-kivymd_modules["kivymd.uix.textfield"].MDTextField = _DummyWidget
-kivymd_modules["kivymd.uix.slider"].MDSlider = _DummyWidget
+kivymd_modules["kivymd.uix.textfield"].MDTextField = _TextField
+kivymd_modules["kivymd.uix.slider"].MDSlider = _Slider
 kivymd_modules["kivymd.uix.label"].MDLabel = _DummyWidget
 kivy_modules["kivy.uix.spinner"].Spinner = _Spinner
 kivy_modules["kivy.uix.scrollview"].ScrollView = _DummyWidget
@@ -124,3 +136,15 @@ def test_navigation_across_sets_and_exercises():
 
     screen.navigate_left()
     assert screen.label_text == "Bench \u2013 Set 2 of 2"
+
+
+def test_bool_metric_row_and_collection():
+    screen = MetricInputScreen()
+    row = screen._create_row({"name": "Flag", "type": "bool"}, True)
+    assert isinstance(row.input_widget, metric_module.MDCheckbox)
+    assert row.input_widget.active is True
+    data = screen._collect_metrics(types.SimpleNamespace(children=[row]))
+    assert data == {"Flag": True}
+    row2 = screen._create_row({"name": "Flag", "type": "bool"}, None)
+    data2 = screen._collect_metrics(types.SimpleNamespace(children=[row2]))
+    assert data2 == {"Flag": False}

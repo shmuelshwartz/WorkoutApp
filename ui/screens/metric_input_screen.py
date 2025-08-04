@@ -11,6 +11,7 @@ from kivymd.uix.textfield import MDTextField
 from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
+from kivymd.uix.selectioncontrol import MDCheckbox
 
 
 class MetricInputScreen(MDScreen):
@@ -205,6 +206,8 @@ class MetricInputScreen(MDScreen):
                 text=str(value) if value not in (None, "") else "",
                 values=values,
             )
+        elif mtype == "bool":
+            widget = MDCheckbox(active=bool(value))
         else:  # manual_text
             input_filter = None
             if mtype == "int":
@@ -239,6 +242,8 @@ class MetricInputScreen(MDScreen):
                 value = widget.value
             elif isinstance(widget, Spinner):
                 value = widget.text
+            elif isinstance(widget, MDCheckbox):
+                value = widget.active
             if value in (None, ""):
                 value = 0 if mtype in ("int", "float", "slider") else ""
             if mtype == "int":
