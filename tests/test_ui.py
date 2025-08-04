@@ -556,21 +556,10 @@ def test_preset_overview_screen_populate(monkeypatch):
             "is_user_created": False,
         },
     )
-    monkeypatch.setattr(
-        core,
-        "get_metrics_for_exercise",
-        lambda *a, **k: [{"name": "Reps"}, {"name": "Weight"}],
-    )
-
     screen.populate()
 
-    entries = [
-        (getattr(c, "text", ""), getattr(c, "secondary_text", ""))
-        for c in screen.overview_list.children
-        if hasattr(c, "text")
-    ]
-
-    assert ("Push - 1 set", "Desc | Metrics: Reps, Weight") in entries
+    entries = [getattr(c, "text", "") for c in screen.overview_list.children]
+    assert "Push\nsets 1 | rest: 0s\nDesc" in entries
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")

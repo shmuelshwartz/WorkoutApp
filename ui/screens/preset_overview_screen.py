@@ -38,18 +38,9 @@ class PresetOverviewScreen(MDScreen):
             for ex in section.get("exercises", []):
                 desc_info = core.get_exercise_details(ex["name"])
                 desc = desc_info.get("description", "") if desc_info else ""
-                metrics = core.get_metrics_for_exercise(
-                    ex["name"], preset_name=preset_name
-                )
-                metrics_text = ", ".join(m["name"] for m in metrics)
                 sets = ex.get("sets", 0) or 0
                 rest = ex.get("rest", 0) or 0
-                lines = [ex["name"]]
-                lines.append(desc if desc else "")
-                info_parts = [f"sets {sets}", f"rest: {rest}s"]
-                if metrics_text:
-                    info_parts.append(f"metrics: {metrics_text}")
-                lines.append(" | ".join(info_parts))
+                lines = [ex["name"], f"sets {sets} | rest: {rest}s", desc]
                 text = "\n".join(lines)
                 self.overview_list.add_widget(ExpandableListItem(text=text))
 

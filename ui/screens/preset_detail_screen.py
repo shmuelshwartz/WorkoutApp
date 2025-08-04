@@ -2,7 +2,7 @@ from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivy.properties import StringProperty, ObjectProperty
 import core
-from ui.expandable_list_item import ExpandableListItem
+from ui.expandable_list_item import ExpandableListItem, ExerciseSummaryItem
 
 
 class PresetDetailScreen(MDScreen):
@@ -38,8 +38,7 @@ class PresetDetailScreen(MDScreen):
             )
             for ex in section.get("exercises", []):
                 sets = ex.get("sets", 0) or 0
-                label = "set" if sets == 1 else "sets"
                 self.summary_list.add_widget(
-                    ExpandableListItem(text=f"{ex['name']} - {sets} {label}")
+                    ExerciseSummaryItem(name=ex["name"], sets=sets)
                 )
 
