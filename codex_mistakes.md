@@ -12,3 +12,11 @@ Every entry includes:
 ---
 
 Add new entries below as issues are encountered. Over time this becomes a reference to improve prompting and code reviews when using Codex/ChatGPT.
+
+### Missing titles for custom tabs
+
+- **Context** – `PresetOverviewScreen` tabs `DetailsTab` and `WorkoutTab`
+- **Mistake** – Tabs were generated without titles or icons
+- **Problem** – App crashed with `ValueError: No valid Icon was found. No valid Title was found.`
+- **Fix** – Added titles for `DetailsTab` and `WorkoutTab` in `main.kv`
+- **Lesson** – Always specify a title or icon for each KivyMD tab to satisfy initialization requirements
