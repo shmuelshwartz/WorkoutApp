@@ -42,15 +42,17 @@ class PresetOverviewScreen(MDScreen):
                     ex["name"], preset_name=preset_name
                 )
                 metrics_text = ", ".join(m["name"] for m in metrics)
+                sets = ex.get("sets", 0) or 0
+                rest = ex.get("rest", 0) or 0
                 secondary_parts = []
                 if desc:
                     secondary_parts.append(desc)
+                secondary_parts.append(f"Sets: {sets}")
+                secondary_parts.append(f"Rest: {rest}s")
                 if metrics_text:
                     secondary_parts.append(f"Metrics: {metrics_text}")
                 secondary = " | ".join(secondary_parts)
-                sets = ex.get("sets", 0) or 0
-                label = "set" if sets == 1 else "sets"
-                text = f"{ex['name']} - {sets} {label}"
+                text = ex["name"]
                 self.overview_list.add_widget(
                     TwoLineListItem(text=text, secondary_text=secondary)
                 )
