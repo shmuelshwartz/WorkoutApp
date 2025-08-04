@@ -1,4 +1,5 @@
 import core
+import sqlite3
 
 
 def test_workout_session_flow(sample_db):
@@ -45,3 +46,26 @@ def test_pre_set_metrics_flow(sample_db):
     assert session.has_required_pre_set_metrics()
     session.record_metrics({"Weight": 100})
     assert session.exercises[1]["results"][0] == {"Reps": 5, "Weight": 100}
+
+
+def test_rest_time_uses_next_exercise(sample_db):
+    conn = sqlite3.connect(sample_db)
+    conn.execute(
+        "UPDATE preset_section_exercises SET rest_time=10 WHERE exercise_name='Push-up'"
+    )
+    conn.execute(
+        "UPDATE preset_section_exercises SET rest_time=30 WHERE exercise_name='Bench Press'"
+    )
+    conn.commit()
+    conn.close()
+
+    session = core.WorkoutSession("Push Day", db_path=sample_db)
+    assert session.rest_duration == 10
+
+    session.record_metrics({"Reps": 10})
+    session.mark_set_completed()
+    assert session.rest_duration == 10
+
+    session.record_metrics({"Reps": 8})
+    session.mark_set_completed()
+    assert session.rest_duration == 30
