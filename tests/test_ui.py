@@ -140,6 +140,77 @@ def test_populate_blank_for_new_set(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_save_metrics_clears_next_metrics(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+    import ui.screens.metric_input_screen as mis
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    screen = MetricInputScreen()
+
+    class DummySession:
+        preset_name = "Test"
+        pending_pre_set_metrics = {}
+        current_exercise = 0
+        current_set = 0
+        awaiting_post_set_metrics = False
+        exercises = [{"name": "Bench", "sets": 3, "results": []}]
+
+        def next_exercise_name(self):
+            return "Bench"
+
+        def upcoming_exercise_name(self):
+            return "Bench"
+
+        def record_metrics(self, metrics):
+            self.exercises[0]["results"].append(metrics)
+            self.current_set += 1
+            self.pending_pre_set_metrics = {}
+            return False
+
+        def set_pre_set_metrics(self, metrics):
+            self.pending_pre_set_metrics = metrics.copy()
+
+    dummy_app = _DummyApp()
+    dummy_app.workout_session = DummySession()
+    dummy_app.record_new_set = True
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+
+    def fake_get_metrics(name, preset_name=None):
+        return [
+            {
+                "name": "Weight",
+                "type": "int",
+                "input_timing": "post_set",
+                "is_required": True,
+            },
+            {
+                "name": "Goal",
+                "type": "int",
+                "input_timing": "pre_set",
+                "is_required": True,
+            },
+        ]
+
+    monkeypatch.setattr(mis, "get_metrics_for_exercise", fake_get_metrics)
+
+    screen.populate_metrics()
+
+    goal_row = next(
+        r for r in screen.next_metric_list.children if getattr(r, "metric_name", "") == "Goal"
+    )
+    goal_row.input_widget.text = "200"
+
+    screen.save_metrics()
+    screen.populate_metrics()
+
+    goal_row = next(
+        r for r in screen.next_metric_list.children if getattr(r, "metric_name", "") == "Goal"
+    )
+    assert getattr(goal_row.input_widget, "text", "") == ""
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_rest_screen_toggle_ready_changes_state():
     screen = RestScreen()
     screen.is_ready = False
