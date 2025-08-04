@@ -1,5 +1,6 @@
 import core
 import sqlite3
+import pytest
 
 
 def test_workout_session_flow(sample_db):
@@ -77,3 +78,13 @@ def test_required_post_set_metrics(sample_db):
     assert not session.has_required_post_set_metrics()
     session.record_metrics({"Reps": 10})
     assert session.has_required_post_set_metrics()
+
+
+def test_mark_set_completed_time_adjustment(sample_db, monkeypatch):
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=30)
+    session.exercises[0]["rest"] = 30
+    session.record_metrics({"Reps": 10})
+    monkeypatch.setattr(core.time, "time", lambda: 165.0)
+    session.mark_set_completed(adjust_seconds=-5)
+    assert session.last_set_time == pytest.approx(160.0)
+    assert session.rest_target_time == pytest.approx(190.0)

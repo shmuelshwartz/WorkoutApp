@@ -859,9 +859,14 @@ class WorkoutSession:
         # track whether this session has been saved to the database
         self.saved: bool = False
 
-    def mark_set_completed(self) -> None:
-        """Record completion time and update rest timer for the next set."""
-        self.last_set_time = time.time()
+    def mark_set_completed(self, adjust_seconds: int = 0) -> None:
+        """Record completion time and update rest timer for the next set.
+
+        ``adjust_seconds`` allows backdating the completion timestamp by the
+        specified number of seconds.  Negative values indicate the set finished
+        earlier than the current clock time.
+        """
+        self.last_set_time = time.time() + adjust_seconds
         if self.current_exercise < len(self.exercises):
             upcoming = self.exercises[self.current_exercise]
             self.rest_duration = upcoming.get("rest", self.rest_duration)
