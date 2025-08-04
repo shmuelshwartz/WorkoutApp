@@ -2140,6 +2140,13 @@ class PresetEditor:
                 sets_val = ex.get("sets", DEFAULT_SETS_PER_EXERCISE)
                 rest_val = ex.get("rest", DEFAULT_REST_DURATION)
 
+                if ex_id is not None and ex_id not in existing:
+                    ex_id = None
+                    ex["id"] = None
+                    for m in ex.get("metrics", []):
+                        m.pop("id", None)
+                        m.pop("section_exercise_id", None)
+
                 if ex_id is not None and ex_id in existing:
                     row = existing[ex_id]
                     unused.discard(ex_id)
@@ -2169,10 +2176,9 @@ class PresetEditor:
                         )
 
                         if row["library_id"] != lib_id:
-                            cursor.execute(
-                                "UPDATE preset_exercise_metrics SET deleted = 1 WHERE section_exercise_id = ?",
-                                (ex_id,),
-                            )
+                            for m in ex.get("metrics", []):
+                                m.pop("id", None)
+                                m.pop("section_exercise_id", None)
                             cursor.execute(
                                 """
                               SELECT mt.name,
@@ -2194,18 +2200,9 @@ class PresetEditor:
                             """,
                                 (lib_id,),
                             )
-                        for (
-                            mt_name,
-                            mt_desc,
-                            m_input,
-                            m_timing,
-                            m_req,
-                            m_scope,
-                            m_enum_json,
-                            mpos,
-                            mt_id,
-                        ) in cursor.fetchall():
+                            lib_metrics = cursor.fetchall()
                             cursor.execute(
+
                                 "SELECT 1 FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ? AND deleted = 0",
                                 (ex_id, mt_name),
                             )
@@ -2226,6 +2223,43 @@ class PresetEditor:
                                     mt_id,
                                 ),
                             )
+                            existing_metrics = {name: mid for mid, name in cursor.fetchall()}
+                            for (
+                                mt_name,
+                                mt_desc,
+                                m_input,
+                                m_timing,
+                                m_req,
+                                m_scope,
+                                m_enum_json,
+                                mpos,
+                                mt_id,
+                            ) in lib_metrics:
+                                if mt_name in existing_metrics:
+                                    cursor.execute(
+                                        "UPDATE preset_exercise_metrics SET deleted = 1 WHERE id = ?",
+                                        (existing_metrics.pop(mt_name),),
+                                    )
+                                cursor.execute(
+                                    """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, metric_description, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                    (
+                                        ex_id,
+                                        mt_name,
+                                        mt_desc,
+                                        m_input,
+                                        m_timing,
+                                        m_req,
+                                        m_scope,
+                                        m_enum_json,
+                                        mpos,
+                                        mt_id,
+                                    ),
+                                )
+                            for mid in existing_metrics.values():
+                                cursor.execute(
+                                    "UPDATE preset_exercise_metrics SET deleted = 1 WHERE id = ?",
+                                    (mid,),
+                                )
                 else:
                     cursor.execute(
                         """INSERT INTO preset_section_exercises (section_id, exercise_name, exercise_description, position, number_of_sets, library_exercise_id, rest_time) VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -2263,6 +2297,12 @@ class PresetEditor:
                         """,
                         (lib_id,),
                     )
+                    lib_metrics = cursor.fetchall()
+                    cursor.execute(
+                        "SELECT id, metric_name FROM preset_exercise_metrics WHERE section_exercise_id = ? AND deleted = 0",
+                        (ex_id,),
+                    )
+                    existing_metrics = {name: mid for mid, name in cursor.fetchall()}
                     for (
                         mt_name,
                         mt_desc,
@@ -2273,7 +2313,12 @@ class PresetEditor:
                         m_enum_json,
                         mpos,
                         mt_id,
-                    ) in cursor.fetchall():
+                    ) in lib_metrics:
+                        if mt_name in existing_metrics:
+                            cursor.execute(
+                                "UPDATE preset_exercise_metrics SET deleted = 1 WHERE id = ?",
+                                (existing_metrics.pop(mt_name),),
+                            )
                         cursor.execute(
                             "SELECT 1 FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ? AND deleted = 0",
                             (ex_id, mt_name),
@@ -2294,6 +2339,11 @@ class PresetEditor:
                                 mpos,
                                 mt_id,
                             ),
+                        )
+                    for mid in existing_metrics.values():
+                        cursor.execute(
+                            "UPDATE preset_exercise_metrics SET deleted = 1 WHERE id = ?",
+                            (mid,),
                         )
 
             for old_id in unused:
