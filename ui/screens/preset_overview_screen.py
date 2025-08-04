@@ -64,7 +64,9 @@ class PresetOverviewScreen(MDScreen):
                 desc = desc_info.get("description", "") if desc_info else ""
                 sets = ex.get("sets", 0) or 0
                 rest = ex.get("rest", 0) or 0
-                metrics = core.get_metrics_for_exercise(ex["name"], preset_name)
+                metrics = core.get_metrics_for_exercise(
+                    ex["name"], preset_name=preset_name
+                )
                 metric_names = ", ".join(m["name"] for m in metrics)
                 lines = [ex["name"], f"sets {sets} | rest: {rest}s", desc]
                 if metric_names:
