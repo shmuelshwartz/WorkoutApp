@@ -856,6 +856,8 @@ class WorkoutSession:
         self.pending_pre_set_metrics: dict[str, object] = {}
         # track whether post-set metrics still need to be recorded
         self.awaiting_post_set_metrics: bool = False
+        # track whether this session has been saved to the database
+        self.saved: bool = False
 
     def mark_set_completed(self) -> None:
         """Record completion time and update rest timer for the next set."""
@@ -1038,6 +1040,167 @@ class WorkoutSession:
                 metrics_text = ", ".join(f"{k}: {v}" for k, v in metrics.items())
                 lines.append(f"  Set {idx}: {metrics_text}")
         return "\n".join(lines)
+
+
+def validate_workout_session(session: "WorkoutSession") -> list[str]:
+    """Return a list of validation errors for ``session``."""
+
+    errors: list[str] = []
+    if session.end_time is None:
+        errors.append("Session has not been completed")
+    for ex in session.exercises:
+        expected = ex.get("sets", 0)
+        actual = len(ex.get("results", []))
+        if actual != expected:
+            errors.append(
+                f"Exercise '{ex.get('name')}' has {actual} recorded sets but expected {expected}"
+            )
+    return errors
+
+
+def save_completed_session(
+    session: "WorkoutSession", db_path: Path | None = None
+) -> None:
+    """Persist a finished ``session`` to the database."""
+
+    path = Path(db_path or session.db_path)
+    errors = validate_workout_session(session)
+    if errors:
+        raise ValueError("; ".join(errors))
+
+    with sqlite3.connect(str(path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO session_sessions (preset_name, started_at, ended_at)
+            VALUES (?, ?, ?)
+            """,
+            (session.preset_name, session.start_time, session.end_time or time.time()),
+        )
+        session_id = cursor.lastrowid
+
+        cursor.execute(
+            """
+            INSERT INTO session_session_sections (session_id, name, position)
+            VALUES (?, ?, 1)
+            """,
+            (session_id, session.preset_name),
+        )
+        section_id = cursor.lastrowid
+
+        if session.session_metrics:
+            preset_metrics = get_metrics_for_preset(
+                session.preset_name, db_path=path
+            )
+            metric_map = {m["name"]: m for m in preset_metrics}
+            for pos, (name, value) in enumerate(
+                session.session_metrics.items(), 1
+            ):
+                mdef = metric_map.get(name, {})
+                cursor.execute(
+                    """
+                    INSERT INTO session_session_metrics
+                        (session_id, metric_name, type, input_timing, scope,
+                         is_required, enum_values_json, value, position)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        session_id,
+                        name,
+                        mdef.get("type", "str"),
+                        _to_db_timing(mdef.get("input_timing")),
+                        mdef.get("scope", "session"),
+                        int(mdef.get("is_required", False)),
+                        json.dumps(mdef.get("values"))
+                        if mdef.get("type") == "enum"
+                        else None,
+                        str(value),
+                        pos,
+                    ),
+                )
+
+        for ex_pos, ex in enumerate(session.exercises, 1):
+            cursor.execute(
+                """
+                INSERT INTO session_section_exercises
+                    (section_id, exercise_name, number_of_sets, rest_time, position)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    section_id,
+                    ex.get("name"),
+                    ex.get("sets", 0),
+                    ex.get("rest", session.rest_duration),
+                    ex_pos,
+                ),
+            )
+            session_ex_id = cursor.lastrowid
+            metric_defs = get_metrics_for_exercise(
+                ex.get("name"), db_path=path, preset_name=session.preset_name
+            )
+            metric_ids: dict[str, int] = {}
+            for m_pos, m in enumerate(metric_defs, 1):
+                cursor.execute(
+                    """
+                    INSERT INTO session_exercise_metrics
+                        (session_exercise_id, metric_name, type, input_timing, scope,
+                         is_required, enum_values_json, position)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        session_ex_id,
+                        m["name"],
+                        m.get("type", "str"),
+                        _to_db_timing(m.get("input_timing")),
+                        m.get("scope", "set"),
+                        int(m.get("is_required", False)),
+                        json.dumps(m.get("values"))
+                        if m.get("type") == "enum"
+                        else None,
+                        m_pos,
+                    ),
+                )
+                metric_ids[m["name"]] = cursor.lastrowid
+
+            for set_idx, metrics in enumerate(ex.get("results", []), 1):
+                cursor.execute(
+                    """
+                    INSERT INTO session_exercise_sets (section_exercise_id, set_number)
+                    VALUES (?, ?)
+                    """,
+                    (session_ex_id, set_idx),
+                )
+                set_id = cursor.lastrowid
+                for name, value in metrics.items():
+                    metric_id = metric_ids.get(name)
+                    if metric_id is None:
+                        cursor.execute(
+                            """
+                            INSERT INTO session_exercise_metrics
+                                (session_exercise_id, metric_name, type, input_timing, scope, position)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                            """,
+                            (
+                                session_ex_id,
+                                name,
+                                "str",
+                                _to_db_timing("post_set"),
+                                "set",
+                                len(metric_ids) + 1,
+                            ),
+                        )
+                        metric_id = cursor.lastrowid
+                        metric_ids[name] = metric_id
+                    cursor.execute(
+                        """
+                        INSERT INTO session_set_metrics
+                            (exercise_set_id, exercise_metric_id, value)
+                        VALUES (?, ?, ?)
+                        """,
+                        (set_id, metric_id, str(value)),
+                    )
+
+    session.saved = True
 
 
 class Exercise:
