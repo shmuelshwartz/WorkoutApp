@@ -140,6 +140,77 @@ def test_populate_blank_for_new_set(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_prev_metrics_use_last_set(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+    import ui.screens.metric_input_screen as mis
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    screen = MetricInputScreen()
+
+    class DummyList:
+        def __init__(self):
+            self.children = []
+
+        def clear_widgets(self):
+            self.children.clear()
+
+        def add_widget(self, widget):
+            self.children.append(widget)
+
+    screen.prev_metric_list = DummyList()
+    screen.next_metric_list = DummyList()
+    screen.prev_optional_list = DummyList()
+    screen.next_optional_list = DummyList()
+
+    class DummySession:
+        preset_name = "Test"
+        pending_pre_set_metrics = {}
+        current_exercise = 1
+        current_set = 0
+        awaiting_post_set_metrics = True
+        exercises = [
+            {"name": "Push", "sets": 1, "results": [{"Reps": 10}]},
+            {"name": "Run", "sets": 1, "results": []},
+        ]
+
+        def next_exercise_name(self):
+            return "Run"
+
+        def upcoming_exercise_name(self):
+            return "Run"
+
+        def last_recorded_set_metrics(self):
+            return {"Reps": 10}
+
+    dummy_app = _DummyApp()
+    dummy_app.workout_session = DummySession()
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+
+    def fake_get_metrics(name, preset_name=None):
+        if name == "Push":
+            return [
+                {
+                    "name": "Reps",
+                    "type": "int",
+                    "input_timing": "post_set",
+                    "is_required": True,
+                }
+            ]
+        return []
+
+    monkeypatch.setattr(mis, "get_metrics_for_exercise", fake_get_metrics)
+
+    screen.populate_metrics()
+
+    reps_row = next(
+        r for r in screen.prev_metric_list.children if getattr(r, "metric_name", "") == "Reps"
+    )
+    assert getattr(reps_row.input_widget, "text", "") == "10"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_save_metrics_clears_next_metrics(monkeypatch):
     from kivy.lang import Builder
     from pathlib import Path
