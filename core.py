@@ -939,7 +939,11 @@ class WorkoutSession:
         """Return ``True`` if all required pre-set metrics have been entered."""
 
         required = self.required_pre_set_metric_names()
-        return all(name in self.pending_pre_set_metrics for name in required)
+        return all(
+            name in self.pending_pre_set_metrics
+            and self.pending_pre_set_metrics.get(name) not in (None, "")
+            for name in required
+        )
 
     # --------------------------------------------------------------
     # Post-set metric helpers

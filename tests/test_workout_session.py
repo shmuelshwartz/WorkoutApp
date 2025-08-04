@@ -48,6 +48,21 @@ def test_pre_set_metrics_flow(sample_db):
     assert session.exercises[1]["results"][0] == {"Reps": 5, "Weight": 100}
 
 
+def test_pre_set_metrics_require_selection(sample_db):
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+
+    session.record_metrics({"Reps": 10})
+    session.mark_set_completed()
+    session.record_metrics({"Reps": 8})
+    session.mark_set_completed()
+
+    assert session.next_exercise_name() == "Bench Press"
+    session.set_pre_set_metrics({"Reps": ""})
+    assert not session.has_required_pre_set_metrics()
+    session.set_pre_set_metrics({"Reps": 5})
+    assert session.has_required_pre_set_metrics()
+
+
 def test_rest_time_uses_next_exercise(sample_db):
     conn = sqlite3.connect(sample_db)
     conn.execute(
