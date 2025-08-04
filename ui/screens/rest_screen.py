@@ -86,7 +86,7 @@ class RestScreen(MDScreen):
         ):
             missing = True
         btn.theme_text_color = "Custom"
-        btn.text_color = (1, 0, 0, 1) if missing else (1, 1, 1, 1)
+        btn.text_color = (1, 0, 0, 1) if missing else (0, 0, 0, 1)
 
     def open_metric_input(self):
         app = MDApp.get_running_app()
