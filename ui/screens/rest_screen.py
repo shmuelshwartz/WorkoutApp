@@ -43,6 +43,7 @@ class RestScreen(MDScreen):
         self.timer_color = (1, 0, 0, 1)
         self.update_timer(0)
         self._event = Clock.schedule_interval(self.update_timer, 0.1)
+        self.update_record_button_color()
         return super().on_enter(*args)
 
     def on_leave(self, *args):
@@ -54,8 +55,11 @@ class RestScreen(MDScreen):
         app = MDApp.get_running_app()
         session = app.workout_session if app else None
         if session and not self.is_ready:
-            if not session.has_required_pre_set_metrics():
-                self.flash_record_button()
+            if not (
+                session.has_required_pre_set_metrics()
+                and session.has_required_post_set_metrics()
+            ):
+                self.update_record_button_color()
                 return
         self.is_ready = not self.is_ready
         self.timer_color = (0, 1, 0, 1) if self.is_ready else (1, 0, 0, 1)
@@ -66,13 +70,20 @@ class RestScreen(MDScreen):
             if self.manager:
                 self.manager.current = "workout_active"
 
-    def flash_record_button(self):
+    def update_record_button_color(self):
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
         btn = self.ids.get("record_btn")
         if not btn:
             return
-        orig = btn.md_bg_color
-        btn.md_bg_color = (1, 0, 0, 1)
-        Clock.schedule_once(lambda dt: setattr(btn, "md_bg_color", orig), 3)
+        missing = False
+        if session and (
+            not session.has_required_pre_set_metrics()
+            or not session.has_required_post_set_metrics()
+        ):
+            missing = True
+        btn.theme_text_color = "Custom"
+        btn.text_color = (1, 0, 0, 1) if missing else (1, 1, 1, 1)
 
     def on_touch_down(self, touch):
         if self.ids.timer_label.collide_point(*touch.pos):

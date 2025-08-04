@@ -469,6 +469,7 @@ ScreenManager:
             id: set_tabs
             on_tab_switch: root.switch_tab(args[1].title.split()[0].lower())
             Tab:
+                id: prev_tab
                 title: "Previous Set"
                 MDBoxLayout:
                     orientation: "vertical"
@@ -479,6 +480,7 @@ ScreenManager:
                         text_color: 0.2, 0.6, 0.86, 1
                     MDTabs:
                         Tab:
+                            id: prev_required_tab
                             title: "Required Metrics"
                             ScrollView:
                                 MDList:
@@ -493,6 +495,7 @@ ScreenManager:
                                     size_hint_y: None
                                     height: self.minimum_height
             Tab:
+                id: next_tab
                 title: "Next Set"
                 MDBoxLayout:
                     orientation: "vertical"
@@ -503,6 +506,7 @@ ScreenManager:
                         text_color: 0.2, 0.6, 0.86, 1
                     MDTabs:
                         Tab:
+                            id: next_required_tab
                             title: "Required Metrics"
                             ScrollView:
                                 MDList:
