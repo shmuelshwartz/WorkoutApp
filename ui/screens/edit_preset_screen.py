@@ -24,6 +24,7 @@ from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.dialog import MDDialog
 import os
+import sqlite3
 
 import core
 from core import DEFAULT_DB_PATH
@@ -434,7 +435,7 @@ class EditPresetScreen(MDScreen):
         try:
             # Validate before confirmation to show immediate error
             app.preset_editor.save()
-        except ValueError as exc:
+        except (ValueError, sqlite3.IntegrityError, Exception) as exc:
             dialog = MDDialog(
                 title="Error",
                 text=str(exc),
