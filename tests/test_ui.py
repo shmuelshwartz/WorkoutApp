@@ -27,6 +27,8 @@ if kivy_available:
         ExerciseSelectionPanel,
         PresetsScreen,
         EditPresetScreen,
+        PresetDetailScreen,
+        PresetOverviewScreen,
     )
     from ui.popups import AddMetricPopup, EditMetricPopup
     import time
@@ -392,6 +394,124 @@ def test_preset_select_button_updates(monkeypatch):
     screen.select_preset("Sample", dummy)
 
     assert screen.ids.select_btn.text == "Sample"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_preset_detail_screen_populate(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    class DummyList:
+        def __init__(self):
+            self.children = []
+
+        def clear_widgets(self):
+            self.children.clear()
+
+        def add_widget(self, widget):
+            self.children.append(widget)
+
+    screen = PresetDetailScreen()
+    screen.summary_list = DummyList()
+
+    class DummyApp:
+        selected_preset = "Test"
+
+        def init_preset_editor(self):
+            self.preset_editor = type(
+                "PE",
+                (),
+                {
+                    "sections": [
+                        {
+                            "name": "Sec",
+                            "exercises": [
+                                {"name": "Push", "sets": 1},
+                                {"name": "Pull", "sets": 2},
+                            ],
+                        }
+                    ],
+                    "preset_metrics": [
+                        {"name": "Focus", "value": "Upper", "scope": "preset"},
+                        {"name": "Notes", "value": "", "scope": "session"},
+                    ],
+                },
+            )()
+
+    dummy_app = DummyApp()
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+
+    screen.populate()
+
+    texts = [getattr(c, "text", "") for c in screen.summary_list.children]
+    assert "Focus: Upper" in texts
+    assert "Push - 1 set" in texts
+    assert "Pull - 2 sets" in texts
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_preset_overview_screen_populate(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    class DummyList:
+        def __init__(self):
+            self.children = []
+
+        def clear_widgets(self):
+            self.children.clear()
+
+        def add_widget(self, widget):
+            self.children.append(widget)
+
+    screen = PresetOverviewScreen()
+    screen.overview_list = DummyList()
+
+    class DummyApp:
+        selected_preset = "Test"
+
+        def init_preset_editor(self):
+            self.preset_editor = type(
+                "PE",
+                (),
+                {
+                    "sections": [
+                        {"name": "Sec", "exercises": [{"name": "Push", "sets": 1}]}
+                    ]
+                },
+            )()
+
+    dummy_app = DummyApp()
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+
+    monkeypatch.setattr(
+        core,
+        "get_exercise_details",
+        lambda name, *a, **k: {
+            "name": name,
+            "description": "Desc",
+            "is_user_created": False,
+        },
+    )
+    monkeypatch.setattr(
+        core,
+        "get_metrics_for_exercise",
+        lambda *a, **k: [{"name": "Reps"}, {"name": "Weight"}],
+    )
+
+    screen.populate()
+
+    entries = [
+        (getattr(c, "text", ""), getattr(c, "secondary_text", ""))
+        for c in screen.overview_list.children
+        if hasattr(c, "text")
+    ]
+
+    assert ("Push - 1 set", "Desc | Metrics: Reps, Weight") in entries
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
