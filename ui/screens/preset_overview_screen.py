@@ -3,6 +3,8 @@ from kivymd.uix.screen import MDScreen
 from kivy.properties import ObjectProperty
 import core
 from ui.expandable_list_item import ExpandableListItem, ExerciseSummaryItem
+from ui.popups import PreSessionMetricPopup
+
 
 
 class PresetOverviewScreen(MDScreen):
@@ -78,5 +80,24 @@ class PresetOverviewScreen(MDScreen):
         app = MDApp.get_running_app()
         preset_name = app.selected_preset
         app.start_workout(preset_name)
+        if app.workout_session:
+            metrics = core.get_metrics_for_preset(preset_name)
+            pre_metrics = [
+                m for m in metrics if m.get("input_timing") == "pre_session"
+            ]
+            if pre_metrics:
+                popup = PreSessionMetricPopup(
+                    pre_metrics,
+                    lambda data: self._save_session_metrics(data),
+                )
+                popup.open()
+                return
+        if self.manager:
+            self.manager.current = "rest"
+
+    def _save_session_metrics(self, data):
+        app = MDApp.get_running_app()
+        if app.workout_session:
+            app.workout_session.set_session_metrics(data)
         if self.manager:
             self.manager.current = "rest"
