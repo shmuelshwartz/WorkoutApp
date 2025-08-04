@@ -465,9 +465,11 @@ ScreenManager:
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
+            size_hint_y:0.1
         MDTabs:
             id: set_tabs
             on_tab_switch: root.switch_tab(args[1].title.split()[0].lower())
+            size_hint_y:0.85
             Tab:
                 title: "Previous Set"
                 MDBoxLayout:
@@ -517,6 +519,7 @@ ScreenManager:
                                     size_hint_y: None
                                     height: self.minimum_height
         MDRaisedButton:
+            size_hint_y:0.05
             text: "Save Metrics"
             on_release: root.save_metrics()
 
