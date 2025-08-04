@@ -944,3 +944,26 @@ def test_exercise_summary_item_toggle_expands_and_collapses():
     assert item._expanded is True
     item._toggle()  # collapse
     assert item._expanded is False
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_refresh_sections_preserves_names(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+    from kivymd.uix.boxlayout import MDBoxLayout
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+    app = _DummyApp()
+    app.preset_editor = core.PresetEditor()
+    app.preset_editor.add_section("Warmup")
+    app.preset_editor.add_section("Skill work")
+    app.preset_editor.add_section("Workout")
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+    screen = EditPresetScreen()
+    screen.sections_box = MDBoxLayout(orientation="vertical")
+    screen.refresh_sections()
+    assert [s["name"] for s in app.preset_editor.sections] == [
+        "Warmup",
+        "Skill work",
+        "Workout",
+    ]
