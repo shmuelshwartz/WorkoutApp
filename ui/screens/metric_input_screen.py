@@ -53,13 +53,24 @@ class MetricInputScreen(MDScreen):
     def reset_tabs(self):
         ids = self.ids
         set_tabs = ids.get("set_tabs")
-        if set_tabs:
-            target = ids.get("next_tab") if self.current_tab == "next" else ids.get("prev_tab")
-            if target:
-                set_tabs.switch_tab(target)
+
+        def _switch(tabs_widget, content_tab):
+            if not tabs_widget or not content_tab:
+                return
+            get_list = getattr(tabs_widget, "get_tab_list", None)
+            if not get_list:
+                return
+            for header in get_list():
+                if getattr(header, "tab", None) is content_tab:
+                    tabs_widget.switch_tab(header)
+                    break
+
+        target = ids.get("next_tab") if self.current_tab == "next" else ids.get("prev_tab")
+        _switch(set_tabs, target)
+
         req = ids.get("next_required_tab") if self.current_tab == "next" else ids.get("prev_required_tab")
-        if req and req.parent:
-            req.parent.switch_tab(req)
+        parent = getattr(req, "parent", None)
+        _switch(parent, req)
 
     def on_pre_enter(self, *args):
         app = MDApp.get_running_app()
