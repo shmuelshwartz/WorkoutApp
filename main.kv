@@ -392,6 +392,15 @@ ScreenManager:
         MDLabel:
             text: "Next: " + root.next_exercise_name if root.next_exercise_name else ""
             halign: "center"
+        MDLabel:
+            text: root.next_exercise_desc if root.next_exercise_desc else ""
+            halign: "center"
+        MDLabel:
+            text: root.next_set_info if root.next_set_info else ""
+            halign: "center"
+        MDLabel:
+            text: root.rest_time_info if root.rest_time_info else ""
+            halign: "center"
         Widget:
             size_hint_y: None
             height: "20dp"

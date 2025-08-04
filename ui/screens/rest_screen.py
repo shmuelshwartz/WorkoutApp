@@ -4,7 +4,7 @@ from kivy.clock import Clock
 from kivy.properties import NumericProperty, StringProperty, BooleanProperty, ListProperty
 import time
 import math
-from core import DEFAULT_REST_DURATION
+from core import DEFAULT_REST_DURATION, get_exercise_details
 
 
 class RestScreen(MDScreen):
@@ -13,16 +13,32 @@ class RestScreen(MDScreen):
     timer_label = StringProperty("00:20")
     target_time = NumericProperty(0)
     next_exercise_name = StringProperty("")
+    next_exercise_desc = StringProperty("")
+    next_set_info = StringProperty("")
+    rest_time_info = StringProperty("")
     is_ready = BooleanProperty(False)
     timer_color = ListProperty([1, 0, 0, 1])
 
     def on_enter(self, *args):
         session = MDApp.get_running_app().workout_session
         if session:
-            self.next_exercise_name = session.next_exercise_display()
+            ex_name = session.next_exercise_name()
+            self.next_exercise_name = ex_name
+            self.next_set_info = (
+                f"set {session.current_set + 1} of {session.exercises[session.current_exercise]['sets']}"
+                if session.current_exercise < len(session.exercises)
+                else ""
+            )
+            self.rest_time_info = f"{session.rest_duration} seconds rest time"
+            details = get_exercise_details(ex_name, db_path=session.db_path)
+            self.next_exercise_desc = details.get("description", "") if details else ""
             self.target_time = session.rest_target_time
         else:
             self.target_time = time.time() + DEFAULT_REST_DURATION
+            self.next_exercise_name = ""
+            self.next_set_info = ""
+            self.rest_time_info = ""
+            self.next_exercise_desc = ""
         self.is_ready = False
         self.timer_color = (1, 0, 0, 1)
         self.update_timer(0)
