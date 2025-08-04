@@ -50,6 +50,17 @@ class MetricInputScreen(MDScreen):
             self.current_tab = tab
             self.update_header()
 
+    def reset_tabs(self):
+        ids = self.ids
+        set_tabs = ids.get("set_tabs")
+        if set_tabs:
+            target = ids.get("next_tab") if self.current_tab == "next" else ids.get("prev_tab")
+            if target:
+                set_tabs.switch_tab(target)
+        req = ids.get("next_required_tab") if self.current_tab == "next" else ids.get("prev_required_tab")
+        if req and req.parent:
+            req.parent.switch_tab(req)
+
     def on_pre_enter(self, *args):
         app = MDApp.get_running_app()
         if app and app.workout_session:
@@ -58,6 +69,8 @@ class MetricInputScreen(MDScreen):
             self.exercise_name = ""
         if app and getattr(app, "record_pre_set", False):
             self.current_tab = "next"
+        else:
+            self.current_tab = "previous"
         self.update_header()
         return super().on_pre_enter(*args)
 
@@ -129,7 +142,10 @@ class MetricInputScreen(MDScreen):
                 else []
             )
             next_metrics = [m for m in next_all if m.get("input_timing") == "pre_set"]
-            next_values = session.pending_pre_set_metrics.copy()
+            if getattr(app, "record_pre_set", False):
+                next_values = session.pending_pre_set_metrics.copy()
+            else:
+                next_values = {}
 
             if getattr(app, "record_pre_set", False) and not prev_values:
                 prev_metrics = []
@@ -180,6 +196,7 @@ class MetricInputScreen(MDScreen):
 
         self.update_header()
         self.highlight_missing_metrics()
+        self.reset_tabs()
 
     def _set_tab_color(self, tab, red: bool):
         if not tab:
