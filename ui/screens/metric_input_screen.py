@@ -1,26 +1,161 @@
 from kivymd.app import MDApp
 from kivy.metrics import dp
-from kivy.properties import ObjectProperty, StringProperty
+from kivy.properties import (
+    ObjectProperty,
+    StringProperty,
+    BooleanProperty,
+)
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
-from core import get_metrics_for_exercise
 
 
 class MetricInputScreen(MDScreen):
-    """Screen for entering workout metrics."""
+    """Screen for entering workout metrics with navigation and filtering."""
 
-    prev_metric_list = ObjectProperty(None)
-    next_metric_list = ObjectProperty(None)
-    prev_optional_list = ObjectProperty(None)
-    next_optional_list = ObjectProperty(None)
-    current_tab = StringProperty("previous")
-    header_text = StringProperty("")
-    exercise_name = StringProperty("")
+    metrics_list = ObjectProperty(None)
+    label_text = StringProperty("")
+    can_nav_left = BooleanProperty(False)
+    can_nav_right = BooleanProperty(False)
 
+    show_required = BooleanProperty(True)
+    show_additional = BooleanProperty(False)
+    show_pre = BooleanProperty(True)
+    show_post = BooleanProperty(True)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.session = None
+        self.exercise_idx = 0
+        self.set_idx = 0
+        # Explicit defaults for stubbed property behavior in tests
+        self.metrics_list = None
+        self.label_text = ""
+        self.can_nav_left = False
+        self.can_nav_right = False
+        self.show_required = True
+        self.show_additional = False
+        self.show_pre = True
+        self.show_post = True
+
+    # ------------------------------------------------------------------
+    # Navigation
+    def on_pre_enter(self, *args):
+        app = MDApp.get_running_app()
+        self.session = getattr(app, "workout_session", None)
+        if self.session:
+            self.exercise_idx = self.session.current_exercise
+            self.set_idx = self.session.current_set
+        else:
+            self.exercise_idx = 0
+            self.set_idx = 0
+        self.update_display()
+        return super().on_pre_enter(*args)
+
+    def update_display(self):
+        self._update_navigation_label()
+        self.update_metrics()
+
+    def _update_navigation_label(self):
+        if not self.session or self.exercise_idx >= len(self.session.exercises):
+            self.label_text = ""
+            self.can_nav_left = False
+            self.can_nav_right = False
+            return
+
+        ex = self.session.exercises[self.exercise_idx]
+        self.label_text = (
+            f"{ex['name']} \u2013 Set {self.set_idx + 1} of {ex['sets']}"
+        )
+
+        self.can_nav_left = not (
+            self.exercise_idx == 0 and self.set_idx == 0
+        )
+        last_ex = self.exercise_idx == len(self.session.exercises) - 1
+        last_set = self.set_idx == ex["sets"] - 1
+        self.can_nav_right = not (last_ex and last_set)
+
+    def navigate_left(self):
+        if not self.can_nav_left:
+            return
+        if self.set_idx > 0:
+            self.set_idx -= 1
+        else:
+            self.exercise_idx -= 1
+            self.set_idx = self.session.exercises[self.exercise_idx]["sets"] - 1
+        self.update_display()
+
+    def navigate_right(self):
+        if not self.can_nav_right:
+            return
+        ex = self.session.exercises[self.exercise_idx]
+        if self.set_idx < ex["sets"] - 1:
+            self.set_idx += 1
+        else:
+            self.exercise_idx += 1
+            self.set_idx = 0
+        self.update_display()
+
+    # ------------------------------------------------------------------
+    # Filter buttons
+    def toggle_filter(self, name: str):
+        attr = {
+            "required": "show_required",
+            "additional": "show_additional",
+            "pre": "show_pre",
+            "post": "show_post",
+        }.get(name)
+        if attr:
+            setattr(self, attr, not getattr(self, attr))
+            self.update_metrics()
+
+    def filter_color(self, name: str):
+        attr = {
+            "required": "show_required",
+            "additional": "show_additional",
+            "pre": "show_pre",
+            "post": "show_post",
+        }.get(name)
+        return (0, 1, 0, 1) if attr and getattr(self, attr) else (0, 0, 0, 1)
+
+    # ------------------------------------------------------------------
+    # Metrics
+    def _sort_key(self, metric):
+        required = 0 if metric.get("is_required") else 2
+        timing = 0 if metric.get("input_timing") == "pre_set" else 1
+        return required + timing
+
+    def _apply_filters(self, metrics):
+        visible = []
+        for m in sorted(metrics, key=self._sort_key):
+            required = m.get("is_required", False)
+            timing = m.get("input_timing", "post_set")
+            if required and not self.show_required:
+                continue
+            if not required and not self.show_additional:
+                continue
+            if timing == "pre_set" and not self.show_pre:
+                continue
+            if timing == "post_set" and not self.show_post:
+                continue
+            visible.append(m)
+        return visible
+
+    def update_metrics(self):
+        if not self.metrics_list:
+            return
+        self.metrics_list.clear_widgets()
+        if not self.session or self.exercise_idx >= len(self.session.exercises):
+            return
+        metrics = self.session.exercises[self.exercise_idx].get("metric_defs", [])
+        for metric in self._apply_filters(metrics):
+            self.metrics_list.add_widget(self._create_row(metric))
+
+    # ------------------------------------------------------------------
+    # Metric row helpers
     def _parent_scroll(self, widget):
         from kivy.uix.scrollview import ScrollView
 
@@ -43,207 +178,6 @@ class MetricInputScreen(MDScreen):
         if scroll:
             scroll.do_scroll_y = True
         return False
-
-    def switch_tab(self, tab: str):
-        """Switch between previous and next metric input views."""
-        if tab in ("previous", "next"):
-            self.current_tab = tab
-            self.update_header()
-
-    def reset_tabs(self):
-        ids = self.ids
-        set_tabs = ids.get("set_tabs")
-
-        def _switch(tabs_widget, content_tab):
-            if not tabs_widget or not content_tab:
-                return
-            get_list = getattr(tabs_widget, "get_tab_list", None)
-            if not get_list:
-                return
-            for header in get_list():
-                if getattr(header, "tab", None) is content_tab:
-                    tabs_widget.switch_tab(header)
-                    break
-
-        target = ids.get("next_tab") if self.current_tab == "next" else ids.get("prev_tab")
-        _switch(set_tabs, target)
-
-        req = ids.get("next_required_tab") if self.current_tab == "next" else ids.get("prev_required_tab")
-        parent = getattr(req, "parent", None)
-        _switch(parent, req)
-
-    def on_pre_enter(self, *args):
-        app = MDApp.get_running_app()
-        if app and app.workout_session:
-            self.exercise_name = app.workout_session.next_exercise_name()
-        else:
-            self.exercise_name = ""
-        if app and getattr(app, "record_pre_set", False):
-            self.current_tab = "next"
-        else:
-            self.current_tab = "previous"
-        self.update_header()
-        return super().on_pre_enter(*args)
-
-    def on_leave(self, *args):
-        # Reset flag so leaving without saving doesn't advance sets later
-        app = MDApp.get_running_app()
-        if hasattr(app, "record_new_set"):
-            app.record_new_set = False
-        if hasattr(app, "record_pre_set"):
-            app.record_pre_set = False
-        return super().on_leave(*args)
-
-    def update_header(self):
-        app = MDApp.get_running_app()
-        session = app.workout_session if app else None
-        if not session:
-            self.header_text = ""
-            return
-
-        if self.current_tab == "previous":
-            ex_name = ""
-            set_number = 0
-            if session.awaiting_post_set_metrics:
-                if session.current_exercise < len(session.exercises):
-                    ex = session.exercises[session.current_exercise]
-                    ex_name = ex["name"]
-                    set_number = session.current_set + 1
-            else:
-                for ex in reversed(session.exercises[: session.current_exercise + 1]):
-                    if ex.get("results"):
-                        ex_name = ex["name"]
-                        set_number = len(ex["results"])
-                        break
-            if ex_name:
-                self.header_text = f"Previous Set Metrics {ex_name} Set {set_number}"
-            else:
-                self.header_text = "Previous Set Metrics"
-        else:
-            # upcoming set info
-            ex_idx = session.current_exercise
-            set_idx = session.current_set + 1
-            if ex_idx < len(session.exercises):
-                if set_idx >= session.exercises[ex_idx]["sets"]:
-                    ex_idx += 1
-                    set_idx = 0
-            if ex_idx < len(session.exercises):
-                ex = session.exercises[ex_idx]
-                self.header_text = f"Next Set Metrics {ex['name']} Set {set_idx + 1}"
-            else:
-                self.header_text = "Next Set Metrics"
-
-    def populate_metrics(self, metrics=None):
-        """Populate metric lists for previous and next sets."""
-        app = MDApp.get_running_app()
-        prev_metrics = []
-        next_metrics = []
-        prev_values = {}
-        next_values = {}
-        upcoming_ex = ""
-        if app.workout_session:
-            session = app.workout_session
-            prev_values = session.last_recorded_set_metrics()
-            if session.awaiting_post_set_metrics:
-                prev_ex = session.next_exercise_name()
-            else:
-                prev_ex = ""
-                for ex in reversed(session.exercises[: session.current_exercise + 1]):
-                    if ex.get("results"):
-                        prev_ex = ex["name"]
-                        break
-            self.exercise_name = prev_ex
-            all_metrics = (
-                get_metrics_for_exercise(prev_ex, preset_name=session.preset_name)
-                if prev_ex
-                else []
-            )
-            prev_metrics = [m for m in all_metrics if m.get("input_timing") == "post_set"]
-
-            upcoming_ex = session.upcoming_exercise_name()
-            next_all = (
-                get_metrics_for_exercise(
-                    upcoming_ex, preset_name=session.preset_name
-                )
-                if upcoming_ex
-                else []
-            )
-            next_metrics = [m for m in next_all if m.get("input_timing") == "pre_set"]
-            if getattr(app, "record_pre_set", False):
-                next_values = session.pending_pre_set_metrics.copy()
-            else:
-                next_values = {}
-
-            if getattr(app, "record_pre_set", False) and not prev_values:
-                prev_metrics = []
-        elif metrics is not None:
-            prev_metrics = metrics
-            next_metrics = metrics
-            self.exercise_name = ""
-
-        if not self.prev_metric_list or not self.next_metric_list:
-            return
-        self.prev_metric_list.clear_widgets()
-        self.next_metric_list.clear_widgets()
-        if self.prev_optional_list:
-            self.prev_optional_list.clear_widgets()
-        if self.next_optional_list:
-            self.next_optional_list.clear_widgets()
-
-        prev_required = [m for m in prev_metrics if m.get("is_required")]
-        prev_optional = [m for m in prev_metrics if not m.get("is_required")]
-        next_required = [m for m in next_metrics if m.get("is_required")]
-        next_optional = [m for m in next_metrics if not m.get("is_required")]
-
-        for m in prev_required:
-            self.prev_metric_list.add_widget(
-                self._create_row(m, prev_values.get(m.get("name")))
-            )
-        for m in next_required:
-            self.next_metric_list.add_widget(
-                self._create_row(m, next_values.get(m.get("name")))
-            )
-        for m in prev_optional:
-            self.prev_optional_list.add_widget(
-                self._create_row(m, prev_values.get(m.get("name")))
-            )
-        for m in next_optional:
-            self.next_optional_list.add_widget(
-                self._create_row(m, next_values.get(m.get("name")))
-            )
-
-        if prev_values:
-            self.prev_optional_list.add_widget(
-                self._create_row({"name": "Notes", "type": "str"}, prev_values.get("Notes"))
-            )
-        if upcoming_ex:
-            self.next_optional_list.add_widget(
-                self._create_row({"name": "Notes", "type": "str"}, next_values.get("Notes"))
-            )
-
-        self.update_header()
-        self.highlight_missing_metrics()
-        self.reset_tabs()
-
-    def _set_tab_color(self, tab, red: bool):
-        if not tab:
-            return
-        tab.tab_label.theme_text_color = "Custom"
-        tab.tab_label.text_color = (1, 0, 0, 1) if red else (1, 1, 1, 1)
-
-    def highlight_missing_metrics(self):
-        app = MDApp.get_running_app()
-        session = app.workout_session if app else None
-        missing_prev = False
-        missing_next = False
-        if session:
-            missing_prev = not session.has_required_post_set_metrics()
-            missing_next = not session.has_required_pre_set_metrics()
-        ids = self.ids
-        self._set_tab_color(ids.get("prev_tab"), missing_prev)
-        self._set_tab_color(ids.get("prev_required_tab"), missing_prev)
-        self._set_tab_color(ids.get("next_tab"), missing_next)
-        self._set_tab_color(ids.get("next_required_tab"), missing_next)
 
     def _create_row(self, metric, value=None):
         if isinstance(metric, str):
@@ -320,27 +254,19 @@ class MetricInputScreen(MDScreen):
             data[name] = value
         return data
 
+    # ------------------------------------------------------------------
     def save_metrics(self):
-        prev_metrics = self._collect_metrics(self.prev_metric_list)
-        prev_metrics.update(self._collect_metrics(self.prev_optional_list))
-        next_metrics = self._collect_metrics(self.next_metric_list)
-        next_metrics.update(self._collect_metrics(self.next_optional_list))
+        metrics = self._collect_metrics(self.metrics_list)
         app = MDApp.get_running_app()
-        if app.workout_session and getattr(app, "record_pre_set", False):
-            app.workout_session.set_pre_set_metrics(next_metrics)
-            app.record_pre_set = False
-            if self.manager:
-                self.manager.current = "rest"
-            return
-        metrics = prev_metrics
-        if app.workout_session and getattr(app, "record_new_set", False):
-            finished = app.workout_session.record_metrics(metrics)
-            app.record_new_set = False
-            app.workout_session.set_pre_set_metrics({})
+        session = getattr(app, "workout_session", None)
+        if session:
+            session.current_exercise = self.exercise_idx
+            session.current_set = self.set_idx
+            finished = session.record_metrics(metrics)
+            self.exercise_idx = session.current_exercise
+            self.set_idx = session.current_set
+            self.update_display()
             if finished and self.manager:
                 self.manager.current = "workout_summary"
             elif self.manager:
                 self.manager.current = "rest"
-        elif self.manager:
-            self.manager.current = "rest"
-
