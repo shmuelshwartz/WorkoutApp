@@ -370,8 +370,9 @@ ScreenManager:
     orientation: "vertical"
     spacing: "4dp"
     padding: "8dp"
-    size_hint: None, None
-    size: self.minimum_size
+    size_hint_x: 1
+    size_hint_y: None
+    height: self.minimum_height
     canvas.before:
         Color:
             rgba: root.md_bg_color
@@ -382,9 +383,14 @@ ScreenManager:
     MDIcon:
         icon: root.icon
         halign: "center"
+        size_hint_y: None
+        height: self.texture_size[1]
     MDLabel:
         text: root.text
         halign: "center"
+        font_style: "Caption"
+        size_hint_y: None
+        height: self.texture_size[1]
 
 <RestScreen>:
     BoxLayout:
@@ -433,7 +439,6 @@ ScreenManager:
             spacing: "10dp"
             size_hint_y: None
             height: self.minimum_height
-            pos_hint: {"center_x": 0.5}
             IconTextButton:
                 id: record_btn
                 icon: "clipboard"
