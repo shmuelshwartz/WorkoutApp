@@ -435,9 +435,9 @@ class WorkoutApp(MDApp):
         # ensure metric input doesn't accidentally advance sets
         self.record_new_set = False
 
-    def mark_set_complete(self):
+    def mark_set_complete(self, adjust_seconds=0):
         if self.workout_session:
-            self.workout_session.mark_set_completed()
+            self.workout_session.mark_set_completed(adjust_seconds=adjust_seconds)
 
 
 if __name__ == "__main__":

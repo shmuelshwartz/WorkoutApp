@@ -484,12 +484,27 @@ ScreenManager:
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
-        MDRaisedButton:
-            text: "End Set"
-            on_release:
-                app.record_new_set = True
-                app.mark_set_complete();
-                app.root.current = "metric_input"
+        MDBoxLayout:
+            orientation: "horizontal"
+            spacing: "10dp"
+            MDRaisedButton:
+                text: "Finish"
+                on_release:
+                    app.record_new_set = True
+                    app.mark_set_complete()
+                    app.root.current = "metric_input"
+            MDRaisedButton:
+                text: "-5"
+                on_release:
+                    app.record_new_set = True
+                    app.mark_set_complete(-5)
+                    app.root.current = "metric_input"
+            MDRaisedButton:
+                text: "-10"
+                on_release:
+                    app.record_new_set = True
+                    app.mark_set_complete(-10)
+                    app.root.current = "metric_input"
 
 <MetricInputScreen>:
     on_pre_enter: root.populate_metrics()
