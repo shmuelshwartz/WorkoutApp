@@ -268,7 +268,7 @@ class MetricInputScreen(MDScreen):
             )
         elif mtype == "enum":
             widget = Spinner(
-                text=str(value) if value not in (None, "") else (values[0] if values else ""),
+                text=str(value) if value not in (None, "") else "",
                 values=values,
             )
         else:  # manual_text

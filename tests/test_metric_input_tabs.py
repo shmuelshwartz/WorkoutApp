@@ -38,15 +38,28 @@ kivymd_modules = {
 }
 
 class _DummyWidget:
-    pass
+    def __init__(self, *args, **kwargs):
+        pass
+
+class _BoxLayout(_DummyWidget):
+    def __init__(self, *args, **kwargs):
+        self.children = []
+
+    def add_widget(self, widget):
+        self.children.append(widget)
+
+class _Spinner(_DummyWidget):
+    def __init__(self, text="", values=()):
+        self.text = text
+        self.values = values
 
 kivymd_modules["kivymd.app"].MDApp = _DummyWidget
 kivymd_modules["kivymd.uix.screen"].MDScreen = _DummyWidget
-kivymd_modules["kivymd.uix.boxlayout"].MDBoxLayout = _DummyWidget
+kivymd_modules["kivymd.uix.boxlayout"].MDBoxLayout = _BoxLayout
 kivymd_modules["kivymd.uix.textfield"].MDTextField = _DummyWidget
 kivymd_modules["kivymd.uix.slider"].MDSlider = _DummyWidget
 kivymd_modules["kivymd.uix.label"].MDLabel = _DummyWidget
-kivy_modules["kivy.uix.spinner"].Spinner = _DummyWidget
+kivy_modules["kivy.uix.spinner"].Spinner = _Spinner
 kivy_modules["kivy.uix.scrollview"].ScrollView = _DummyWidget
 
 for name, module in kivymd_modules.items():
@@ -113,3 +126,34 @@ def test_reset_tabs_switches_to_correct_content():
 
     assert outer_tabs.switched_to.tab is next_tab
     assert inner_next.switched_to.tab is next_req
+
+
+def test_collect_metrics_requires_enum_selection():
+    screen = MetricInputScreen()
+
+    class Row:
+        pass
+
+    row = Row()
+    row.metric_name = "Progression"
+    row.input_widget = metric_module.Spinner(text="", values=("Easy", "Hard"))
+    row.type = "enum"
+
+    class DummyList:
+        def __init__(self, children):
+            self.children = children
+
+    metrics = screen._collect_metrics(DummyList([row]))
+    assert metrics["Progression"] == ""
+
+    row.input_widget.text = "Easy"
+    metrics = screen._collect_metrics(DummyList([row]))
+    assert metrics["Progression"] == "Easy"
+
+
+def test_enum_spinner_blank_by_default():
+    screen = MetricInputScreen()
+    row = screen._create_row(
+        {"name": "Mode", "type": "enum", "values": ["A", "B"]}
+    )
+    assert row.input_widget.text == ""
