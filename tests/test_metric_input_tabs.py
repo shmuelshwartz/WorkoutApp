@@ -139,6 +139,50 @@ def test_navigation_across_sets_and_exercises():
     assert screen.label_text == "Bench \u2013 Set 2 of 2"
 
 
+def test_enum_selection_restored():
+    screen = MetricInputScreen()
+
+    class DummyList:
+        def __init__(self):
+            self.children = []
+
+        def clear_widgets(self):
+            self.children.clear()
+
+        def add_widget(self, widget):
+            self.children.append(widget)
+
+    screen.metrics_list = DummyList()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [
+                {
+                    "name": "Bench",
+                    "sets": 2,
+                    "metric_defs": [
+                        {
+                            "name": "Machine",
+                            "type": "enum",
+                            "values": ["A", "B"],
+                            "is_required": True,
+                            "input_timing": "post_set",
+                        }
+                    ],
+                    "results": [{"metrics": {"Machine": "A"}}],
+                }
+            ]
+            self.current_exercise = 0
+            self.current_set = 1
+            self.pending_pre_set_metrics = {}
+
+    screen.session = DummySession()
+    screen.exercise_idx = 0
+    screen.set_idx = 0
+    screen.update_metrics()
+
+    row = screen.metrics_list.children[0]
+    assert getattr(row.input_widget, "text", "") == "A"
 def test_bool_metric_row_and_collection():
     screen = MetricInputScreen()
     row = screen._create_row({"name": "Flag", "type": "bool"}, True)
