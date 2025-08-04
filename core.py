@@ -2202,26 +2202,8 @@ class PresetEditor:
                             )
                             lib_metrics = cursor.fetchall()
                             cursor.execute(
-
-                                "SELECT 1 FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ? AND deleted = 0",
-                                (ex_id, mt_name),
-                            )
-                            if cursor.fetchone():
-                                continue
-                            cursor.execute(
-                                """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, metric_description, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                                (
-                                    ex_id,
-                                    mt_name,
-                                    mt_desc,
-                                    m_input,
-                                    m_timing,
-                                    m_req,
-                                    m_scope,
-                                    m_enum_json,
-                                    mpos,
-                                    mt_id,
-                                ),
+                                "SELECT id, metric_name FROM preset_exercise_metrics WHERE section_exercise_id = ? AND deleted = 0",
+                                (ex_id,),
                             )
                             existing_metrics = {name: mid for mid, name in cursor.fetchall()}
                             for (
@@ -2240,6 +2222,12 @@ class PresetEditor:
                                         "UPDATE preset_exercise_metrics SET deleted = 1 WHERE id = ?",
                                         (existing_metrics.pop(mt_name),),
                                     )
+                                cursor.execute(
+                                    "SELECT 1 FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ? AND deleted = 0",
+                                    (ex_id, mt_name),
+                                )
+                                if cursor.fetchone():
+                                    continue
                                 cursor.execute(
                                     """INSERT INTO preset_exercise_metrics (section_exercise_id, metric_name, metric_description, type, input_timing, is_required, scope, enum_values_json, position, library_metric_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                                     (
