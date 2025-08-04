@@ -103,23 +103,32 @@ class MetricInputScreen(MDScreen):
         app = MDApp.get_running_app()
         prev_metrics = []
         next_metrics = []
+        prev_values = {}
+        next_values = {}
+        upcoming_ex = ""
         if app.workout_session:
-            curr_ex = app.workout_session.next_exercise_name()
+            session = app.workout_session
+            curr_ex = session.next_exercise_name()
             self.exercise_name = curr_ex
             all_metrics = get_metrics_for_exercise(
-                curr_ex, preset_name=app.workout_session.preset_name
+                curr_ex, preset_name=session.preset_name
             )
             prev_metrics = [m for m in all_metrics if m.get("input_timing") == "post_set"]
+            prev_values = session.last_recorded_set_metrics()
 
-            upcoming_ex = app.workout_session.upcoming_exercise_name()
+            upcoming_ex = session.upcoming_exercise_name()
             next_all = (
                 get_metrics_for_exercise(
-                    upcoming_ex, preset_name=app.workout_session.preset_name
+                    upcoming_ex, preset_name=session.preset_name
                 )
                 if upcoming_ex
                 else []
             )
             next_metrics = [m for m in next_all if m.get("input_timing") == "pre_set"]
+            next_values = session.pending_pre_set_metrics.copy()
+
+            if getattr(app, "record_pre_set", False) and not prev_values:
+                prev_metrics = []
         elif metrics is not None:
             prev_metrics = metrics
             next_metrics = metrics
@@ -140,17 +149,55 @@ class MetricInputScreen(MDScreen):
         next_optional = [m for m in next_metrics if not m.get("is_required")]
 
         for m in prev_required:
-            self.prev_metric_list.add_widget(self._create_row(m))
+            self.prev_metric_list.add_widget(
+                self._create_row(m, prev_values.get(m.get("name")))
+            )
         for m in next_required:
-            self.next_metric_list.add_widget(self._create_row(m))
+            self.next_metric_list.add_widget(
+                self._create_row(m, next_values.get(m.get("name")))
+            )
         for m in prev_optional:
-            self.prev_optional_list.add_widget(self._create_row(m))
+            self.prev_optional_list.add_widget(
+                self._create_row(m, prev_values.get(m.get("name")))
+            )
         for m in next_optional:
-            self.next_optional_list.add_widget(self._create_row(m))
+            self.next_optional_list.add_widget(
+                self._create_row(m, next_values.get(m.get("name")))
+            )
+
+        if prev_values:
+            self.prev_optional_list.add_widget(
+                self._create_row({"name": "Notes", "type": "str"}, prev_values.get("Notes"))
+            )
+        if upcoming_ex:
+            self.next_optional_list.add_widget(
+                self._create_row({"name": "Notes", "type": "str"}, next_values.get("Notes"))
+            )
 
         self.update_header()
+        self.highlight_missing_metrics()
 
-    def _create_row(self, metric):
+    def _set_tab_color(self, tab, red: bool):
+        if not tab:
+            return
+        tab.tab_label.theme_text_color = "Custom"
+        tab.tab_label.text_color = (1, 0, 0, 1) if red else (1, 1, 1, 1)
+
+    def highlight_missing_metrics(self):
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
+        missing_prev = False
+        missing_next = False
+        if session:
+            missing_prev = not session.has_required_post_set_metrics()
+            missing_next = not session.has_required_pre_set_metrics()
+        ids = self.ids
+        self._set_tab_color(ids.get("prev_tab"), missing_prev)
+        self._set_tab_color(ids.get("prev_required_tab"), missing_prev)
+        self._set_tab_color(ids.get("next_tab"), missing_next)
+        self._set_tab_color(ids.get("next_required_tab"), missing_next)
+
+    def _create_row(self, metric, value=None):
         if isinstance(metric, str):
             name = metric
             mtype = "str"
@@ -166,20 +213,28 @@ class MetricInputScreen(MDScreen):
         row.add_widget(MDLabel(text=name, size_hint_x=0.4))
 
         if mtype == "slider":
-            widget = MDSlider(min=0, max=1, value=0)
+            widget = MDSlider(min=0, max=1, value=value or 0)
             widget.bind(
                 on_touch_down=self.on_slider_touch_down,
                 on_touch_up=self.on_slider_touch_up,
             )
         elif mtype == "enum":
-            widget = Spinner(text=values[0] if values else "", values=values)
+            widget = Spinner(
+                text=str(value) if value not in (None, "") else (values[0] if values else ""),
+                values=values,
+            )
         else:  # manual_text
             input_filter = None
             if mtype == "int":
                 input_filter = "int"
             elif mtype == "float":
                 input_filter = "float"
-            widget = MDTextField(multiline=False, input_filter=input_filter)
+            multiline = name == "Notes"
+            widget = MDTextField(
+                multiline=multiline,
+                input_filter=input_filter,
+                text=str(value) if value not in (None, "") else "",
+            )
 
         row.input_widget = widget
         row.add_widget(widget)

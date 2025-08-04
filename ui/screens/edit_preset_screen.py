@@ -266,7 +266,7 @@ class EditPresetScreen(MDScreen):
                 name = f"Section {len(app.preset_editor.sections) + 1}"
             index = app.preset_editor.add_section(name)
         color = self._colors[len(self.sections_box.children) % len(self._colors)]
-        section = SectionWidget(section_name=name, color=color, section_index=index)
+        section = SectionWidget(section_index=index, section_name=name, color=color)
         self.sections_box.add_widget(section)
         section.refresh_exercises()
         self.update_save_enabled()
