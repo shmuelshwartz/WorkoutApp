@@ -85,6 +85,17 @@ class RestScreen(MDScreen):
         btn.theme_text_color = "Custom"
         btn.text_color = (1, 0, 0, 1) if missing else (1, 1, 1, 1)
 
+    def open_metric_input(self):
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
+        app.record_new_set = False
+        app.record_pre_set = True
+        if session and not session.has_required_post_set_metrics():
+            app.record_pre_set = False
+            app.record_new_set = True
+        if app.root:
+            app.root.current = "metric_input"
+
     def on_touch_down(self, touch):
         if self.ids.timer_label.collide_point(*touch.pos):
             self.toggle_ready()

@@ -449,10 +449,7 @@ ScreenManager:
                 id: record_btn
                 icon: "clipboard"
                 text: "metrics"
-                on_release:
-                    app.record_new_set = False
-                    app.record_pre_set = True
-                    app.root.current = "metric_input"
+                on_release: root.open_metric_input()
             IconTextButton:
                 icon: "pencil"
                 text: "edit"

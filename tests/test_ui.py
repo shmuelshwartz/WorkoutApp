@@ -221,6 +221,52 @@ def test_rest_screen_toggle_ready_changes_state():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_open_metric_input_sets_flags(monkeypatch):
+    screen = RestScreen()
+
+    class DummySession:
+        def has_required_post_set_metrics(self):
+            return False
+
+        def has_required_pre_set_metrics(self):
+            return True
+
+    dummy_app = _DummyApp()
+    dummy_app.workout_session = DummySession()
+    dummy_app.root = type("Root", (), {"current": ""})()
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+
+    screen.open_metric_input()
+
+    assert dummy_app.record_new_set is True
+    assert dummy_app.record_pre_set is False
+    assert dummy_app.root.current == "metric_input"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_open_metric_input_prefers_pre_set(monkeypatch):
+    screen = RestScreen()
+
+    class DummySession:
+        def has_required_post_set_metrics(self):
+            return True
+
+        def has_required_pre_set_metrics(self):
+            return False
+
+    dummy_app = _DummyApp()
+    dummy_app.workout_session = DummySession()
+    dummy_app.root = type("Root", (), {"current": ""})()
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+
+    screen.open_metric_input()
+
+    assert dummy_app.record_new_set is False
+    assert dummy_app.record_pre_set is True
+    assert dummy_app.root.current == "metric_input"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_update_elapsed_formats_time(monkeypatch):
     screen = WorkoutActiveScreen()
     screen.start_time = 100.0
