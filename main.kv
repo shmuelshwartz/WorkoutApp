@@ -363,7 +363,8 @@ ScreenManager:
             text: "Back to Home"
             on_release: app.root.current = "home"
 
-<IconTextButton@MDBoxLayout+ButtonBehavior>:
+<IconTextButton@MDCard>:
+    on_press: print("IconTextButton pressed:", root.icon)
     icon: ""
     text: ""
     md_bg_color: 0, 0, 0, 0
@@ -372,23 +373,28 @@ ScreenManager:
     padding: "8dp"
     size_hint_x: 1
     size_hint_y: None
-    height: self.minimum_height
+    height: "72dp"
     canvas.before:
         Color:
-            rgba: root.md_bg_color
+            rgba: 1, 0, 0, 0.2  # 🔴 Red semi-transparent background
         RoundedRectangle:
             pos: self.pos
             size: self.size
             radius: [8]
+
     MDIcon:
         icon: root.icon
-        halign: "center"
+        font_size: "24sp"
         size_hint_y: None
-        height: self.texture_size[1]
+        size_hint_x: None
+        size: self.texture_size
+        pos_hint: {"center_x": 0.5}  # This is the key to center the icon
+
     MDLabel:
         text: root.text
+        font_size: "7sp"
         halign: "center"
-        font_style: "Caption"
+        text_size: None, None  # ← Key part: disables wrapping!
         size_hint_y: None
         height: self.texture_size[1]
 
