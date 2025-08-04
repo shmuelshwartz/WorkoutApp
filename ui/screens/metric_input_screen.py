@@ -4,6 +4,7 @@ from kivy.properties import (
     ObjectProperty,
     StringProperty,
     BooleanProperty,
+    ListProperty,
 )
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -26,6 +27,11 @@ class MetricInputScreen(MDScreen):
     show_pre = BooleanProperty(True)
     show_post = BooleanProperty(True)
 
+    required_color = ListProperty([0, 1, 0, 1])
+    additional_color = ListProperty([0, 0, 0, 1])
+    pre_color = ListProperty([0, 1, 0, 1])
+    post_color = ListProperty([0, 1, 0, 1])
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.session = None
@@ -40,6 +46,7 @@ class MetricInputScreen(MDScreen):
         self.show_additional = False
         self.show_pre = True
         self.show_post = True
+        self._update_filter_colors()
 
     # ------------------------------------------------------------------
     # Navigation
@@ -110,6 +117,7 @@ class MetricInputScreen(MDScreen):
         }.get(name)
         if attr:
             setattr(self, attr, not getattr(self, attr))
+            self._update_filter_colors()
             self.update_metrics()
 
     def filter_color(self, name: str):
@@ -120,6 +128,12 @@ class MetricInputScreen(MDScreen):
             "post": "show_post",
         }.get(name)
         return (0, 1, 0, 1) if attr and getattr(self, attr) else (0, 0, 0, 1)
+
+    def _update_filter_colors(self):
+        self.required_color = self.filter_color("required")
+        self.additional_color = self.filter_color("additional")
+        self.pre_color = self.filter_color("pre")
+        self.post_color = self.filter_color("post")
 
     # ------------------------------------------------------------------
     # Metrics
