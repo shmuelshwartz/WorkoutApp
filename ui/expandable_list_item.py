@@ -84,9 +84,15 @@ class ExerciseSummaryItem(ButtonBehavior, MDBoxLayout):
 
     def _update_width(self, *_):
         # Ensure the exercise name accounts for the width of the set label
-        avail = self.width - self.sets_label.width
-        if avail < 0:
+        # When expanded the set count is on a new line so the name can take
+        # the full width. When collapsed the name should only use the width
+        # that remains after the set count label.
+        if self._expanded:
             avail = self.width
+        else:
+            avail = self.width - self.sets_label.width
+            if avail < 0:
+                avail = self.width
         self.name_label.text_size = (avail, None)
         self.name_label.texture_update()
         self.sets_label.texture_update()
@@ -107,6 +113,11 @@ class ExerciseSummaryItem(ButtonBehavior, MDBoxLayout):
             # Collapse
             self._expanded = False
             self.clear_widgets()
+            # Remove labels from any previous parent before re-adding them
+            if self.name_label.parent:
+                self.name_label.parent.remove_widget(self.name_label)
+            if self.sets_label.parent:
+                self.sets_label.parent.remove_widget(self.sets_label)
             self.name_label.shorten = True
             self.name_label.max_lines = 1
             self.sets_label.text = f"- {self._sets_text}"
@@ -118,6 +129,10 @@ class ExerciseSummaryItem(ButtonBehavior, MDBoxLayout):
             # Expand
             self._expanded = True
             self.clear_widgets()
+            if self.name_label.parent:
+                self.name_label.parent.remove_widget(self.name_label)
+            if self.sets_label.parent:
+                self.sets_label.parent.remove_widget(self.sets_label)
             self.name_label.shorten = False
             self.name_label.max_lines = 0
             self.name_label.text_size = (self.width, None)
