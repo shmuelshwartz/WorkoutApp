@@ -292,8 +292,7 @@ class MetricInputScreen(MDScreen):
         if app.workout_session and getattr(app, "record_new_set", False):
             finished = app.workout_session.record_metrics(metrics)
             app.record_new_set = False
-            if next_metrics:
-                app.workout_session.set_pre_set_metrics(next_metrics)
+            app.workout_session.set_pre_set_metrics({})
             if finished and self.manager:
                 self.manager.current = "workout_summary"
             elif self.manager:
