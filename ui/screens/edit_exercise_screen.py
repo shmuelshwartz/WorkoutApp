@@ -38,7 +38,6 @@ from core import (
 from .metric_input_screen import MetricInputScreen
 
 
-
 class EditExerciseScreen(MDScreen):
     """Screen for editing an individual exercise within a preset."""
 
@@ -97,6 +96,7 @@ class EditExerciseScreen(MDScreen):
 
     def _confirm_navigation(self, new_index: int) -> None:
         dialog = None
+        presets = []
 
         def do_nav(*args):
             if dialog:
@@ -374,6 +374,12 @@ class EditExerciseScreen(MDScreen):
                 core.save_exercise(self.exercise_obj)
                 if app:
                     app.exercise_library_version += 1
+            if (not update_in_preset) and checkbox and checkbox.active and presets:
+                core.apply_exercise_changes_to_presets(
+                    self.exercise_obj,
+                    presets,
+                    db_path=DEFAULT_DB_PATH,
+                )
             if update_in_preset:
                 app.preset_editor.update_exercise(
                     self.section_index,
@@ -477,9 +483,29 @@ class EditExerciseScreen(MDScreen):
             )
         else:
             checkbox = None
+            extra_content = None
+            if self.previous_screen == "exercise_library":
+                presets = core.find_presets_using_exercise(self.exercise_obj.name)
+                if presets:
+                    checkbox = MDCheckbox(
+                        size_hint=(None, None), height="40dp", width="40dp"
+                    )
+                    label = MDLabel(
+                        text="Update all presets that use this exercise", halign="left"
+                    )
+                    extra_content = MDBoxLayout(
+                        orientation="horizontal",
+                        spacing="8dp",
+                        size_hint_y=None,
+                        height="40dp",
+                    )
+                    extra_content.add_widget(checkbox)
+                    extra_content.add_widget(label)
             dialog = MDDialog(
                 title="Confirm Save",
+                type="custom" if extra_content else "simple",
                 text=msg,
+                content_cls=extra_content,
                 buttons=[
                     MDRaisedButton(
                         text="Cancel", on_release=lambda *a: dialog.dismiss()
@@ -514,5 +540,3 @@ class EditExerciseScreen(MDScreen):
         else:
             if self.manager:
                 self.manager.current = self.previous_screen
-
-

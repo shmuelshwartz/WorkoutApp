@@ -25,15 +25,27 @@ def sample_db(tmp_path):
         "VALUES ('Weight', 'float', 'post_set', 0, 'set', '', 0)"
     )
     # exercises
-    cur.execute("INSERT INTO library_exercises (name, description, is_user_created) VALUES ('Push Up', 'Upper body', 0)")
-    cur.execute("INSERT INTO library_exercises (name, description, is_user_created) VALUES ('Bench Press', 'Chest', 0)")
+    cur.execute(
+        "INSERT INTO library_exercises (name, description, is_user_created) VALUES ('Push Up', 'Upper body', 0)"
+    )
+    cur.execute(
+        "INSERT INTO library_exercises (name, description, is_user_created) VALUES ('Bench Press', 'Chest', 0)"
+    )
     # exercise metrics
-    cur.execute("INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (1, 1, 0)")
-    cur.execute("INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (2, 1, 0)")
-    cur.execute("INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (2, 2, 1)")
+    cur.execute(
+        "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (1, 1, 0)"
+    )
+    cur.execute(
+        "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (2, 1, 0)"
+    )
+    cur.execute(
+        "INSERT INTO library_exercise_metrics (exercise_id, metric_type_id, position) VALUES (2, 2, 1)"
+    )
     # preset with one section and two exercises
     cur.execute("INSERT INTO preset_presets (name) VALUES ('Push Day')")
-    cur.execute("INSERT INTO preset_preset_sections (preset_id, name, position) VALUES (1, 'Main', 0)")
+    cur.execute(
+        "INSERT INTO preset_preset_sections (preset_id, name, position) VALUES (1, 'Main', 0)"
+    )
     cur.execute(
         """
         INSERT INTO preset_section_exercises
@@ -104,10 +116,14 @@ def test_add_and_remove_metric(sample_db):
     )
     assert isinstance(metric_id, int)
     core.add_metric_to_exercise("Push Up", "Tempo", db_path=sample_db)
-    metrics = [m["name"] for m in core.get_metrics_for_exercise("Push Up", db_path=sample_db)]
+    metrics = [
+        m["name"] for m in core.get_metrics_for_exercise("Push Up", db_path=sample_db)
+    ]
     assert "Tempo" in metrics
     core.remove_metric_from_exercise("Push Up", "Tempo", db_path=sample_db)
-    metrics = [m["name"] for m in core.get_metrics_for_exercise("Push Up", db_path=sample_db)]
+    metrics = [
+        m["name"] for m in core.get_metrics_for_exercise("Push Up", db_path=sample_db)
+    ]
     assert "Tempo" not in metrics
 
 
@@ -222,7 +238,10 @@ def test_delete_metric_type(sample_db):
     assert core.delete_metric_type("Tempo", db_path=sample_db, is_user_created=True)
     metrics = core.get_all_metric_types(sample_db, include_user_created=True)
     assert all(m["name"] != "Tempo" for m in metrics)
-    assert core.delete_metric_type("Tempo", db_path=sample_db, is_user_created=True) is False
+    assert (
+        core.delete_metric_type("Tempo", db_path=sample_db, is_user_created=True)
+        is False
+    )
 
 
 def test_delete_metric_type_in_use_by_preset_exercise(sample_db):
@@ -253,3 +272,62 @@ def test_delete_metric_type_in_use_by_preset_exercise(sample_db):
     with pytest.raises(ValueError):
         core.delete_metric_type("Velocity", db_path=sample_db, is_user_created=True)
 
+
+def test_find_presets_and_apply_changes(sample_db):
+    names = core.find_presets_using_exercise("Push Up", db_path=sample_db)
+    assert names == ["Push Day"]
+
+    ex = core.Exercise("Push Up", db_path=sample_db, is_user_created=False)
+    ex.add_metric(
+        {
+            "name": "Weight",
+            "type": "float",
+            "input_timing": "post_set",
+            "is_required": False,
+            "scope": "set",
+        }
+    )
+    core.add_metric_to_exercise("Push Up", "Weight", db_path=sample_db)
+
+    conn = sqlite3.connect(sample_db)
+    before = {
+        table: conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        for table in [
+            "session_sessions",
+            "session_session_sections",
+            "session_section_exercises",
+            "session_exercise_sets",
+            "session_exercise_metrics",
+        ]
+    }
+    conn.close()
+
+    core.apply_exercise_changes_to_presets(ex, ["Push Day"], db_path=sample_db)
+
+    conn = sqlite3.connect(sample_db)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT pem.metric_name FROM preset_exercise_metrics pem
+        JOIN preset_section_exercises se ON pem.section_exercise_id = se.id
+        JOIN preset_preset_sections s ON se.section_id = s.id
+        JOIN preset_presets p ON s.preset_id = p.id
+        WHERE p.name = 'Push Day' AND se.library_exercise_id = 1 AND pem.deleted = 0
+        ORDER BY pem.position
+        """
+    )
+    names = [r[0] for r in cur.fetchall()]
+    after = {
+        table: conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        for table in [
+            "session_sessions",
+            "session_session_sections",
+            "session_section_exercises",
+            "session_exercise_sets",
+            "session_exercise_metrics",
+        ]
+    }
+    conn.close()
+
+    assert "Weight" in names
+    assert before == after
