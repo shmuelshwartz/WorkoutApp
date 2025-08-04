@@ -507,79 +507,60 @@ ScreenManager:
                     app.root.current = "metric_input"
 
 <MetricInputScreen>:
-    on_pre_enter: root.populate_metrics()
-    prev_metric_list: prev_metric_list
-    next_metric_list: next_metric_list
-    prev_optional_list: prev_optional_list
-    next_optional_list: next_optional_list
+    on_pre_enter: root.on_pre_enter()
+    metrics_list: metrics_list
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: root.exercise_name if root.exercise_name else "Edit Exercise"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-            size_hint_y:0.1
-        MDTabs:
-            id: set_tabs
-            on_tab_switch: root.switch_tab(args[1].title.split()[0].lower())
-            size_hint_y:0.85
-            Tab:
-                id: prev_tab
-                title: "Previous Set"
-                MDBoxLayout:
-                    orientation: "vertical"
-                    MDLabel:
-                        text: root.header_text
-                        halign: "center"
-                        theme_text_color: "Custom"
-                        text_color: 0.2, 0.6, 0.86, 1
-                    MDTabs:
-                        Tab:
-                            id: prev_required_tab
-                            title: "Required Metrics"
-                            ScrollView:
-                                MDList:
-                                    id: prev_metric_list
-                                    size_hint_y: None
-                                    height: self.minimum_height
-                        Tab:
-                            title: "More Metrics"
-                            ScrollView:
-                                MDList:
-                                    id: prev_optional_list
-                                    size_hint_y: None
-                                    height: self.minimum_height
-            Tab:
-                id: next_tab
-                title: "Next Set"
-                MDBoxLayout:
-                    orientation: "vertical"
-                    MDLabel:
-                        text: root.header_text
-                        halign: "center"
-                        theme_text_color: "Custom"
-                        text_color: 0.2, 0.6, 0.86, 1
-                    MDTabs:
-                        Tab:
-                            id: next_required_tab
-                            title: "Required Metrics"
-                            ScrollView:
-                                MDList:
-                                    id: next_metric_list
-                                    size_hint_y: None
-                                    height: self.minimum_height
-                        Tab:
-                            title: "More Metrics"
-                            ScrollView:
-                                MDList:
-                                    id: next_optional_list
-                                    size_hint_y: None
-                                    height: self.minimum_height
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: 0.1
+            MDIconButton:
+                icon: "chevron-left"
+                on_release: root.navigate_left()
+                disabled: not root.can_nav_left
+            MDLabel:
+                id: nav_label
+                text: root.label_text
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: 0.2, 0.6, 0.86, 1
+            MDIconButton:
+                icon: "chevron-right"
+                on_release: root.navigate_right()
+                disabled: not root.can_nav_right
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: None
+            height: "40dp"
+            spacing: "10dp"
+            padding: "0dp", "10dp"
+            MDFlatButton:
+                text: "Required"
+                theme_text_color: "Custom"
+                text_color: root.filter_color('required')
+                on_release: root.toggle_filter('required')
+            MDFlatButton:
+                text: "Additional"
+                theme_text_color: "Custom"
+                text_color: root.filter_color('additional')
+                on_release: root.toggle_filter('additional')
+            MDFlatButton:
+                text: "Pre Set"
+                theme_text_color: "Custom"
+                text_color: root.filter_color('pre')
+                on_release: root.toggle_filter('pre')
+            MDFlatButton:
+                text: "Post Set"
+                theme_text_color: "Custom"
+                text_color: root.filter_color('post')
+                on_release: root.toggle_filter('post')
+        ScrollView:
+            MDList:
+                id: metrics_list
         MDRaisedButton:
-            size_hint_y:0.05
+            size_hint_y: 0.1
             text: "Save Metrics"
             on_release: root.save_metrics()
 

@@ -1,10 +1,10 @@
-import importlib.util
-import sys
-import types
-from pathlib import Path
 from importlib.machinery import ModuleSpec
+import types
+import sys
+from pathlib import Path
+import importlib.util
 
-# Create stub modules for Kivy and KivyMD to avoid heavy dependencies
+# Stub modules for Kivy and KivyMD
 kivy_modules = {
     "kivy": types.ModuleType("kivy"),
     "kivy.metrics": types.ModuleType("kivy.metrics"),
@@ -22,6 +22,7 @@ class _Prop:
 
 kivy_modules["kivy.properties"].ObjectProperty = _Prop
 kivy_modules["kivy.properties"].StringProperty = _Prop
+kivy_modules["kivy.properties"].BooleanProperty = _Prop
 
 for name, module in kivy_modules.items():
     module.__spec__ = ModuleSpec(name, loader=None)
@@ -79,81 +80,47 @@ for name in list(kivy_modules.keys()) + list(kivymd_modules.keys()):
     sys.modules.pop(name, None)
 
 
-class DummyHeader:
-    def __init__(self, tab):
-        self.tab = tab
-
-
-class DummyTabs:
-    def __init__(self, tabs):
-        self._headers = [DummyHeader(t) for t in tabs]
-        self.switched_to = None
-
-    def switch_tab(self, header):
-        self.switched_to = header
-
-    def get_tab_list(self):
-        return self._headers
-
-
-class DummyTab:
-    pass
-
-
-def test_reset_tabs_switches_to_correct_content():
-    prev_tab = DummyTab()
-    next_tab = DummyTab()
-    prev_req = DummyTab()
-    next_req = DummyTab()
-
-    outer_tabs = DummyTabs([prev_tab, next_tab])
-    inner_prev = DummyTabs([prev_req])
-    inner_next = DummyTabs([next_req])
-    prev_req.parent = inner_prev
-    next_req.parent = inner_next
-
+def test_apply_filters_and_ordering():
     screen = MetricInputScreen()
-    screen.ids = {
-        "set_tabs": outer_tabs,
-        "prev_tab": prev_tab,
-        "next_tab": next_tab,
-        "prev_required_tab": prev_req,
-        "next_required_tab": next_req,
-    }
+    metrics = [
+        {"name": "A", "is_required": True, "input_timing": "pre_set"},
+        {"name": "B", "is_required": True, "input_timing": "post_set"},
+        {"name": "C", "is_required": False, "input_timing": "pre_set"},
+        {"name": "D", "is_required": False, "input_timing": "post_set"},
+    ]
 
-    screen.current_tab = "next"
-    screen.reset_tabs()
+    visible = screen._apply_filters(metrics)
+    assert [m["name"] for m in visible] == ["A", "B"]
 
-    assert outer_tabs.switched_to.tab is next_tab
-    assert inner_next.switched_to.tab is next_req
+    screen.toggle_filter("additional")
+    visible = screen._apply_filters(metrics)
+    assert [m["name"] for m in visible] == ["A", "B", "C", "D"]
 
 
-def test_collect_metrics_requires_enum_selection():
+def test_navigation_across_sets_and_exercises():
     screen = MetricInputScreen()
 
-    class Row:
-        pass
+    class DummySession:
+        def __init__(self):
+            self.exercises = [
+                {"name": "Bench", "sets": 2, "metric_defs": []},
+                {"name": "Squat", "sets": 1, "metric_defs": []},
+            ]
+            self.current_exercise = 0
+            self.current_set = 0
 
-    row = Row()
-    row.metric_name = "Progression"
-    row.input_widget = metric_module.Spinner(text="", values=("Easy", "Hard"))
-    row.type = "enum"
+    screen.session = DummySession()
+    screen.update_display()
 
-    class DummyList:
-        def __init__(self, children):
-            self.children = children
+    assert screen.label_text == "Bench \u2013 Set 1 of 2"
+    assert not screen.can_nav_left
 
-    metrics = screen._collect_metrics(DummyList([row]))
-    assert metrics["Progression"] == ""
+    screen.navigate_right()
+    assert screen.label_text == "Bench \u2013 Set 2 of 2"
 
-    row.input_widget.text = "Easy"
-    metrics = screen._collect_metrics(DummyList([row]))
-    assert metrics["Progression"] == "Easy"
+    screen.navigate_right()
+    assert screen.label_text == "Squat \u2013 Set 1 of 1"
+    assert not screen.can_nav_right
 
-
-def test_enum_spinner_blank_by_default():
-    screen = MetricInputScreen()
-    row = screen._create_row(
-        {"name": "Mode", "type": "enum", "values": ["A", "B"]}
-    )
-    assert row.input_widget.text == ""
+    screen.navigate_left()
+    assert screen.label_text == "Bench \u2013 Set 2 of 2"
