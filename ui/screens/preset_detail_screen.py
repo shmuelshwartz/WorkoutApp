@@ -1,8 +1,8 @@
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.list import OneLineListItem
 from kivy.properties import StringProperty, ObjectProperty
 import core
+from ui.expandable_list_item import ExpandableListItem
 
 
 class PresetDetailScreen(MDScreen):
@@ -30,16 +30,16 @@ class PresetDetailScreen(MDScreen):
             if metric.get("scope") == "preset":
                 value = metric.get("value")
                 text = f"{metric['name']}: {value}" if value is not None else metric["name"]
-                self.summary_list.add_widget(OneLineListItem(text=text))
+                self.summary_list.add_widget(ExpandableListItem(text=text))
 
         for section in editor.sections:
             self.summary_list.add_widget(
-                OneLineListItem(text=f"Section: {section['name']}")
+                ExpandableListItem(text=f"Section: {section['name']}")
             )
             for ex in section.get("exercises", []):
                 sets = ex.get("sets", 0) or 0
                 label = "set" if sets == 1 else "sets"
                 self.summary_list.add_widget(
-                    OneLineListItem(text=f"{ex['name']} - {sets} {label}")
+                    ExpandableListItem(text=f"{ex['name']} - {sets} {label}")
                 )
 
