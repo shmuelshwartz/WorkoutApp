@@ -300,9 +300,10 @@ class EditPresetScreen(MDScreen):
         editor = getattr(app, "preset_editor", None)
         if not session or not editor:
             return
+        old_index = session.current_exercise
         current_id = None
-        if session.current_exercise < len(session.exercises):
-            current_id = session.exercises[session.current_exercise].get(
+        if old_index < len(session.exercises):
+            current_id = session.exercises[old_index].get(
                 "preset_section_exercise_id"
             )
 
@@ -351,12 +352,17 @@ class EditPresetScreen(MDScreen):
         session.section_starts = new_section_starts
         session.exercise_sections = new_exercise_sections
 
+        new_idx = None
         if current_id is not None:
             for idx, ex in enumerate(session.exercises):
                 if ex.get("preset_section_exercise_id") == current_id:
-                    session.current_exercise = idx
+                    new_idx = idx
                     break
-        session.current_exercise = min(session.current_exercise, len(session.exercises) - 1)
+
+        if new_idx is not None:
+            session.current_exercise = min(old_index, new_idx)
+        else:
+            session.current_exercise = min(old_index, len(session.exercises) - 1)
 
     def refresh_sections(self):
         """Repopulate the section widgets from the preset editor."""

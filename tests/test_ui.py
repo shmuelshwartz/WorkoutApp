@@ -1422,3 +1422,18 @@ def test_session_edit_locking(monkeypatch, sample_db):
     assert screen._is_section_locked(0)
     assert screen._is_exercise_locked(0, 0)
     assert not screen._is_exercise_locked(0, 1)
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_reordering_current_exercise_updates_index(monkeypatch, sample_db):
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    editor = core.PresetEditor("Push Day", db_path=sample_db)
+    app = _DummyApp()
+    app.workout_session = session
+    app.preset_editor = editor
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+    screen = EditPresetScreen(mode="session")
+    editor.move_exercise(0, 0, 1)
+    screen.apply_session_changes()
+    assert [e["name"] for e in session.exercises] == ["Bench Press", "Push-up"]
+    assert session.current_exercise == 0
