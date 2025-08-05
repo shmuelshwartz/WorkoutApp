@@ -308,7 +308,12 @@ class MetricInputScreen(MDScreen):
 
         if mtype == "slider":
             widget = MDSlider(min=0, max=1, value=value or 0)
+            widget.size_hint_x = 0.4
+            value_label = MDLabel(
+                text=f"{widget.value:.2f}", size_hint_x=0.2
+            )
             widget.bind(
+                value=lambda _w, val: setattr(value_label, "text", f"{val:.2f}"),
                 on_touch_down=self.on_slider_touch_down,
                 on_touch_up=self.on_slider_touch_up,
             )
@@ -334,6 +339,8 @@ class MetricInputScreen(MDScreen):
 
         row.input_widget = widget
         row.add_widget(widget)
+        if mtype == "slider":
+            row.add_widget(value_label)
         return row
 
     def _collect_metrics(self, widget_list):
