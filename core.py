@@ -967,8 +967,8 @@ class WorkoutSession:
 
         # store session-level metrics
         self.session_metrics: dict[str, object] = {}
-        # store metrics entered prior to the upcoming set
-        self.pending_pre_set_metrics: dict[str, object] = {}
+        # store metrics entered prior to individual upcoming sets
+        self.pending_pre_set_metrics: dict[tuple[int, int], dict[str, object]] = {}
         # track whether post-set metrics still need to be recorded
         self.awaiting_post_set_metrics: bool = False
         # track whether this session has been saved to the database
@@ -1073,9 +1073,11 @@ class WorkoutSession:
         """Return ``True`` if all required pre-set metrics have been entered."""
 
         required = self.required_pre_set_metric_names()
+        pending = self.pending_pre_set_metrics.get(
+            (self.current_exercise, self.current_set), {}
+        )
         return all(
-            name in self.pending_pre_set_metrics
-            and self.pending_pre_set_metrics.get(name) not in (None, "")
+            name in pending and pending.get(name) not in (None, "")
             for name in required
         )
 
@@ -1112,49 +1114,63 @@ class WorkoutSession:
         required = self.required_post_set_metric_names()
         return len(required) == 0
 
-    def set_pre_set_metrics(self, metrics: dict) -> None:
-        """Store metrics to be applied to the upcoming set."""
+    def set_pre_set_metrics(
+        self,
+        metrics: dict,
+        exercise_index: int | None = None,
+        set_index: int | None = None,
+    ) -> None:
+        """Store metrics to be applied to a specific upcoming set."""
 
-        self.pending_pre_set_metrics = metrics.copy()
+        ex = self.current_exercise if exercise_index is None else exercise_index
+        st = self.current_set if set_index is None else set_index
+        self.pending_pre_set_metrics[(ex, st)] = metrics.copy()
 
     def set_session_metrics(self, metrics: dict) -> None:
         """Store metrics that apply to the entire session."""
 
         self.session_metrics = metrics.copy()
 
-    def record_metrics(self, metrics):
-        if self.current_exercise >= len(self.exercises):
+    def record_metrics(self, exercise_index: int, set_index: int, metrics):
+        if exercise_index >= len(self.exercises):
             if self.end_time is None:
                 self.end_time = time.time()
             return True
 
-        metrics = {**self.pending_pre_set_metrics, **metrics}
-        self.pending_pre_set_metrics = {}
+        key = (self.current_exercise, self.current_set)
+        metrics = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
 
         end_time = time.time()
-        start_time = self.current_set_start_time
         notes = str(metrics.get("Notes", ""))
 
-        ex = self.exercises[self.current_exercise]
-        ex["results"].append(
-            {
-                "metrics": metrics,
-                "started_at": start_time,
-                "ended_at": end_time,
-                "notes": notes,
-            }
+        ex = self.exercises[exercise_index]
+        results = ex["results"]
+        while len(results) <= set_index:
+            results.append(None)
+        start_time = (
+            self.current_set_start_time
+            if exercise_index == self.current_exercise and set_index == self.current_set
+            else end_time
         )
-        self.current_set_start_time = end_time
-        self.current_set += 1
-        self.awaiting_post_set_metrics = False
+        results[set_index] = {
+            "metrics": metrics,
+            "started_at": start_time,
+            "ended_at": end_time,
+            "notes": notes,
+        }
 
-        if self.current_set >= ex["sets"]:
-            self.current_set = 0
-            self.current_exercise += 1
+        if exercise_index == self.current_exercise and set_index == self.current_set:
+            self.current_set_start_time = end_time
+            self.current_set += 1
+            self.awaiting_post_set_metrics = False
 
-        if self.current_exercise >= len(self.exercises):
-            self.end_time = end_time
-            return True
+            if self.current_set >= ex["sets"]:
+                self.current_set = 0
+                self.current_exercise += 1
+
+            if self.current_exercise >= len(self.exercises):
+                self.end_time = end_time
+                return True
 
         return False
 
@@ -1186,7 +1202,7 @@ class WorkoutSession:
         self.current_set = set_idx
 
         # Preserve any previously entered metrics for the set
-        self.pending_pre_set_metrics = last.get("metrics", {}).copy()
+        self.pending_pre_set_metrics[(ex_idx, set_idx)] = last.get("metrics", {}).copy()
         self.awaiting_post_set_metrics = False
 
         # Resume timer from the original start time
