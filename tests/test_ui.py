@@ -912,6 +912,70 @@ def test_preset_overview_screen_populate(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_pre_session_metrics_prompt_before_start(monkeypatch):
+    """Pre-session metrics are gathered before starting the workout."""
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    class DummyList:
+        def clear_widgets(self):
+            pass
+
+        def add_widget(self, widget):
+            pass
+
+    screen = PresetOverviewScreen()
+    screen.details_list = DummyList()
+    screen.workout_list = DummyList()
+    screen.preset_label = type("L", (), {"text": ""})()
+    screen.manager = type("M", (), {"current": ""})()
+
+    class DummyApp:
+        selected_preset = "Test"
+
+        def init_preset_editor(self):
+            self.preset_editor = type("PE", (), {"sections": [], "preset_metrics": []})()
+
+        def start_workout(self, preset_name):
+            self.workout_session = type(
+                "WS",
+                (),
+                {"set_session_metrics": lambda self, data: setattr(self, "data", data)},
+            )()
+
+    dummy_app = DummyApp()
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+
+    monkeypatch.setattr(
+        core,
+        "get_metrics_for_preset",
+        lambda name: [{"name": "M1", "input_timing": "pre_session"}],
+    )
+
+    popup_calls = []
+
+    class DummyPopup:
+        def __init__(self, metrics, callback):
+            popup_calls.append(metrics)
+            self.callback = callback
+
+        def open(self):
+            self.callback({"M1": 5})
+
+    monkeypatch.setattr("ui.popups.PreSessionMetricPopup", DummyPopup)
+
+    screen.on_pre_enter()
+    assert popup_calls and screen._pre_session_metric_data == {"M1": 5}
+
+    screen.start_workout()
+    assert dummy_app.workout_session.data == {"M1": 5}
+    assert len(popup_calls) == 1
+    assert screen.manager.current == "rest"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
     """Saving with a duplicate user-defined name shows an error."""
     import sqlite3
