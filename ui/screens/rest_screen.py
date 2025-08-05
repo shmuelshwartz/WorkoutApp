@@ -169,6 +169,19 @@ class RestScreen(MDScreen):
             minutes, seconds = divmod(total_seconds, 60)
             self.timer_label = f"{minutes:02d}:{seconds:02d}"
 
+    def _adjust_step(self) -> int:
+        """Return adjustment step based on remaining rest time."""
+        remaining = max(0, self.target_time - time.time())
+        if remaining < 60:
+            return 10
+        if remaining < 300:
+            return 30
+        return 60
+
+    def adjust_timer_by_direction(self, direction: int) -> None:
+        """Adjust timer forward/backward based on remaining time."""
+        self.adjust_timer(direction * self._adjust_step())
+
     def adjust_timer(self, seconds):
         session = MDApp.get_running_app().workout_session
         if session:
