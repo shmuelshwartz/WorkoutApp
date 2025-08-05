@@ -234,10 +234,11 @@ def test_save_metrics_clears_next_metrics(monkeypatch):
         def upcoming_exercise_name(self):
             return "Bench"
 
-        def record_metrics(self, metrics):
-            key = (self.current_exercise, self.current_set)
-            metrics = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
-            self.exercises[0]["results"].append(metrics)
+        def record_metrics(self, ex_idx, set_idx, metrics):
+            while len(self.exercises[0]["results"]) <= set_idx:
+                self.exercises[0]["results"].append(None)
+            self.exercises[0]["results"][set_idx] = metrics
+
             self.current_set += 1
             return False
 
@@ -315,10 +316,11 @@ def test_pre_set_metrics_do_not_advance(monkeypatch):
             }
         ]
 
-        def record_metrics(self, metrics):
-            key = (self.current_exercise, self.current_set)
-            metrics = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
-            self.exercises[0]["results"].append({"metrics": metrics})
+        def record_metrics(self, ex_idx, set_idx, metrics):
+            while len(self.exercises[0]["results"]) <= set_idx:
+                self.exercises[0]["results"].append(None)
+            self.exercises[0]["results"][set_idx] = {"metrics": metrics}
+
             self.current_set += 1
             return False
 

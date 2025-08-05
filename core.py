@@ -1131,8 +1131,8 @@ class WorkoutSession:
 
         self.session_metrics = metrics.copy()
 
-    def record_metrics(self, metrics):
-        if self.current_exercise >= len(self.exercises):
+    def record_metrics(self, exercise_index: int, set_index: int, metrics):
+        if exercise_index >= len(self.exercises):
             if self.end_time is None:
                 self.end_time = time.time()
             return True
@@ -1141,29 +1141,36 @@ class WorkoutSession:
         metrics = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
 
         end_time = time.time()
-        start_time = self.current_set_start_time
         notes = str(metrics.get("Notes", ""))
 
-        ex = self.exercises[self.current_exercise]
-        ex["results"].append(
-            {
-                "metrics": metrics,
-                "started_at": start_time,
-                "ended_at": end_time,
-                "notes": notes,
-            }
+        ex = self.exercises[exercise_index]
+        results = ex["results"]
+        while len(results) <= set_index:
+            results.append(None)
+        start_time = (
+            self.current_set_start_time
+            if exercise_index == self.current_exercise and set_index == self.current_set
+            else end_time
         )
-        self.current_set_start_time = end_time
-        self.current_set += 1
-        self.awaiting_post_set_metrics = False
+        results[set_index] = {
+            "metrics": metrics,
+            "started_at": start_time,
+            "ended_at": end_time,
+            "notes": notes,
+        }
 
-        if self.current_set >= ex["sets"]:
-            self.current_set = 0
-            self.current_exercise += 1
+        if exercise_index == self.current_exercise and set_index == self.current_set:
+            self.current_set_start_time = end_time
+            self.current_set += 1
+            self.awaiting_post_set_metrics = False
 
-        if self.current_exercise >= len(self.exercises):
-            self.end_time = end_time
-            return True
+            if self.current_set >= ex["sets"]:
+                self.current_set = 0
+                self.current_exercise += 1
+
+            if self.current_exercise >= len(self.exercises):
+                self.end_time = end_time
+                return True
 
         return False
 
