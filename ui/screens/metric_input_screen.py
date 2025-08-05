@@ -402,22 +402,23 @@ class MetricInputScreen(MDScreen):
         orig_pending = session.pending_pre_set_metrics.copy()
         orig_awaiting = session.awaiting_post_set_metrics
 
-        session.current_exercise = target_ex
-        session.current_set = target_set
-        finished = session.record_metrics(metrics)
+        editing_different = target_ex != orig_ex or target_set != orig_set
+        if editing_different:
+            session.pending_pre_set_metrics = {}
+
+        results = session.exercises[target_ex]["results"]
+        if target_set < len(results):
+            session.update_metrics(target_ex, target_set, metrics)
+            finished = False
+        else:
+            session.current_exercise = target_ex
+            session.current_set = target_set
+            finished = session.record_metrics(metrics)
 
         app.record_new_set = False
         app.record_pre_set = False
 
-        if target_ex == orig_ex and target_set == orig_set:
-            self.exercise_idx = session.current_exercise
-            self.set_idx = session.current_set
-            self.update_display()
-            if finished and getattr(self, "manager", None):
-                self.manager.current = "workout_summary"
-            elif getattr(self, "manager", None):
-                self.manager.current = "rest"
-        else:
+        if editing_different:
             session.current_exercise = orig_ex
             session.current_set = orig_set
             session.current_set_start_time = orig_start
@@ -427,4 +428,12 @@ class MetricInputScreen(MDScreen):
             self.set_idx = orig_set
             self.update_display()
             if getattr(self, "manager", None):
+                self.manager.current = "rest"
+        else:
+            self.exercise_idx = session.current_exercise
+            self.set_idx = session.current_set
+            self.update_display()
+            if finished and getattr(self, "manager", None):
+                self.manager.current = "workout_summary"
+            elif getattr(self, "manager", None):
                 self.manager.current = "rest"

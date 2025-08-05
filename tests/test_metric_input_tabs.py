@@ -301,3 +301,73 @@ def test_save_future_metrics_returns_to_rest():
 
     assert screen.manager.current == "rest"
 
+
+def test_edit_past_set_updates_in_place(monkeypatch):
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [
+                {
+                    "name": "Bench",
+                    "sets": 2,
+                    "results": [
+                        {"metrics": {"Reps": 10}, "started_at": 1, "ended_at": 2, "notes": ""}
+                    ],
+                }
+            ]
+            self.current_exercise = 0
+            self.current_set = 1
+            self.current_set_start_time = 0
+            self.pending_pre_set_metrics = {"Warmup": "stretch"}
+            self.awaiting_post_set_metrics = False
+
+        def record_metrics(self, metrics):
+            ex = self.exercises[self.current_exercise]
+            ex.setdefault("results", []).append({"metrics": metrics})
+            self.current_set += 1
+            self.pending_pre_set_metrics = {}
+            return False
+
+        def update_metrics(self, ex_idx, set_idx, metrics):
+            res = self.exercises[ex_idx]["results"][set_idx]
+            res["metrics"] = metrics.copy()
+            res["notes"] = str(metrics.get("Notes", ""))
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(
+        workout_session=dummy_session, record_new_set=False, record_pre_set=False
+    )
+    metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
+
+    monkeypatch.setattr(
+        MetricInputScreen, "_collect_metrics", lambda self, w: {"Reps": 12}
+    )
+
+    class DummyList:
+        def __init__(self):
+            self.children = []
+
+        def clear_widgets(self):
+            pass
+
+        def add_widget(self, widget):
+            pass
+
+    screen.metrics_list = DummyList()
+    screen.session = dummy_session
+    screen.exercise_idx = 0
+    screen.set_idx = 0
+    screen.manager = types.SimpleNamespace(current="metric_input")
+
+    screen.save_metrics()
+
+    res = dummy_session.exercises[0]["results"]
+    assert len(res) == 1
+    assert res[0]["metrics"] == {"Reps": 12}
+    assert "Warmup" not in res[0]["metrics"]
+    assert dummy_session.pending_pre_set_metrics == {"Warmup": "stretch"}
+    assert res[0]["started_at"] == 1
+    assert res[0]["ended_at"] == 2
+    assert screen.manager.current == "rest"
+

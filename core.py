@@ -1158,6 +1158,18 @@ class WorkoutSession:
 
         return False
 
+    def update_metrics(self, ex_idx: int, set_idx: int, metrics: dict) -> None:
+        """Replace metrics for an existing set while preserving timestamps."""
+
+        ex = self.exercises[ex_idx]
+        if set_idx >= len(ex["results"]):
+            raise IndexError("Set index out of range")
+
+        result = ex["results"][set_idx]
+        notes = str(metrics.get("Notes", ""))
+        result["metrics"] = metrics.copy()
+        result["notes"] = notes
+
     def undo_last_set(self) -> bool:
         """Reopen the most recently completed set.
 

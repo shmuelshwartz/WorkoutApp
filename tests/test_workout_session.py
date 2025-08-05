@@ -136,3 +136,18 @@ def test_undo_set_start_returns_to_rest(sample_db, monkeypatch):
     assert session.current_set_start_time == start
     assert session.resume_from_last_start is False
     assert session.rest_target_time == start + session.rest_duration
+
+
+def test_update_metrics_preserves_times(sample_db):
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session.record_metrics({"Reps": 10})
+    result = session.exercises[0]["results"][0]
+    start, end = result["started_at"], result["ended_at"]
+
+    session.update_metrics(0, 0, {"Reps": 12})
+
+    updated = session.exercises[0]["results"][0]
+    assert updated["metrics"] == {"Reps": 12}
+    assert updated["started_at"] == start
+    assert updated["ended_at"] == end
+    assert len(session.exercises[0]["results"]) == 1
