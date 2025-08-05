@@ -250,4 +250,54 @@ def test_slider_row_updates_label():
     slider.value = 0.72
     slider._binding(slider, slider.value)
     assert value_label.text == "0.72"
+    
+def test_save_future_metrics_returns_to_rest():
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [
+                {"name": "Bench", "sets": 1, "results": []},
+                {"name": "Squat", "sets": 1, "results": []},
+            ]
+            self.current_exercise = 0
+            self.current_set = 0
+            self.current_set_start_time = 0
+            self.pending_pre_set_metrics = {}
+            self.awaiting_post_set_metrics = False
+
+        def record_metrics(self, metrics):
+            ex = self.exercises[self.current_exercise]
+            ex.setdefault("results", []).append({"metrics": metrics})
+            self.current_set += 1
+            if self.current_set >= ex["sets"]:
+                self.current_set = 0
+                self.current_exercise += 1
+            self.pending_pre_set_metrics = {}
+            self.awaiting_post_set_metrics = False
+            return False
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(workout_session=dummy_session)
+    metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
+
+    class DummyList:
+        def __init__(self):
+            self.children = []
+
+        def clear_widgets(self):
+            pass
+
+        def add_widget(self, widget):
+            pass
+
+    screen.metrics_list = DummyList()
+    screen.session = dummy_session
+    screen.exercise_idx = 1
+    screen.set_idx = 0
+    screen.manager = types.SimpleNamespace(current="metric_input")
+
+    screen.save_metrics()
+
+    assert screen.manager.current == "rest"
 

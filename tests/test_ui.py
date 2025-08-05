@@ -352,6 +352,29 @@ def test_rest_screen_toggle_ready_changes_state():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+@pytest.mark.parametrize(
+    "remaining,expected",
+    [
+        (30, 10),
+        (120, 30),
+        (400, 60),
+    ],
+)
+def test_adjust_timer_by_direction_scales_with_remaining(monkeypatch, remaining, expected):
+    screen = RestScreen()
+    base_time = 100.0
+    screen.target_time = base_time + remaining
+    monkeypatch.setattr(time, "time", lambda: base_time)
+    dummy_app = _DummyApp()
+    dummy_app.workout_session = None
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+    screen.adjust_timer_by_direction(1)
+    assert screen.target_time == pytest.approx(base_time + remaining + expected)
+    screen.adjust_timer_by_direction(-1)
+    assert screen.target_time == pytest.approx(base_time + remaining)
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_open_metric_input_sets_flags(monkeypatch):
     screen = RestScreen()
 
@@ -398,6 +421,18 @@ def test_open_metric_input_prefers_pre_set(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_active_screen_resumes_from_session(monkeypatch, sample_db):
+    screen = WorkoutActiveScreen()
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session.current_set_start_time = 100.0
+    session.resume_from_last_start = True
+    dummy_app = _DummyApp()
+    dummy_app.workout_session = session
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+    monkeypatch.setattr(time, "time", lambda: 106.0)
+    screen.start_timer()
+    assert int(screen.elapsed) == 6
+
 def test_confirm_finish_opens_dialog(monkeypatch):
     import sys
 

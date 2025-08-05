@@ -412,7 +412,7 @@ ScreenManager:
             height: self.minimum_height
             MDIconButton:
                 icon: "minus"
-                on_release: root.adjust_timer(-10)
+                on_release: root.adjust_timer_by_direction(-1)
             MDLabel:
                 id: timer_label
                 text: root.timer_label
@@ -422,7 +422,7 @@ ScreenManager:
                 text_color: root.timer_color
             MDIconButton:
                 icon: "plus"
-                on_release: root.adjust_timer(10)
+                on_release: root.adjust_timer_by_direction(1)
         MDLabel:
             text: "Next: " + root.next_exercise_name if root.next_exercise_name else ""
             halign: "center"
@@ -439,10 +439,15 @@ ScreenManager:
             size_hint_y: None
             height: "20dp"
         MDGridLayout:
-            cols: 5
+            cols: 6
             spacing: "10dp"
             size_hint_y: None
             height: self.minimum_height
+            IconTextButton:
+                icon: "undo"
+                text: "Undo"
+                disabled: root.undo_disabled
+                on_release: root.show_undo_confirmation()
             IconTextButton:
                 id: record_btn
                 icon: "clipboard"
@@ -589,7 +594,7 @@ ScreenManager:
                 id: metrics_list
         MDRaisedButton:
             size_hint_y: 0.1
-            text: "Save Metrics"
+            text: "Back"
             on_release: root.save_metrics()
 
 <WorkoutEditScreen@MDScreen>:
