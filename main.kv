@@ -412,7 +412,7 @@ ScreenManager:
             height: self.minimum_height
             MDIconButton:
                 icon: "minus"
-                on_release: root.adjust_timer(-10)
+                on_release: root.adjust_timer_by_direction(-1)
             MDLabel:
                 id: timer_label
                 text: root.timer_label
@@ -422,7 +422,7 @@ ScreenManager:
                 text_color: root.timer_color
             MDIconButton:
                 icon: "plus"
-                on_release: root.adjust_timer(10)
+                on_release: root.adjust_timer_by_direction(1)
         MDLabel:
             text: "Next: " + root.next_exercise_name if root.next_exercise_name else ""
             halign: "center"
