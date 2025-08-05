@@ -37,6 +37,8 @@ ScreenManager:
         name: "preset_overview"
     PreviousWorkoutsScreen:
         name: "previous_workouts"
+    HistoryComparisonScreen:
+        name: "history_comparison"
 
 <HomeScreen@MDScreen>:
     BoxLayout:
@@ -762,11 +764,13 @@ ScreenManager:
                             height: "56dp"
                             padding: "8dp"
                             Widget:
-                            MDFloatingActionButton:
-                                icon: "plus"
-                                md_bg_color: app.theme_cls.primary_color
-                                pos_hint: {"center_x": 0.5, "center_y": 0.5}
-                                on_release: app.root.get_screen("edit_preset").add_section()
+                        MDFloatingActionButton:
+                            icon: "plus"
+                            md_bg_color: app.theme_cls.primary_color
+                            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                            opacity: 1 if root.mode != "session" else 0
+                            disabled: root.mode == "session"
+                            on_release: app.root.get_screen("edit_preset").add_section()
 
 
                 Screen:
@@ -808,6 +812,8 @@ ScreenManager:
                             md_bg_color: app.theme_cls.primary_color
                             pos_hint: {"center_x": 0.5, "y": 0.02}
                             tooltip_text: "Add Metric"
+                            opacity: 1 if root.mode != "session" else 0
+                            disabled: root.mode == "session"
                             on_release: root.open_add_preset_metric_popup()
 
                 Screen:
@@ -837,6 +843,8 @@ ScreenManager:
                             md_bg_color: app.theme_cls.primary_color
                             pos_hint: {"center_x": 0.5, "y": 0.02}
                             tooltip_text: "Add Metric"
+                            opacity: 1 if root.mode != "session" else 0
+                            disabled: root.mode == "session"
                             on_release: root.open_add_session_metric_popup()
 
             MDBoxLayout:
@@ -1061,6 +1069,8 @@ ScreenManager:
                     md_bg_color: app.theme_cls.primary_color
                     pos_hint: {"center_x": 0.5, "y": 0.02}
                     tooltip_text: "Add Metric"
+                    opacity: 1 if root.mode != "session" else 0
+                    disabled: root.mode == "session"
                     on_release: root.open_add_metric_popup()
             Screen:
                 name: "details"
@@ -1076,6 +1086,7 @@ ScreenManager:
                             text: root.exercise_name
                             multiline: False
                             size_hint_x: 1
+                            disabled: root.mode == "session"
                             on_text: root.update_name(self.text)
                         MDTextField:
                             id: description_field
@@ -1083,6 +1094,7 @@ ScreenManager:
                             text: root.exercise_description
                             multiline: True
                             size_hint_x: 1
+                            disabled: root.mode == "session"
                             on_text: root.update_description(self.text)
         MDBoxLayout:
             size_hint_y: 0.1

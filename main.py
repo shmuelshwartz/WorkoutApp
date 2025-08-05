@@ -61,6 +61,7 @@ from ui.screens.rest_screen import RestScreen
 from ui.screens.previous_workouts_screen import PreviousWorkoutsScreen
 
 
+
 # Load workout presets from the database at startup
 load_workout_presets(DEFAULT_DB_PATH)
 import time

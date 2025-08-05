@@ -1202,6 +1202,75 @@ class WorkoutSession:
 
         return True
 
+    def has_started_exercise(self, exercise_index: int) -> bool:
+        """Return True if the exercise at ``exercise_index`` has begun."""
+        if exercise_index < 0 or exercise_index >= len(self.exercises):
+            return False
+        if self.exercises[exercise_index]["results"]:
+            return True
+        if exercise_index < self.current_exercise:
+            return True
+        if exercise_index == self.current_exercise and self.current_set > 0:
+            return True
+        return False
+
+    def is_editable_section(self, section_index: int) -> bool:
+        """Return True if no exercises in the section have started."""
+        if section_index < 0 or section_index >= len(self.section_starts):
+            return False
+        start = self.section_starts[section_index]
+        end = (
+            self.section_starts[section_index + 1]
+            if section_index + 1 < len(self.section_starts)
+            else len(self.exercises)
+        )
+        for idx in range(start, end):
+            if self.has_started_exercise(idx):
+                return False
+        return True
+
+    def apply_edited_preset(self, sections: list[dict]) -> None:
+        """Replace remaining exercises with ``sections`` data."""
+        new_exercises: list[dict] = []
+        section_starts: list[int] = []
+        section_names: list[str] = []
+        exercise_sections: list[int] = []
+        for sec_idx, sec in enumerate(sections):
+            section_starts.append(len(new_exercises))
+            section_names.append(sec.get("name", f"Section {sec_idx + 1}"))
+            for ex in sec.get("exercises", []):
+                ex_copy = {
+                    "name": ex.get("name", ""),
+                    "sets": ex.get("sets", DEFAULT_SETS_PER_EXERCISE),
+                    "rest": ex.get("rest", self.rest_duration),
+                    "results": [],
+                    "library_exercise_id": ex.get("library_exercise_id"),
+                    "preset_section_exercise_id": ex.get(
+                        "preset_section_exercise_id"
+                    ),
+                    "exercise_description": ex.get("exercise_description", ""),
+                    "metric_defs": ex.get("metric_defs", []),
+                    "section_index": sec_idx,
+                    "section_name": section_names[-1],
+                }
+                new_exercises.append(ex_copy)
+                exercise_sections.append(sec_idx)
+
+        if self.current_exercise < len(self.exercises):
+            current_name = self.exercises[self.current_exercise]["name"]
+            for i, ex in enumerate(new_exercises):
+                if ex["name"] == current_name:
+                    self.current_exercise = i
+                    break
+            else:
+                self.current_exercise = min(self.current_exercise, len(new_exercises))
+                self.current_set = 0
+
+        self.exercises = new_exercises
+        self.section_starts = section_starts
+        self.section_names = section_names
+        self.exercise_sections = exercise_sections
+
     def adjust_rest_timer(self, seconds: int) -> None:
         """Adjust the target time for the current rest period."""
         now = time.time()

@@ -46,6 +46,19 @@ class AddMetricPopup(MDDialog):
         self.screen = screen
         self.mode = mode
         self.popup_mode = popup_mode
+        if self.mode == "session":
+            content = MDBoxLayout()
+            close_btn = MDRaisedButton(
+                text="Close", on_release=lambda *a: self.dismiss()
+            )
+            super().__init__(
+                title="Metrics Locked",
+                type="custom",
+                content_cls=content,
+                buttons=[close_btn],
+                **kwargs,
+            )
+            return
 
         if popup_mode == "select":
             content, buttons, title = self._build_select_widgets()
@@ -331,6 +344,19 @@ class EditMetricPopup(MDDialog):
         self.screen = screen
         self.metric = metric
         self.mode = mode
+        if self.mode == "session":
+            content = MDBoxLayout()
+            close_btn = MDRaisedButton(
+                text="Close", on_release=lambda *a: self.dismiss()
+            )
+            super().__init__(
+                title="Metrics Locked",
+                type="custom",
+                content_cls=content,
+                buttons=[close_btn],
+                **kwargs,
+            )
+            return
         content, buttons, title = self._build_widgets()
         super().__init__(
             title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
