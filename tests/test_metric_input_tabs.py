@@ -301,3 +301,67 @@ def test_save_future_metrics_returns_to_rest():
 
     assert screen.manager.current == "rest"
 
+
+def test_navigation_auto_saves_completed_set():
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [{"name": "Bench", "sets": 2, "results": []}]
+            self.current_exercise = 0
+            self.current_set = 0
+            self.current_set_start_time = 0
+            self.pending_pre_set_metrics = {}
+            self.awaiting_post_set_metrics = True
+
+        def record_metrics(self, metrics):
+            ex = self.exercises[self.current_exercise]
+            ex.setdefault("results", []).append({"metrics": metrics})
+            self.current_set += 1
+            self.awaiting_post_set_metrics = False
+            return False
+
+        def set_pre_set_metrics(self, metrics):
+            self.pending_pre_set_metrics = metrics
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(workout_session=dummy_session, record_new_set=False, record_pre_set=False)
+    metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
+
+    class DummyList:
+        def __init__(self, children=None):
+            self.children = children or []
+
+        def clear_widgets(self):
+            pass
+
+        def add_widget(self, widget):
+            pass
+
+    # populate metrics for first set
+    screen.session = dummy_session
+    screen.exercise_idx = 0
+    screen.set_idx = 0
+    row_w = screen._create_row({"name": "Weight", "type": "float"}, value=0)
+    row_w.input_widget.text = "100"
+    row_r = screen._create_row({"name": "Reps", "type": "int"}, value=0)
+    row_r.input_widget.text = "1"
+    screen.metrics_list = DummyList([row_w, row_r])
+
+    # Navigating right should auto-save set 1 metrics
+    screen.navigate_right()
+    assert dummy_session.exercises[0]["results"][0]["metrics"] == {"Weight": 100.0, "Reps": 1}
+    assert (screen.exercise_idx, screen.set_idx) == (0, 1)
+
+    # Enter metrics for second set and save
+    dummy_session.awaiting_post_set_metrics = True
+    row_w2 = screen._create_row({"name": "Weight", "type": "float"}, value=0)
+    row_w2.input_widget.text = "110"
+    row_r2 = screen._create_row({"name": "Reps", "type": "int"}, value=0)
+    row_r2.input_widget.text = "1"
+    screen.metrics_list = DummyList([row_w2, row_r2])
+    screen.save_metrics()
+
+    assert dummy_session.exercises[0]["results"][0]["metrics"] == {"Weight": 100.0, "Reps": 1}
+    assert dummy_session.exercises[0]["results"][1]["metrics"] == {"Weight": 110.0, "Reps": 1}
+

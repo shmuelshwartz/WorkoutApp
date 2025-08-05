@@ -125,8 +125,49 @@ class MetricInputScreen(MDScreen):
         else:
             self.navigate_right()
 
+    def _auto_save_if_pending(self) -> bool:
+        """Save metrics for the current set if required.
+
+        Returns ``True`` if a save occurred that advanced the session's
+        current set or exercise.  This allows navigation handlers to avoid
+        applying their own index changes, preventing skipped sets.
+        """
+
+        if not hasattr(MDApp, "get_running_app"):
+            return False
+        app = MDApp.get_running_app()
+        session = getattr(app, "workout_session", None)
+        if not session or not self.metrics_list:
+            return False
+
+        # Handle pre-set metric entry before a set begins
+        if getattr(app, "record_pre_set", False) and not getattr(
+            app, "record_new_set", False
+        ):
+            metrics = self._collect_metrics(self.metrics_list)
+            session.set_pre_set_metrics(metrics)
+            app.record_pre_set = False
+            return False
+
+        # Automatically record post-set metrics for the current set
+        if (
+            session.awaiting_post_set_metrics
+            and self.exercise_idx == session.current_exercise
+            and self.set_idx == session.current_set
+        ):
+            metrics = self._collect_metrics(self.metrics_list)
+            session.record_metrics(metrics)
+            app.record_new_set = False
+            app.record_pre_set = False
+            self.exercise_idx = session.current_exercise
+            self.set_idx = session.current_set
+            self.update_display()
+            return True
+
+        return False
+
     def navigate_left(self):
-        if not self.can_nav_left:
+        if self._auto_save_if_pending() or not self.can_nav_left:
             return
         if self.set_idx > 0:
             self.set_idx -= 1
@@ -136,6 +177,8 @@ class MetricInputScreen(MDScreen):
         self.update_display()
 
     def navigate_left_double(self):
+        if self._auto_save_if_pending():
+            return
         if self.set_idx > 0:
             self.set_idx = 0
         elif self.exercise_idx > 0:
@@ -144,7 +187,7 @@ class MetricInputScreen(MDScreen):
         self.update_display()
 
     def navigate_left_triple(self):
-        if not self.session:
+        if self._auto_save_if_pending() or not self.session:
             return
         sections = getattr(self.session, "section_starts", [])
         if not sections:
@@ -160,7 +203,7 @@ class MetricInputScreen(MDScreen):
         self.update_display()
 
     def navigate_right(self):
-        if not self.can_nav_right:
+        if self._auto_save_if_pending() or not self.can_nav_right:
             return
         ex = self.session.exercises[self.exercise_idx]
         if self.set_idx < ex["sets"] - 1:
@@ -171,13 +214,15 @@ class MetricInputScreen(MDScreen):
         self.update_display()
 
     def navigate_right_double(self):
+        if self._auto_save_if_pending():
+            return
         if self.exercise_idx < len(self.session.exercises) - 1:
             self.exercise_idx += 1
             self.set_idx = 0
             self.update_display()
 
     def navigate_right_triple(self):
-        if not self.session:
+        if self._auto_save_if_pending() or not self.session:
             return
         sections = getattr(self.session, "section_starts", [])
         if not sections:
