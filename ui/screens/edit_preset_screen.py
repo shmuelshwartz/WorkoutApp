@@ -154,6 +154,7 @@ class EditPresetScreen(MDScreen):
     session_metric_list = ObjectProperty(None)
     save_enabled = BooleanProperty(False)
     loading_dialog = ObjectProperty(None, allownone=True)
+    mode = StringProperty("library")
 
     preset_metric_widgets: dict = {}
 
@@ -165,6 +166,10 @@ class EditPresetScreen(MDScreen):
         (0.9, 1, 1, 1),
         (1, 0.9, 1, 1),
     ]
+
+    def __init__(self, mode: str = "library", **kwargs):
+        super().__init__(**kwargs)
+        self.mode = mode
 
     def update_save_enabled(self):
         """Refresh ``save_enabled`` based on preset modifications."""
