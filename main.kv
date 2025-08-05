@@ -518,7 +518,7 @@ ScreenManager:
             size_hint_y: 0.1
             MDIconButton:
                 icon: "chevron-left"
-                on_release: root.navigate_left()
+                on_release: root.register_left_tap()
                 disabled: not root.can_nav_left
             MDLabel:
                 id: nav_label
@@ -528,7 +528,7 @@ ScreenManager:
                 text_color: 0.2, 0.6, 0.86, 1
             MDIconButton:
                 icon: "chevron-right"
-                on_release: root.navigate_right()
+                on_release: root.register_right_tap()
                 disabled: not root.can_nav_right
         ScrollView:
             size_hint_y: None
