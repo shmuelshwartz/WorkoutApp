@@ -250,7 +250,7 @@ def test_slider_row_updates_label():
     slider.value = 0.72
     slider._binding(slider, slider.value)
     assert value_label.text == "0.72"
-    
+   
 def test_save_future_metrics_returns_to_rest():
     screen = MetricInputScreen()
 
