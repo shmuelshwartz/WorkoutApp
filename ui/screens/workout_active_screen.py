@@ -17,10 +17,16 @@ class WorkoutActiveScreen(MDScreen):
     def start_timer(self, *args):
         """Start or resume the stopwatch."""
         self.stop_timer()
-        self.elapsed = 0.0
-        self.formatted_time = "00:00"
-        self.start_time = time.time()
+        session = MDApp.get_running_app().workout_session
+        if session and getattr(session, "resume_from_last_start", False):
+            self.start_time = session.current_set_start_time
+            session.resume_from_last_start = False
+        else:
+            self.start_time = time.time()
+            if session:
+                session.current_set_start_time = self.start_time
         self._event = Clock.schedule_interval(self._update_elapsed, 0.1)
+        self._update_elapsed(0)
 
     def on_pre_enter(self, *args):
         session = MDApp.get_running_app().workout_session

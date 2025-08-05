@@ -957,6 +957,8 @@ class WorkoutSession:
         self.awaiting_post_set_metrics: bool = False
         # track whether this session has been saved to the database
         self.saved: bool = False
+        # indicates the next active screen should resume from previous start
+        self.resume_from_last_start: bool = False
 
     def mark_set_completed(self, adjust_seconds: int = 0) -> None:
         """Record completion time and update rest timer for the next set.
@@ -1127,6 +1129,50 @@ class WorkoutSession:
             return True
 
         return False
+
+    def undo_last_set(self) -> bool:
+        """Reopen the most recently completed set.
+
+        Returns ``True`` if a set was restored, ``False`` otherwise.
+        """
+
+        # Determine whether any set has been completed yet
+        if self.current_exercise == 0 and self.current_set == 0 and not self.exercises[0]["results"]:
+            return False
+
+        # Identify exercise and set index of last completed set
+        ex_idx = self.current_exercise
+        set_idx = self.current_set - 1
+        if set_idx < 0:
+            ex_idx -= 1
+            if ex_idx < 0:
+                return False
+            set_idx = len(self.exercises[ex_idx]["results"]) - 1
+        ex = self.exercises[ex_idx]
+        if not ex["results"]:
+            return False
+        last = ex["results"].pop()
+
+        # Restore indices to point at the reopened set
+        self.current_exercise = ex_idx
+        self.current_set = set_idx
+
+        # Preserve any previously entered metrics for the set
+        self.pending_pre_set_metrics = last.get("metrics", {}).copy()
+        self.awaiting_post_set_metrics = False
+
+        # Resume timer from the original start time
+        self.current_set_start_time = last.get("started_at", time.time())
+        self.last_set_time = self.current_set_start_time
+        self.rest_target_time = self.last_set_time + self.rest_duration
+
+        # Ensure workout isn't marked finished
+        self.end_time = None
+
+        # Flag for WorkoutActiveScreen to resume from stored start time
+        self.resume_from_last_start = True
+
+        return True
 
     def adjust_rest_timer(self, seconds: int) -> None:
         """Adjust the target time for the current rest period."""

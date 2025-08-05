@@ -338,6 +338,20 @@ def test_open_metric_input_prefers_pre_set(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_active_screen_resumes_from_session(monkeypatch, sample_db):
+    screen = WorkoutActiveScreen()
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session.current_set_start_time = 100.0
+    session.resume_from_last_start = True
+    dummy_app = _DummyApp()
+    dummy_app.workout_session = session
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+    monkeypatch.setattr(time, "time", lambda: 106.0)
+    screen.start_timer()
+    assert int(screen.elapsed) == 6
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_update_elapsed_formats_time(monkeypatch):
     screen = WorkoutActiveScreen()
     screen.start_time = 100.0

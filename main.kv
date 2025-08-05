@@ -439,10 +439,15 @@ ScreenManager:
             size_hint_y: None
             height: "20dp"
         MDGridLayout:
-            cols: 5
+            cols: 6
             spacing: "10dp"
             size_hint_y: None
             height: self.minimum_height
+            IconTextButton:
+                icon: "undo"
+                text: "Undo"
+                disabled: root.undo_disabled
+                on_release: root.show_undo_confirmation()
             IconTextButton:
                 id: record_btn
                 icon: "clipboard"

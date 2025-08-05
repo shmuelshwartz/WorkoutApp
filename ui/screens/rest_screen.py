@@ -1,5 +1,7 @@
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.button import MDFlatButton
 from kivy.clock import Clock
 from kivy.properties import NumericProperty, StringProperty, BooleanProperty, ListProperty
 import time
@@ -18,6 +20,7 @@ class RestScreen(MDScreen):
     rest_time_info = StringProperty("")
     is_ready = BooleanProperty(False)
     timer_color = ListProperty([1, 0, 0, 1])
+    undo_disabled = BooleanProperty(True)
 
     def on_pre_enter(self, *args):
         session = MDApp.get_running_app().workout_session
@@ -33,12 +36,18 @@ class RestScreen(MDScreen):
             details = get_exercise_details(ex_name, db_path=session.db_path)
             self.next_exercise_desc = details.get("description", "") if details else ""
             self.target_time = session.rest_target_time
+            self.undo_disabled = (
+                session.current_exercise == 0
+                and session.current_set == 0
+                and not session.exercises[0]["results"]
+            )
         else:
             self.target_time = time.time() + DEFAULT_REST_DURATION
             self.next_exercise_name = ""
             self.next_set_info = ""
             self.rest_time_info = ""
             self.next_exercise_desc = ""
+            self.undo_disabled = True
         self.is_ready = False
         self.timer_color = (1, 0, 0, 1)
         self.update_timer(0)
@@ -95,6 +104,28 @@ class RestScreen(MDScreen):
             app.record_new_set = True
         if app.root:
             app.root.current = "metric_input"
+
+    def show_undo_confirmation(self):
+        if self.undo_disabled:
+            return
+        if not hasattr(self, "_undo_dialog") or not self._undo_dialog:
+            self._undo_dialog = MDDialog(
+                text="Are you sure you want to undo the last set and resume it?",
+                buttons=[
+                    MDFlatButton(text="Cancel", on_release=lambda *_: self._undo_dialog.dismiss()),
+                    MDFlatButton(text="Confirm", on_release=self._perform_undo),
+                ],
+            )
+        self._undo_dialog.open()
+
+    def _perform_undo(self, *args):
+        if hasattr(self, "_undo_dialog") and self._undo_dialog:
+            self._undo_dialog.dismiss()
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
+        if session and session.undo_last_set():
+            if self.manager:
+                self.manager.current = "workout_active"
 
     def on_touch_down(self, touch):
         if self.ids.timer_label.collide_point(*touch.pos):
