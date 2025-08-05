@@ -168,6 +168,7 @@ ScreenManager:
     is_user_created: False
     edit_callback: None
     delete_callback: None
+    locked: False
     orientation: "horizontal"
     size_hint_y: None
     height: "56dp"
@@ -181,7 +182,7 @@ ScreenManager:
         valign: "center"
     MDBoxLayout:
         size_hint_x: None
-        width: "36dp"
+        width: "36dp" if not root.locked else 0
         orientation: "horizontal"
         spacing: "5dp"
         valign: "center"
@@ -189,16 +190,18 @@ ScreenManager:
             icon: "pencil"
             font_size: "20sp"
             pos_hint: {"center_y": 0.5}
-            on_touch_down: if self.collide_point(*args[1].pos) and root.edit_callback: root.edit_callback(root.name, root.is_user_created)
+            opacity: 1 if not root.locked else 0
+            disabled: root.locked
+            on_touch_down: if not root.locked and self.collide_point(*args[1].pos) and root.edit_callback: root.edit_callback(root.name, root.is_user_created)
         MDIcon:
             icon: "delete"
             font_size: "20sp"
             theme_text_color: "Custom"
             text_color: 1, 0, 0, 1
             pos_hint: {"center_y": 0.5}
-            opacity: 1 if root.is_user_created else 0
-            disabled: not root.is_user_created
-            on_touch_down: if self.collide_point(*args[1].pos) and root.delete_callback: root.delete_callback(root.name)
+            opacity: 1 if root.is_user_created and not root.locked else 0
+            disabled: not root.is_user_created or root.locked
+            on_touch_down: if not root.locked and self.collide_point(*args[1].pos) and root.delete_callback: root.delete_callback(root.name)
 
 <ExerciseLibraryScreen>:
     exercise_list: exercise_list
@@ -805,6 +808,7 @@ ScreenManager:
                                         multiline: False
                                         on_text: root.update_preset_name(self.text)
                                         size_hint_x: 1
+                                        readonly: root.mode == "session"
                                 MDBoxLayout:
                                     id: metrics_box
                                     orientation: "vertical"
