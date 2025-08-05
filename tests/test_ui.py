@@ -398,6 +398,36 @@ def test_open_metric_input_prefers_pre_set(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_confirm_finish_opens_dialog(monkeypatch):
+    import sys
+
+    opened = {"value": False}
+
+    class DummyDialog:
+        def __init__(self, *a, **k):
+            pass
+
+        def open(self_inner):
+            opened["value"] = True
+
+        def dismiss(self_inner):
+            pass
+
+    # Replace dialog and button classes with dummies to avoid GUI work
+    monkeypatch.setattr(
+        sys.modules["ui.screens.rest_screen"], "MDDialog", DummyDialog
+    )
+    monkeypatch.setattr(
+        sys.modules["ui.screens.rest_screen"], "MDRaisedButton", lambda *a, **k: None
+    )
+
+    screen = RestScreen()
+    screen.confirm_finish()
+
+    assert opened["value"]
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_update_elapsed_formats_time(monkeypatch):
     screen = WorkoutActiveScreen()
     screen.start_time = 100.0
