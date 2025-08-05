@@ -57,6 +57,11 @@ class EditExerciseScreen(MDScreen):
     exercise_sets = NumericProperty(DEFAULT_SETS_PER_EXERCISE)
     exercise_rest = NumericProperty(DEFAULT_REST_DURATION)
     section_length = NumericProperty(0)
+    mode = StringProperty("library")
+
+    def __init__(self, mode: str = "library", **kwargs):
+        super().__init__(**kwargs)
+        self.mode = mode
 
     def switch_tab(self, tab: str):
         """Switch between available tabs."""
@@ -269,15 +274,15 @@ class EditExerciseScreen(MDScreen):
         dialog.open()
 
     def open_add_metric_popup(self):
-        popup = AddMetricPopup(self, mode="select")
+        popup = AddMetricPopup(self, popup_mode="select", mode=self.mode)
         popup.open()
 
     def open_new_metric_popup(self):
-        popup = AddMetricPopup(self, mode="new")
+        popup = AddMetricPopup(self, popup_mode="new", mode=self.mode)
         popup.open()
 
     def open_edit_metric_popup(self, metric):
-        popup = EditMetricPopup(self, metric)
+        popup = EditMetricPopup(self, metric, mode=self.mode)
         popup.open()
 
     def save_exercise(self):

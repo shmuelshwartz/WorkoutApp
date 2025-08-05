@@ -36,13 +36,20 @@ METRIC_FIELD_ORDER = [
 class AddMetricPopup(MDDialog):
     """Popup dialog for selecting or creating metrics."""
 
-    def __init__(self, screen: "EditExerciseScreen", mode: str = "select", **kwargs):
+    def __init__(
+        self,
+        screen: "EditExerciseScreen",
+        popup_mode: str = "select",
+        mode: str = "library",
+        **kwargs,
+    ):
         self.screen = screen
         self.mode = mode
+        self.popup_mode = popup_mode
 
-        if mode == "select":
+        if popup_mode == "select":
             content, buttons, title = self._build_select_widgets()
-        elif mode == "new":
+        elif popup_mode == "new":
             content, buttons, title = self._build_new_metric_widgets()
         else:
             content, buttons, title = self._build_choice_widgets()
@@ -219,12 +226,12 @@ class AddMetricPopup(MDDialog):
     # ------------------------------------------------------------------
     def show_new_metric_form(self, *args):
         self.dismiss()
-        popup = AddMetricPopup(self.screen, mode="new")
+        popup = AddMetricPopup(self.screen, popup_mode="new", mode=self.mode)
         popup.open()
 
     def show_metric_list(self, *args):
         self.dismiss()
-        popup = AddMetricPopup(self.screen, mode="select")
+        popup = AddMetricPopup(self.screen, popup_mode="select", mode=self.mode)
         popup.open()
 
     def add_metric(self, name, *args):
@@ -314,9 +321,16 @@ class AddMetricPopup(MDDialog):
 class EditMetricPopup(MDDialog):
     """Popup for editing an existing metric."""
 
-    def __init__(self, screen: "EditExerciseScreen", metric: dict, **kwargs):
+    def __init__(
+        self,
+        screen: "EditExerciseScreen",
+        metric: dict,
+        mode: str = "library",
+        **kwargs,
+    ):
         self.screen = screen
         self.metric = metric
+        self.mode = mode
         content, buttons, title = self._build_widgets()
         super().__init__(
             title=title, type="custom", content_cls=content, buttons=buttons, **kwargs

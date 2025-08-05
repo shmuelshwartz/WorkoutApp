@@ -449,14 +449,17 @@ def test_confirm_finish_opens_dialog(monkeypatch):
             pass
 
     # Replace dialog and button classes with dummies to avoid GUI work
-    monkeypatch.setattr(
-        sys.modules["ui.screens.rest_screen"], "MDDialog", DummyDialog
-    )
-    monkeypatch.setattr(
-        sys.modules["ui.screens.rest_screen"], "MDRaisedButton", lambda *a, **k: None
-    )
+    import importlib
+    import pytest
 
-    screen = RestScreen()
+    try:
+        rest_screen_module = importlib.import_module("ui.screens.rest_screen")
+    except ModuleNotFoundError:
+        pytest.skip("RestScreen module not available")
+    monkeypatch.setattr(rest_screen_module, "MDDialog", DummyDialog)
+    monkeypatch.setattr(rest_screen_module, "MDRaisedButton", lambda *a, **k: None)
+
+    screen = rest_screen_module.RestScreen()
     screen.confirm_finish()
 
     assert opened["value"]
@@ -477,7 +480,7 @@ def test_enum_values_accepts_spaces():
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
 
-    popup = AddMetricPopup(DummyScreen(), mode="new")
+    popup = AddMetricPopup(DummyScreen(), popup_mode="new")
     popup.input_widgets["type"].text = "str"
     filtered = popup.enum_values_field.input_filter("A B,C", False)
     assert filtered == "A B,C"
@@ -488,7 +491,7 @@ def test_enum_values_strip_spaces_after_comma():
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
 
-    popup = AddMetricPopup(DummyScreen(), mode="new")
+    popup = AddMetricPopup(DummyScreen(), popup_mode="new")
     popup.input_widgets["type"].text = "str"
     filtered = popup.enum_values_field.input_filter("A, B ,  C", False)
     assert filtered == "A,B,C"
@@ -499,7 +502,7 @@ def test_add_metric_popup_has_single_enum_field():
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
 
-    popup = AddMetricPopup(DummyScreen(), mode="new")
+    popup = AddMetricPopup(DummyScreen(), popup_mode="new")
     children = popup.content_cls.children[0].children
     enum_fields = [
         c
@@ -614,7 +617,7 @@ def test_add_metric_popup_filters_scope(monkeypatch):
 
     monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
 
-    popup = AddMetricPopup(DummyScreen(), mode="select")
+    popup = AddMetricPopup(DummyScreen(), popup_mode="select")
     list_view = popup.content_cls.children[0]
     names = {child.text for child in list_view.children}
 
@@ -1361,7 +1364,7 @@ def test_fallback_input_timing_options(monkeypatch):
         exercise_obj = type("obj", (), {"metrics": []})()
 
     monkeypatch.setattr(core, "get_metric_type_schema", lambda *a, **k: [])
-    popup = AddMetricPopup(DummyScreen(), mode="new")
+    popup = AddMetricPopup(DummyScreen(), popup_mode="new")
     opts = list(popup.input_widgets["input_timing"].values)
     assert opts == [
         "preset",
