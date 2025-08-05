@@ -199,13 +199,16 @@ def test_save_future_metrics_preserves_session_state():
             self.pending_pre_set_metrics = {}
             self.awaiting_post_set_metrics = False
 
-        def record_metrics(self, metrics):
-            ex = self.exercises[self.current_exercise]
-            ex.setdefault("results", []).append({"metrics": metrics})
-            self.current_set += 1
-            if self.current_set >= ex["sets"]:
-                self.current_set = 0
-                self.current_exercise += 1
+        def record_metrics(self, ex_idx, set_idx, metrics):
+            ex = self.exercises[ex_idx]
+            while len(ex.setdefault("results", [])) <= set_idx:
+                ex["results"].append(None)
+            ex["results"][set_idx] = {"metrics": metrics}
+            if ex_idx == self.current_exercise and set_idx == self.current_set:
+                self.current_set += 1
+                if self.current_set >= ex["sets"]:
+                    self.current_set = 0
+                    self.current_exercise += 1
             self.pending_pre_set_metrics = {}
             self.awaiting_post_set_metrics = False
             return False
@@ -266,13 +269,16 @@ def test_save_future_metrics_returns_to_rest():
             self.pending_pre_set_metrics = {}
             self.awaiting_post_set_metrics = False
 
-        def record_metrics(self, metrics):
-            ex = self.exercises[self.current_exercise]
-            ex.setdefault("results", []).append({"metrics": metrics})
-            self.current_set += 1
-            if self.current_set >= ex["sets"]:
-                self.current_set = 0
-                self.current_exercise += 1
+        def record_metrics(self, ex_idx, set_idx, metrics):
+            ex = self.exercises[ex_idx]
+            while len(ex.setdefault("results", [])) <= set_idx:
+                ex["results"].append(None)
+            ex["results"][set_idx] = {"metrics": metrics}
+            if ex_idx == self.current_exercise and set_idx == self.current_set:
+                self.current_set += 1
+                if self.current_set >= ex["sets"]:
+                    self.current_set = 0
+                    self.current_exercise += 1
             self.pending_pre_set_metrics = {}
             self.awaiting_post_set_metrics = False
             return False

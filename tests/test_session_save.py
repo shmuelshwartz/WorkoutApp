@@ -25,13 +25,13 @@ def _complete_session(db_path):
 
     session = core.WorkoutSession("Push Day", db_path=db_path, rest_duration=1)
     session.set_session_metrics({"Session Reps": 28})
-    session.record_metrics({"Reps": 10})
+    session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})
     session.mark_set_completed()
-    session.record_metrics({"Reps": 8})
+    session.record_metrics(session.current_exercise, session.current_set, {"Reps": 8})
     session.mark_set_completed()
-    session.record_metrics({"Reps": 5, "Weight": 100, "Machine": "A"})
+    session.record_metrics(session.current_exercise, session.current_set, {"Reps": 5, "Weight": 100, "Machine": "A"})
     session.mark_set_completed()
-    session.record_metrics({"Reps": 5, "Weight": 100, "Machine": "A"})
+    session.record_metrics(session.current_exercise, session.current_set, {"Reps": 5, "Weight": 100, "Machine": "A"})
     return session
 
 

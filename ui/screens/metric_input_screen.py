@@ -398,13 +398,8 @@ class MetricInputScreen(MDScreen):
 
         orig_ex = session.current_exercise
         orig_set = session.current_set
-        orig_start = session.current_set_start_time
-        orig_pending = session.pending_pre_set_metrics.copy()
-        orig_awaiting = session.awaiting_post_set_metrics
 
-        session.current_exercise = target_ex
-        session.current_set = target_set
-        finished = session.record_metrics(metrics)
+        finished = session.record_metrics(target_ex, target_set, metrics)
 
         app.record_new_set = False
         app.record_pre_set = False
@@ -418,11 +413,6 @@ class MetricInputScreen(MDScreen):
             elif getattr(self, "manager", None):
                 self.manager.current = "rest"
         else:
-            session.current_exercise = orig_ex
-            session.current_set = orig_set
-            session.current_set_start_time = orig_start
-            session.pending_pre_set_metrics = orig_pending
-            session.awaiting_post_set_metrics = orig_awaiting
             self.exercise_idx = orig_ex
             self.set_idx = orig_set
             self.update_display()
