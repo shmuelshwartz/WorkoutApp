@@ -235,13 +235,15 @@ def test_save_metrics_clears_next_metrics(monkeypatch):
             return "Bench"
 
         def record_metrics(self, metrics):
+            key = (self.current_exercise, self.current_set)
+            metrics = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
             self.exercises[0]["results"].append(metrics)
             self.current_set += 1
-            self.pending_pre_set_metrics = {}
             return False
 
         def set_pre_set_metrics(self, metrics):
-            self.pending_pre_set_metrics = metrics.copy()
+            key = (self.current_exercise, self.current_set)
+            self.pending_pre_set_metrics[key] = metrics.copy()
 
     dummy_app = _DummyApp()
     dummy_app.workout_session = DummySession()
@@ -314,12 +316,15 @@ def test_pre_set_metrics_do_not_advance(monkeypatch):
         ]
 
         def record_metrics(self, metrics):
+            key = (self.current_exercise, self.current_set)
+            metrics = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
             self.exercises[0]["results"].append({"metrics": metrics})
             self.current_set += 1
             return False
 
         def set_pre_set_metrics(self, metrics):
-            self.pending_pre_set_metrics = metrics.copy()
+            key = (self.current_exercise, self.current_set)
+            self.pending_pre_set_metrics[key] = metrics.copy()
 
     dummy_app = _DummyApp()
     dummy_app.workout_session = DummySession()
@@ -338,7 +343,7 @@ def test_pre_set_metrics_do_not_advance(monkeypatch):
     screen.save_metrics()
 
     assert dummy_app.workout_session.current_set == 0
-    assert dummy_app.workout_session.pending_pre_set_metrics == {"Goal": 5}
+    assert dummy_app.workout_session.pending_pre_set_metrics == {(0, 0): {"Goal": 5}}
     assert dummy_app.root.current == "rest"
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")

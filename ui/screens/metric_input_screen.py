@@ -254,12 +254,10 @@ class MetricInputScreen(MDScreen):
         results = exercise.get("results", [])
         if self.set_idx < len(results):
             values = results[self.set_idx].get("metrics", {})
-        elif (
-            getattr(self.session, "current_exercise", None) == self.exercise_idx
-            and getattr(self.session, "current_set", None) == self.set_idx
-        ):
-            # show pending pre-set metrics for the upcoming set
-            values = getattr(self.session, "pending_pre_set_metrics", {})
+        else:
+            values = self.session.pending_pre_set_metrics.get(
+                (self.exercise_idx, self.set_idx), {}
+            )
         for metric in self._apply_filters(metrics):
             name = metric.get("name")
             self.metrics_list.add_widget(
@@ -387,7 +385,7 @@ class MetricInputScreen(MDScreen):
         if getattr(app, "record_pre_set", False) and not getattr(
             app, "record_new_set", False
         ):
-            session.set_pre_set_metrics(metrics)
+            session.set_pre_set_metrics(metrics, self.exercise_idx, self.set_idx)
             app.record_pre_set = False
             if getattr(self, "manager", None):
                 self.manager.current = "rest"
@@ -421,6 +419,7 @@ class MetricInputScreen(MDScreen):
             session.current_exercise = orig_ex
             session.current_set = orig_set
             session.current_set_start_time = orig_start
+            orig_pending.pop((target_ex, target_set), None)
             session.pending_pre_set_metrics = orig_pending
             session.awaiting_post_set_metrics = orig_awaiting
             self.exercise_idx = orig_ex
