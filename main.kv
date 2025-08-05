@@ -1107,25 +1107,4 @@ ScreenManager:
                 text: "Back"
                 on_release: root.go_back()
 
-<PreviousWorkoutsScreen@MDScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        spacing: "10dp"
-        padding: "20dp"
-        MDLabel:
-            text: "Previous Workouts - guidance"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-        ScrollView:
-            do_scroll_x: True
-            do_scroll_y: True
-            MDBoxLayout:
-                id: previous_container
-                size_hint: None, None
-                width: self.minimum_width
-                height: self.minimum_height
-        MDRaisedButton:
-            text: "Back to Rest"
-            on_release: app.root.current = "rest"
 
