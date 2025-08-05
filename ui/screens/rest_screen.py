@@ -4,6 +4,8 @@ from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton
 from kivy.clock import Clock
 from kivy.properties import NumericProperty, StringProperty, BooleanProperty, ListProperty
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.button import MDRaisedButton
 import time
 import math
 from core import DEFAULT_REST_DURATION, get_exercise_details
@@ -126,6 +128,26 @@ class RestScreen(MDScreen):
         if session and session.undo_last_set():
             if self.manager:
                 self.manager.current = "workout_active"
+                
+    def confirm_finish(self):
+        dialog = None
+
+        def do_finish(*_args):
+            app = MDApp.get_running_app()
+            if app and app.root:
+                app.root.current = "workout_summary"
+            if dialog:
+                dialog.dismiss()
+
+        dialog = MDDialog(
+            title="Finish Workout?",
+            text="Are you sure you want to finish this workout?",
+            buttons=[
+                MDRaisedButton(text="Cancel", on_release=lambda *_: dialog.dismiss()),
+                MDRaisedButton(text="Finish", on_release=do_finish),
+            ],
+        )
+        dialog.open()
 
     def on_touch_down(self, touch):
         if self.ids.timer_label.collide_point(*touch.pos):

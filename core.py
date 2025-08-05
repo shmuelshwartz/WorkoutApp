@@ -890,7 +890,8 @@ class WorkoutSession:
 
             cursor.execute(
                 """
-                SELECT se.id,
+                SELECT ps.name,
+                       se.id,
                        se.exercise_name,
                        se.number_of_sets,
                        se.rest_time,
@@ -904,8 +905,13 @@ class WorkoutSession:
                 """,
                 (self.preset_id,),
             )
-            exercises = []
+            exercises: list[dict] = []
+            self.section_starts: list[int] = []
+            self.section_names: list[str] = []
+            exercise_sections: list[int] = []
+            current_section = None
             for (
+                sec_name,
                 se_id,
                 name,
                 sets,
@@ -913,6 +919,11 @@ class WorkoutSession:
                 lib_ex_id,
                 desc,
             ) in cursor.fetchall():
+                if sec_name != current_section:
+                    self.section_starts.append(len(exercises))
+                    self.section_names.append(sec_name)
+                    current_section = sec_name
+                section_index = len(self.section_starts) - 1
                 metric_defs = get_metrics_for_exercise(
                     name,
                     db_path=self.db_path,
@@ -928,9 +939,14 @@ class WorkoutSession:
                         "preset_section_exercise_id": se_id,
                         "exercise_description": desc or "",
                         "metric_defs": metric_defs,
+                        "section_index": section_index,
+                        "section_name": sec_name,
                     }
                 )
+                exercise_sections.append(section_index)
 
+            self.exercise_sections = exercise_sections
+            
         self.exercises = exercises
         self.session_metric_defs = get_metrics_for_preset(
             preset_name, db_path=self.db_path

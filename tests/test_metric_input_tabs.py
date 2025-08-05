@@ -12,6 +12,7 @@ kivy_modules = {
     "kivy.uix": types.ModuleType("kivy.uix"),
     "kivy.uix.scrollview": types.ModuleType("kivy.uix.scrollview"),
     "kivy.uix.spinner": types.ModuleType("kivy.uix.spinner"),
+    "kivy.clock": types.ModuleType("kivy.clock"),
 }
 
 kivy_modules["kivy.metrics"].dp = lambda x: x
@@ -24,6 +25,9 @@ kivy_modules["kivy.properties"].ObjectProperty = _Prop
 kivy_modules["kivy.properties"].StringProperty = _Prop
 kivy_modules["kivy.properties"].BooleanProperty = _Prop
 kivy_modules["kivy.properties"].ListProperty = _Prop
+kivy_modules["kivy.clock"].Clock = types.SimpleNamespace(
+    schedule_once=lambda *args, **kwargs: types.SimpleNamespace(cancel=lambda: None)
+)
 
 for name, module in kivy_modules.items():
     module.__spec__ = ModuleSpec(name, loader=None)
@@ -121,6 +125,8 @@ def test_navigation_across_sets_and_exercises():
             ]
             self.current_exercise = 0
             self.current_set = 0
+            self.section_starts = [0]
+            self.exercise_sections = [0, 0]
 
     screen.session = DummySession()
     screen.update_display()
@@ -137,6 +143,37 @@ def test_navigation_across_sets_and_exercises():
 
     screen.navigate_left()
     assert screen.label_text == "Bench \u2013 Set 2 of 2"
+
+
+def test_multi_tap_navigation():
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [
+                {"name": "Bench", "sets": 2, "metric_defs": []},
+                {"name": "Squat", "sets": 2, "metric_defs": []},
+                {"name": "Run", "sets": 1, "metric_defs": []},
+            ]
+            self.current_exercise = 0
+            self.current_set = 0
+            self.section_starts = [0, 2]
+            self.exercise_sections = [0, 0, 1]
+
+    screen.session = DummySession()
+    screen.update_display()
+
+    screen.navigate_right_double()
+    assert (screen.exercise_idx, screen.set_idx) == (1, 0)
+
+    screen.navigate_right_triple()
+    assert (screen.exercise_idx, screen.set_idx) == (2, 0)
+
+    screen.navigate_left_double()
+    assert (screen.exercise_idx, screen.set_idx) == (1, 0)
+
+    screen.navigate_left_triple()
+    assert (screen.exercise_idx, screen.set_idx) == (0, 0)
 
 
 def test_save_future_metrics_preserves_session_state():
