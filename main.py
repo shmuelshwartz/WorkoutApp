@@ -88,6 +88,23 @@ from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
 if os.name == "nt" or sys.platform.startswith("win"):
     Window.size = (280, 280 * (20 / 9))
 
+try:
+    from android import mActivity
+    from jnius import autoclass
+
+    View = autoclass('android.view.View')
+    decorView = mActivity.getWindow().getDecorView()
+
+    decorView.setSystemUiVisibility(
+        View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+        View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+        View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+        View.SYSTEM_UI_FLAG_FULLSCREEN |
+        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+    )
+except Exception as e:
+    print("Immersive mode failed:", e)
 
 class Tab(MDBoxLayout, MDTabsBase):
     """A basic tab for use with :class:`~kivymd.uix.tab.MDTabs`."""
@@ -393,7 +410,14 @@ class WorkoutApp(MDApp):
     metric_library_version: int = 0
 
     def build(self):
-        return Builder.load_file(str(Path(__file__).with_name("main.kv")))
+        root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
+        Window.bind(on_keyboard=self._on_keyboard)
+        return root
+
+    def _on_keyboard(self, window, key, scancode, codepoint, modifiers):
+        if key in (27, 1001):
+            return True
+        return False
 
     def init_preset_editor(self, force_reload: bool = False):
         """Create or reload the ``PresetEditor`` for the selected preset."""
