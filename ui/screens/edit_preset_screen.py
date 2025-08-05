@@ -489,6 +489,11 @@ class EditPresetScreen(MDScreen):
                 elif mtype == "float":
                     input_filter = "float"
                 widget = MDTextField(text=str(value if value is not None else ""), multiline=False, input_filter=input_filter)
+                if self.mode == "session":
+                    widget.readonly = True
+
+            if self.mode == "session" and not isinstance(widget, MDTextField):
+                widget.disabled = True
 
             self.preset_metric_widgets[name] = widget
 
@@ -563,6 +568,7 @@ class EditPresetScreen(MDScreen):
                 ).get(
                     "is_user_created", False
                 ),
+                "locked": self.mode == "session",
             }
             for m in metrics
         ]
