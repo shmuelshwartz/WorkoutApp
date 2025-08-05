@@ -58,6 +58,7 @@ from ui.screens.metric_input_screen import MetricInputScreen
 from ui.screens.edit_exercise_screen import EditExerciseScreen
 
 from ui.screens.rest_screen import RestScreen
+from ui.screens.history_comparison_screen import HistoryComparisonScreen
 
 
 # Load workout presets from the database at startup
