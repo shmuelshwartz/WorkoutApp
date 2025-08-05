@@ -67,6 +67,14 @@ class _TextField(_DummyWidget):
 class _Slider(_DummyWidget):
     def __init__(self, value=0, **kwargs):
         self.value = value
+        self._binding = None
+
+    def bind(self, **kwargs):
+        self._binding = kwargs.get("value")
+
+class _Label(_DummyWidget):
+    def __init__(self, text="", **kwargs):
+        self.text = text
 
 kivymd_modules["kivymd.uix.selectioncontrol"].MDCheckbox = type(
     "_Checkbox", (_DummyWidget,), {"__init__": lambda self, active=False, **k: setattr(self, "active", active)}
@@ -76,7 +84,7 @@ kivymd_modules["kivymd.uix.screen"].MDScreen = _DummyWidget
 kivymd_modules["kivymd.uix.boxlayout"].MDBoxLayout = _BoxLayout
 kivymd_modules["kivymd.uix.textfield"].MDTextField = _TextField
 kivymd_modules["kivymd.uix.slider"].MDSlider = _Slider
-kivymd_modules["kivymd.uix.label"].MDLabel = _DummyWidget
+kivymd_modules["kivymd.uix.label"].MDLabel = _Label
 kivy_modules["kivy.uix.spinner"].Spinner = _Spinner
 kivy_modules["kivy.uix.scrollview"].ScrollView = _DummyWidget
 
@@ -227,4 +235,19 @@ def test_save_future_metrics_preserves_session_state():
     assert dummy_session.current_exercise == 0
     assert dummy_session.current_set == 0
     assert len(dummy_session.exercises[1]["results"]) == 1
+
+
+def test_slider_row_updates_label():
+    screen = MetricInputScreen()
+    row = screen._create_row({"name": "Intensity", "type": "slider"}, value=0.5)
+    slider = row.input_widget
+    value_label = next(
+        child
+        for child in row.children
+        if getattr(child, "text", None) is not None and child.text != "Intensity"
+    )
+    assert value_label.text == "0.50"
+    slider.value = 0.72
+    slider._binding(slider, slider.value)
+    assert value_label.text == "0.72"
 
