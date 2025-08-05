@@ -1407,3 +1407,18 @@ def test_refresh_sections_preserves_names(monkeypatch):
         "Skill work",
         "Workout",
     ]
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_session_edit_locking(monkeypatch, sample_db):
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    app = _DummyApp()
+    app.workout_session = session
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+    screen = EditPresetScreen(mode="session")
+    assert not screen._is_section_locked(0)
+    assert not screen._is_exercise_locked(0, 0)
+    session.current_set = 1
+    assert screen._is_section_locked(0)
+    assert screen._is_exercise_locked(0, 0)
+    assert not screen._is_exercise_locked(0, 1)
