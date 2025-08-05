@@ -121,3 +121,18 @@ def test_undo_last_set_restores_metrics_and_timer(sample_db, monkeypatch):
     assert session.pending_pre_set_metrics == {"Reps": 10}
     assert session.current_set_start_time == start
     assert session.resume_from_last_start is True
+
+
+def test_undo_set_start_returns_to_rest(sample_db, monkeypatch):
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=10)
+    start = session.current_set_start_time
+
+    # simulate beginning a set 5 seconds later
+    monkeypatch.setattr(core.time, "time", lambda: start + 5)
+    session.current_set_start_time = start + 5
+
+    session.undo_set_start()
+
+    assert session.current_set_start_time == start
+    assert session.resume_from_last_start is False
+    assert session.rest_target_time == start + session.rest_duration

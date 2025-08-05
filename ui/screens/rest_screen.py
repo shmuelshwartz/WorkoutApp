@@ -1,11 +1,57 @@
-from kivymd.app import MDApp
-from kivymd.uix.screen import MDScreen
-from kivymd.uix.dialog import MDDialog
-from kivymd.uix.button import MDFlatButton
-from kivy.clock import Clock
-from kivy.properties import NumericProperty, StringProperty, BooleanProperty, ListProperty
-from kivymd.uix.dialog import MDDialog
-from kivymd.uix.button import MDRaisedButton
+try:  # pragma: no cover - fallback for environments without Kivy
+    from kivymd.app import MDApp
+    from kivymd.uix.screen import MDScreen
+    from kivymd.uix.dialog import MDDialog
+    from kivymd.uix.button import MDFlatButton, MDRaisedButton
+    from kivy.clock import Clock
+    from kivy.properties import (
+        NumericProperty,
+        StringProperty,
+        BooleanProperty,
+        ListProperty,
+    )
+except Exception:  # pragma: no cover - simple stubs
+    MDApp = object
+    MDScreen = object
+
+    class MDDialog:  # minimal placeholder
+        def __init__(self, *a, **k):
+            pass
+
+        def open(self, *a, **k):
+            pass
+
+        def dismiss(self, *a, **k):
+            pass
+
+    class MDFlatButton:  # minimal placeholder
+        def __init__(self, *a, **k):
+            pass
+
+    class MDRaisedButton(MDFlatButton):
+        pass
+
+    class _Clock:
+        def schedule_interval(self, *a, **k):
+            pass
+
+        def unschedule(self, *a, **k):
+            pass
+
+    Clock = _Clock()
+
+    def NumericProperty(value=None):
+        return value
+
+    def StringProperty(value=None):
+        return value
+
+    def BooleanProperty(value=False):
+        return value
+
+    def ListProperty(value=None):
+        return value
+
 import time
 import math
 from core import DEFAULT_REST_DURATION, get_exercise_details

@@ -2,6 +2,8 @@ from kivymd.uix.screen import MDScreen
 from kivy.properties import NumericProperty, StringProperty
 from kivy.clock import Clock
 from kivymd.app import MDApp
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.button import MDFlatButton
 import time
 
 
@@ -45,3 +47,25 @@ class WorkoutActiveScreen(MDScreen):
         self.elapsed = time.time() - self.start_time
         minutes, seconds = divmod(int(self.elapsed), 60)
         self.formatted_time = f"{minutes:02d}:{seconds:02d}"
+
+    def show_undo_confirmation(self):
+        if not hasattr(self, "_undo_dialog") or not self._undo_dialog:
+            self._undo_dialog = MDDialog(
+                text="Are you sure you want to undo and return to rest?",
+                buttons=[
+                    MDFlatButton(text="Cancel", on_release=lambda *_: self._undo_dialog.dismiss()),
+                    MDFlatButton(text="Confirm", on_release=self._perform_undo),
+                ],
+            )
+        self._undo_dialog.open()
+
+    def _perform_undo(self, *args):
+        if hasattr(self, "_undo_dialog") and self._undo_dialog:
+            self._undo_dialog.dismiss()
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
+        if session:
+            session.undo_set_start()
+        self.stop_timer()
+        if self.manager:
+            self.manager.current = "rest"

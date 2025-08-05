@@ -990,6 +990,18 @@ class WorkoutSession:
         self.rest_target_time = self.last_set_time + self.rest_duration
         self.awaiting_post_set_metrics = True
 
+    def undo_set_start(self) -> None:
+        """Revert state to before the current set began."""
+
+        # Reset start time to when the previous set ended
+        self.current_set_start_time = self.last_set_time
+        # Ensure no automatic resume behaviour
+        self.resume_from_last_start = False
+        # No post-set metrics should be expected
+        self.awaiting_post_set_metrics = False
+        # Restore rest timer based on the last completed set
+        self.rest_target_time = self.last_set_time + self.rest_duration
+
     def next_exercise_name(self):
         if self.current_exercise < len(self.exercises):
             return self.exercises[self.current_exercise]["name"]
