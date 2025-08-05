@@ -393,7 +393,14 @@ class WorkoutApp(MDApp):
     metric_library_version: int = 0
 
     def build(self):
-        return Builder.load_file(str(Path(__file__).with_name("main.kv")))
+        root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
+        Window.bind(on_keyboard=self._on_keyboard)
+        return root
+
+    def _on_keyboard(self, window, key, scancode, codepoint, modifiers):
+        if key in (27, 1001):
+            return True
+        return False
 
     def init_preset_editor(self, force_reload: bool = False):
         """Create or reload the ``PresetEditor`` for the selected preset."""
