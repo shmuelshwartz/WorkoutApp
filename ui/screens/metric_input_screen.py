@@ -295,6 +295,14 @@ class MetricInputScreen(MDScreen):
         session = getattr(app, "workout_session", None)
         if not session:
             return
+        if getattr(app, "record_pre_set", False) and not getattr(
+            app, "record_new_set", False
+        ):
+            session.set_pre_set_metrics(metrics)
+            app.record_pre_set = False
+            if self.manager:
+                self.manager.current = "rest"
+            return
 
         target_ex = self.exercise_idx
         target_set = self.set_idx
@@ -308,6 +316,9 @@ class MetricInputScreen(MDScreen):
         session.current_exercise = target_ex
         session.current_set = target_set
         finished = session.record_metrics(metrics)
+
+        app.record_new_set = False
+        app.record_pre_set = False
 
         if target_ex == orig_ex and target_set == orig_set:
             self.exercise_idx = session.current_exercise
