@@ -103,3 +103,21 @@ def test_mark_set_completed_time_adjustment(sample_db, monkeypatch):
     session.mark_set_completed(adjust_seconds=-5)
     assert session.last_set_time == pytest.approx(160.0)
     assert session.rest_target_time == pytest.approx(190.0)
+
+
+def test_undo_last_set_restores_metrics_and_timer(sample_db, monkeypatch):
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    start = session.current_set_start_time
+
+    monkeypatch.setattr(core.time, "time", lambda: start + 5)
+    session.mark_set_completed()
+    session.record_metrics({"Reps": 10})
+
+    monkeypatch.setattr(core.time, "time", lambda: start + 6)
+    assert session.undo_last_set()
+    assert session.current_exercise == 0
+    assert session.current_set == 0
+    assert session.exercises[0]["results"] == []
+    assert session.pending_pre_set_metrics == {"Reps": 10}
+    assert session.current_set_start_time == start
+    assert session.resume_from_last_start is True
