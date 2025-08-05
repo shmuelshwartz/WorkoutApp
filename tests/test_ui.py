@@ -281,6 +281,66 @@ def test_save_metrics_clears_next_metrics(monkeypatch):
     )
     assert getattr(goal_row.input_widget, "text", "") == ""
 
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_pre_set_metrics_do_not_advance(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    screen = MetricInputScreen()
+
+    class DummySession:
+        preset_name = "Test"
+        pending_pre_set_metrics = {}
+        current_exercise = 0
+        current_set = 0
+        awaiting_post_set_metrics = False
+        exercises = [
+            {
+                "name": "Bench",
+                "sets": 2,
+                "results": [],
+                "metric_defs": [
+                    {
+                        "name": "Goal",
+                        "type": "int",
+                        "input_timing": "pre_set",
+                        "is_required": True,
+                    }
+                ],
+            }
+        ]
+
+        def record_metrics(self, metrics):
+            self.exercises[0]["results"].append({"metrics": metrics})
+            self.current_set += 1
+            return False
+
+        def set_pre_set_metrics(self, metrics):
+            self.pending_pre_set_metrics = metrics.copy()
+
+    dummy_app = _DummyApp()
+    dummy_app.workout_session = DummySession()
+    dummy_app.record_new_set = False
+    dummy_app.record_pre_set = True
+    dummy_app.root = type("Root", (), {"current": ""})()
+
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+
+    screen.on_pre_enter()
+    goal_row = next(
+        r for r in screen.metrics_list.children if getattr(r, "metric_name", "") == "Goal"
+    )
+    goal_row.input_widget.text = "5"
+
+    screen.save_metrics()
+
+    assert dummy_app.workout_session.current_set == 0
+    assert dummy_app.workout_session.pending_pre_set_metrics == {"Goal": 5}
+    assert dummy_app.root.current == "rest"
+
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_rest_screen_toggle_ready_changes_state():
     screen = RestScreen()
