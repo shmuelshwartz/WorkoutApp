@@ -437,6 +437,38 @@ class WorkoutApp(MDApp):
         # ensure metric input doesn't accidentally advance sets
         self.record_new_set = False
 
+    def edit_active_preset(self):
+        """Open the preset editor for the active workout session."""
+        if not self.workout_session or not self.root:
+            return
+        editor = PresetEditor(db_path=DEFAULT_DB_PATH)
+        editor.preset_name = self.workout_session.preset_name
+        editor.sections = []
+        for s_idx, name in enumerate(self.workout_session.section_names):
+            start = self.workout_session.section_starts[s_idx]
+            end = (
+                self.workout_session.section_starts[s_idx + 1]
+                if s_idx + 1 < len(self.workout_session.section_starts)
+                else len(self.workout_session.exercises)
+            )
+            exercises = []
+            for ex in self.workout_session.exercises[start:end]:
+                exercises.append(
+                    {
+                        "name": ex.get("name"),
+                        "sets": ex.get("sets"),
+                        "rest": ex.get("rest"),
+                        "library_id": ex.get("library_exercise_id"),
+                        "id": ex.get("preset_section_exercise_id"),
+                    }
+                )
+            editor.sections.append({"name": name, "exercises": exercises})
+        editor.mark_saved()
+        self.preset_editor = editor
+        screen = self.root.get_screen("edit_preset")
+        screen.mode = "session"
+        self.root.current = "edit_preset"
+
     def mark_set_complete(self, adjust_seconds=0):
         if self.workout_session:
             self.workout_session.mark_set_completed(adjust_seconds=adjust_seconds)

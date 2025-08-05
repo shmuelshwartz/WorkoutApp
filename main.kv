@@ -458,7 +458,7 @@ ScreenManager:
             IconTextButton:
                 icon: "pencil"
                 text: "edit"
-                on_release: app.root.current = "workout_edit"
+                on_release: app.edit_active_preset()
             IconTextButton:
                 icon: "cog"
                 text: "settings"
@@ -677,6 +677,7 @@ ScreenManager:
             multiline: False
             hint_text: "Section Name"
             on_text: root.section_name = self.text
+            disabled: root.locked
         MDIconButton:
             icon: "chevron-down" if root.expanded else "chevron-right"
             on_release: root.toggle()
@@ -697,10 +698,14 @@ ScreenManager:
             MDRaisedButton:
                 text: "Add Exercise"
                 on_release: root.open_exercise_selection()
+                disabled: root.locked
+                opacity: 1 if not root.locked else 0
             MDRaisedButton:
                 text: "Delete"
                 md_bg_color: 1, 0, 0, 1
                 on_release: root.confirm_delete()
+                disabled: root.locked
+                opacity: 1 if not root.locked else 0
 
 <EditPresetScreen>:
     sections_box: sections_box
@@ -853,7 +858,8 @@ ScreenManager:
                 spacing: "10dp"
                 MDRaisedButton:
                     text: "Save"
-                    disabled: not root.save_enabled
+                    disabled: root.mode == "session" or not root.save_enabled
+                    opacity: 1 if root.mode != "session" else 0
                     on_release: root.save_preset()
                 MDRaisedButton:
                     text: "Back"
@@ -881,14 +887,16 @@ ScreenManager:
         MDIcon:
             icon: "arrow-up"
             font_size: "20sp"
-            on_touch_down: if self.collide_point(*args[1].pos): root.move_up()
+            on_touch_down: if not root.locked and self.collide_point(*args[1].pos): root.move_up()
             pos_hint: {"center_y": 0.5}
+            opacity: 1 if not root.locked else 0
 
         MDIcon:
             icon: "arrow-down"
             font_size: "20sp"
-            on_touch_down: if self.collide_point(*args[1].pos): root.move_down()
+            on_touch_down: if not root.locked and self.collide_point(*args[1].pos): root.move_down()
             pos_hint: {"center_y": 0.5}
+            opacity: 1 if not root.locked else 0
     MDLabel:
         size_hint_x: 1
         text: root.text
@@ -904,7 +912,8 @@ ScreenManager:
             icon: "pencil"
             font_size: "20sp"  # smaller icon size
             pos_hint: {"center_y": 0.5}  # center vertically
-            on_touch_down: if self.collide_point(*args[1].pos): root.edit()
+            on_touch_down: if not root.locked and self.collide_point(*args[1].pos): root.edit()
+            opacity: 1 if not root.locked else 0
 
         MDIcon:
             icon: "delete"
@@ -912,7 +921,8 @@ ScreenManager:
             theme_text_color: "Custom"
             text_color: 1, 0, 0, 1
             pos_hint: {"center_y": 0.5}  # center vertically
-            on_touch_down: if self.collide_point(*args[1].pos): root.remove_self()
+            on_touch_down: if not root.locked and self.collide_point(*args[1].pos): root.remove_self()
+            opacity: 1 if not root.locked else 0
 
 <ExerciseSelectionPanel>:
     exercise_list: exercise_list
