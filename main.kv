@@ -463,7 +463,7 @@ ScreenManager:
             IconTextButton:
                 icon: "flag-checkered"
                 text: "finish"
-                on_release: app.root.current = "workout_summary"
+                on_release: root.confirm_finish()
 
 <WorkoutActiveScreen>:
     on_leave: root.stop_timer()
