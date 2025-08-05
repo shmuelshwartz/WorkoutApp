@@ -118,7 +118,7 @@ def test_undo_last_set_restores_metrics_and_timer(sample_db, monkeypatch):
     assert session.current_exercise == 0
     assert session.current_set == 0
     assert session.exercises[0]["results"] == []
-    assert session.pending_pre_set_metrics == {"Reps": 10}
+    assert session.pending_pre_set_metrics == {(0, 0): {"Reps": 10}}
     assert session.current_set_start_time == start
     assert session.resume_from_last_start is True
 
