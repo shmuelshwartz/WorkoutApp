@@ -396,6 +396,9 @@ class MetricInputScreen(MDScreen):
 
         orig_ex = session.current_exercise
         orig_set = session.current_set
+        orig_start = session.current_set_start_time
+        orig_pending = session.pending_pre_set_metrics.copy()
+        orig_awaiting = session.awaiting_post_set_metrics
 
         finished = session.record_metrics(target_ex, target_set, metrics)
 
