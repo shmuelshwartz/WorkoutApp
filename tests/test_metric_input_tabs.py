@@ -331,15 +331,16 @@ def test_edit_previous_set_does_not_leak_future_pending():
             self.pending_pre_set_metrics = {(0, 1): {"Weight": 100}}
             self.awaiting_post_set_metrics = False
 
-        def record_metrics(self, metrics):
-            key = (self.current_exercise, self.current_set)
+        def record_metrics(self, ex_idx, set_idx, metrics):
+            key = (ex_idx, set_idx)
             metrics = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
-            ex = self.exercises[self.current_exercise]
-            if self.current_set < len(ex["results"]):
-                ex["results"][self.current_set]["metrics"] = metrics
+            ex = self.exercises[ex_idx]
+            if set_idx < len(ex["results"]):
+                ex["results"][set_idx]["metrics"] = metrics
             else:
                 ex.setdefault("results", []).append({"metrics": metrics})
-            self.current_set += 1
+            if ex_idx == self.current_exercise and set_idx == self.current_set:
+                self.current_set += 1
             return False
 
     dummy_session = DummySession()
