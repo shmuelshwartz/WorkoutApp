@@ -214,6 +214,11 @@ def test_save_future_metrics_preserves_session_state():
             self.awaiting_post_set_metrics = False
             return False
 
+        def set_pre_set_metrics(self, metrics, exercise_index=None, set_index=None):
+            ex = self.current_exercise if exercise_index is None else exercise_index
+            st = self.current_set if set_index is None else set_index
+            self.pending_pre_set_metrics[(ex, st)] = metrics.copy()
+
     dummy_session = DummySession()
     dummy_app = types.SimpleNamespace(workout_session=dummy_session)
     metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
@@ -285,6 +290,11 @@ def test_save_future_metrics_returns_to_rest():
             self.awaiting_post_set_metrics = False
             return False
 
+        def set_pre_set_metrics(self, metrics, exercise_index=None, set_index=None):
+            ex = self.current_exercise if exercise_index is None else exercise_index
+            st = self.current_set if set_index is None else set_index
+            self.pending_pre_set_metrics[(ex, st)] = metrics.copy()
+
     dummy_session = DummySession()
     dummy_app = types.SimpleNamespace(workout_session=dummy_session)
     metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
@@ -342,6 +352,11 @@ def test_edit_previous_set_does_not_leak_future_pending():
             if ex_idx == self.current_exercise and set_idx == self.current_set:
                 self.current_set += 1
             return False
+
+        def set_pre_set_metrics(self, metrics, exercise_index=None, set_index=None):
+            ex = self.current_exercise if exercise_index is None else exercise_index
+            st = self.current_set if set_index is None else set_index
+            self.pending_pre_set_metrics[(ex, st)] = metrics.copy()
 
     dummy_session = DummySession()
     dummy_app = types.SimpleNamespace(workout_session=dummy_session)

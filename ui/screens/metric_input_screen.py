@@ -391,38 +391,28 @@ class MetricInputScreen(MDScreen):
                 self.manager.current = "rest"
             return
 
-        target_ex = self.exercise_idx
-        target_set = self.set_idx
-
         orig_ex = session.current_exercise
         orig_set = session.current_set
-        orig_start = session.current_set_start_time
-        orig_pending = session.pending_pre_set_metrics.copy()
-        orig_awaiting = session.awaiting_post_set_metrics
 
-        finished = session.record_metrics(target_ex, target_set, metrics)
+        sel_ex = self.exercise_idx
+        sel_set = self.set_idx
+
+        finished = False
+        if getattr(app, "record_new_set", False):
+            post_metrics = metrics if (sel_ex == orig_ex and sel_set == orig_set) else {}
+            finished = session.record_metrics(orig_ex, orig_set, post_metrics)
+            if (sel_ex, sel_set) != (orig_ex, orig_set):
+                session.set_pre_set_metrics(metrics, sel_ex, sel_set)
+        else:
+            finished = session.record_metrics(sel_ex, sel_set, metrics)
 
         app.record_new_set = False
         app.record_pre_set = False
 
-        if target_ex == orig_ex and target_set == orig_set:
-            self.exercise_idx = session.current_exercise
-            self.set_idx = session.current_set
-            self.update_display()
-            if finished and getattr(self, "manager", None):
-                self.manager.current = "workout_summary"
-            elif getattr(self, "manager", None):
-                self.manager.current = "rest"
-        else:
-
-            session.current_exercise = orig_ex
-            session.current_set = orig_set
-            session.current_set_start_time = orig_start
-            orig_pending.pop((target_ex, target_set), None)
-            session.pending_pre_set_metrics = orig_pending
-            session.awaiting_post_set_metrics = orig_awaiting
-            self.exercise_idx = orig_ex
-            self.set_idx = orig_set
-            self.update_display()
-            if getattr(self, "manager", None):
-                self.manager.current = "rest"
+        self.exercise_idx = session.current_exercise
+        self.set_idx = session.current_set
+        self.update_display()
+        if finished and getattr(self, "manager", None):
+            self.manager.current = "workout_summary"
+        elif getattr(self, "manager", None):
+            self.manager.current = "rest"
