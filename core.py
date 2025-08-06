@@ -952,6 +952,13 @@ class WorkoutSession:
             preset_name, db_path=self.db_path
         )
 
+        # build storage for all exercise metrics
+        self.metric_store: dict[tuple[int, int], dict[str, object]] = {}
+        for ex_idx, ex in enumerate(self.exercises):
+            template = {m["name"]: None for m in ex.get("metric_defs", [])}
+            for set_idx in range(ex["sets"]):
+                self.metric_store[(ex_idx, set_idx)] = template.copy()
+
         self.current_exercise = 0
         self.current_set = 0
         self.start_time = time.time()
@@ -1073,13 +1080,8 @@ class WorkoutSession:
         """Return ``True`` if all required pre-set metrics have been entered."""
 
         required = self.required_pre_set_metric_names()
-        pending = self.pending_pre_set_metrics.get(
-            (self.current_exercise, self.current_set), {}
-        )
-        return all(
-            name in pending and pending.get(name) not in (None, "")
-            for name in required
-        )
+        store = self.metric_store.get((self.current_exercise, self.current_set), {})
+        return all(store.get(name) not in (None, "") for name in required)
 
     # --------------------------------------------------------------
     # Post-set metric helpers
@@ -1124,7 +1126,18 @@ class WorkoutSession:
 
         ex = self.current_exercise if exercise_index is None else exercise_index
         st = self.current_set if set_index is None else set_index
-        self.pending_pre_set_metrics[(ex, st)] = metrics.copy()
+        store = self.metric_store.get((ex, st))
+        if store is None:
+            return
+        pending = self.pending_pre_set_metrics.setdefault((ex, st), {})
+        for name, value in metrics.items():
+            if name == "Notes":
+                pending["Notes"] = value
+                continue
+            if name not in store:
+                raise KeyError(f"Unknown metric '{name}' for exercise {ex}")
+            store[name] = value
+            pending[name] = value
 
     def set_session_metrics(self, metrics: dict) -> None:
         """Store metrics that apply to the entire session."""
@@ -1137,11 +1150,21 @@ class WorkoutSession:
                 self.end_time = time.time()
             return True
 
-        key = (self.current_exercise, self.current_set)
-        metrics = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
+        key = (exercise_index, set_index)
+        store = self.metric_store.get(key)
+        if store is None:
+            raise IndexError("Invalid exercise/set index")
+        combined = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
+        notes = str(combined.pop("Notes", ""))
+
+        for name, value in combined.items():
+            if name not in store:
+                raise KeyError(
+                    f"Unknown metric '{name}' for exercise {exercise_index}"
+                )
+            store[name] = value
 
         end_time = time.time()
-        notes = str(metrics.get("Notes", ""))
 
         ex = self.exercises[exercise_index]
         results = ex["results"]
@@ -1153,7 +1176,7 @@ class WorkoutSession:
             else end_time
         )
         results[set_index] = {
-            "metrics": metrics,
+            "metrics": store.copy(),
             "started_at": start_time,
             "ended_at": end_time,
             "notes": notes,
@@ -1202,7 +1225,11 @@ class WorkoutSession:
         self.current_set = set_idx
 
         # Preserve any previously entered metrics for the set
-        self.pending_pre_set_metrics[(ex_idx, set_idx)] = last.get("metrics", {}).copy()
+        self.pending_pre_set_metrics[(ex_idx, set_idx)] = {
+            k: v
+            for k, v in self.metric_store.get((ex_idx, set_idx), {}).items()
+            if v not in (None, "")
+        }
         self.awaiting_post_set_metrics = False
 
         # Resume timer from the original start time
