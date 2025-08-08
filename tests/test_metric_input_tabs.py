@@ -55,14 +55,19 @@ class _BoxLayout(_DummyWidget):
     def add_widget(self, widget):
         self.children.append(widget)
 
+    def clear_widgets(self):
+        self.children = []
+
 class _Spinner(_DummyWidget):
     def __init__(self, text="", values=()):
         self.text = text
         self.values = values
 
 class _TextField(_DummyWidget):
-    def __init__(self, text="", **kwargs):
+    def __init__(self, text="", multiline=False, input_filter=None, **kwargs):
         self.text = text
+        self.multiline = multiline
+        self.input_filter = input_filter
 
 class _Slider(_DummyWidget):
     def __init__(self, value=0, **kwargs):
@@ -199,11 +204,12 @@ def test_save_future_metrics_preserves_session_state():
             self.pending_pre_set_metrics = {}
             self.awaiting_post_set_metrics = False
 
-        def record_metrics(self, ex_idx, set_idx, metrics):
+        def record_metrics(self, ex_idx, set_idx, metrics, end_time=None):
             ex = self.exercises[ex_idx]
             while len(ex.setdefault("results", [])) <= set_idx:
                 ex["results"].append(None)
-            ex["results"][set_idx] = {"metrics": metrics}
+            notes = metrics.pop("Notes", "")
+            ex["results"][set_idx] = {"metrics": metrics, "notes": notes}
             if ex_idx == self.current_exercise and set_idx == self.current_set:
                 self.current_set += 1
                 if self.current_set >= ex["sets"]:
@@ -275,11 +281,12 @@ def test_save_future_metrics_returns_to_rest():
             self.pending_pre_set_metrics = {}
             self.awaiting_post_set_metrics = False
 
-        def record_metrics(self, ex_idx, set_idx, metrics):
+        def record_metrics(self, ex_idx, set_idx, metrics, end_time=None):
             ex = self.exercises[ex_idx]
             while len(ex.setdefault("results", [])) <= set_idx:
                 ex["results"].append(None)
-            ex["results"][set_idx] = {"metrics": metrics}
+            notes = metrics.pop("Notes", "")
+            ex["results"][set_idx] = {"metrics": metrics, "notes": notes}
             if ex_idx == self.current_exercise and set_idx == self.current_set:
                 self.current_set += 1
                 if self.current_set >= ex["sets"]:
@@ -341,14 +348,16 @@ def test_edit_previous_set_does_not_leak_future_pending():
             self.pending_pre_set_metrics = {(0, 1): {"Weight": 100}}
             self.awaiting_post_set_metrics = False
 
-        def record_metrics(self, ex_idx, set_idx, metrics):
+        def record_metrics(self, ex_idx, set_idx, metrics, end_time=None):
             key = (ex_idx, set_idx)
-            metrics = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
+            combined = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
+            notes = combined.pop("Notes", "")
             ex = self.exercises[ex_idx]
             if set_idx < len(ex["results"]):
-                ex["results"][set_idx]["metrics"] = metrics
+                ex["results"][set_idx]["metrics"] = combined
+                ex["results"][set_idx]["notes"] = notes
             else:
-                ex.setdefault("results", []).append({"metrics": metrics})
+                ex.setdefault("results", []).append({"metrics": combined, "notes": notes})
             if ex_idx == self.current_exercise and set_idx == self.current_set:
                 self.current_set += 1
             return False
@@ -382,4 +391,134 @@ def test_edit_previous_set_does_not_leak_future_pending():
 
     assert dummy_session.exercises[0]["results"][0]["metrics"] == {"Reps": 7}
     assert dummy_session.pending_pre_set_metrics == {(0, 1): {"Weight": 100}}
+
+
+def test_edit_previous_set_while_new_set_pending():
+    screen = MetricInputScreen()
+
+def test_notes_row_is_multiline_and_last():
+    screen = MetricInputScreen()
+
+    class DummyList:
+        def __init__(self):
+            self.children = []
+
+        def clear_widgets(self):
+            self.children.clear()
+
+        def add_widget(self, widget):
+            self.children.append(widget)
+
+    screen.metrics_list = DummyList()
+    screen.session = types.SimpleNamespace(
+        exercises=[
+            {
+                "name": "Bench",
+                "sets": 1,
+                "metric_defs": [{"name": "Reps", "type": "int", "is_required": True}],
+                "results": [{"metrics": {"Reps": 5}, "notes": "prev note"}],
+            }
+        ],
+        pending_pre_set_metrics={},
+    )
+    screen.exercise_idx = 0
+    screen.set_idx = 0
+
+    screen.update_metrics()
+
+    assert screen.metrics_list.children[-1].metric_name == "Notes"
+    notes_row = screen.metrics_list.children[-1]
+    assert isinstance(notes_row.input_widget, metric_module.MDTextField)
+    assert notes_row.input_widget.multiline is True
+    assert notes_row.input_widget.text == "prev note"
+
+def test_time_metric_first_and_value():
+    screen = MetricInputScreen()
+    screen.metrics_list = _BoxLayout()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [
+                {
+                    "name": "Bench",
+                    "sets": 2,
+                    "results": [
+                        {"metrics": {"Reps": 7}},
+                        {"metrics": {}},
+                    "sets": 1,
+                    "metric_defs": [{"name": "Reps", "type": "int", "is_required": True}],
+                    "results": [
+                        {
+                            "metrics": {"Reps": 5},
+                            "started_at": 100.0,
+                            "ended_at": 105.4,
+                        }
+                    ],
+                }
+            ]
+            self.current_exercise = 0
+            self.current_set = 1
+            self.current_set_start_time = 0
+            self.pending_pre_set_metrics = {}
+            self.awaiting_post_set_metrics = False
+
+        def record_metrics(self, ex_idx, set_idx, metrics):
+            ex = self.exercises[ex_idx]
+            if set_idx < len(ex["results"]):
+                ex["results"][set_idx]["metrics"] = metrics
+            else:
+                ex.setdefault("results", []).append({"metrics": metrics})
+            if ex_idx == self.current_exercise and set_idx == self.current_set:
+                self.current_set += 1
+            return False
+
+        def set_pre_set_metrics(self, metrics, exercise_index=None, set_index=None):
+            ex = self.current_exercise if exercise_index is None else exercise_index
+            st = self.current_set if set_index is None else set_index
+            self.pending_pre_set_metrics[(ex, st)] = metrics.copy()
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(
+        workout_session=dummy_session, record_new_set=True, record_pre_set=False
+    )
+    metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
+
+    class DummyList:
+        def __init__(self):
+            self.children = []
+
+        def clear_widgets(self):
+            pass
+
+        def add_widget(self, widget):
+            pass
+
+    screen.metrics_list = DummyList()
+    screen._collect_metrics = lambda _w: {"Reps": 8}
+    screen.session = dummy_session
+    screen.exercise_idx = 0
+    screen.set_idx = 0
+
+    screen.save_metrics()
+
+    assert dummy_session.exercises[0]["results"][0]["metrics"] == {"Reps": 8}
+    assert dummy_session.current_exercise == 0
+    assert dummy_session.current_set == 1
+    assert dummy_app.record_new_set is True
+    assert dummy_session.exercises[0]["results"][1]["metrics"] == {}
+
+            self.current_set = 0
+            self.pending_pre_set_metrics = {}
+            self.awaiting_post_set_metrics = False
+            self.current_set_start_time = 105.4
+            self.last_set_time = 105.4
+
+    screen.session = DummySession()
+    screen.exercise_idx = 0
+    screen.set_idx = 0
+    screen.update_metrics()
+
+    assert screen.metrics_list.children[0].metric_name == "Time"
+    assert screen.metrics_list.children[1].metric_name == "Reps"
+    assert screen.metrics_list.children[0].input_widget.text == "5.4"
 

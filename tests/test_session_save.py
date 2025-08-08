@@ -59,6 +59,18 @@ def test_save_completed_session(sample_db):
     conn.close()
 
 
+def test_save_session_with_notes(sample_db):
+    session = _complete_session(sample_db)
+    session.exercises[0]["results"][0]["notes"] = "Felt easy"
+    core.save_completed_session(session, db_path=sample_db)
+    conn = sqlite3.connect(sample_db)
+    cur = conn.cursor()
+    cur.execute("SELECT notes FROM session_exercise_sets")
+    notes = [row[0] for row in cur.fetchall()]
+    assert "Felt easy" in notes
+    conn.close()
+
+
 def test_save_session_validation(sample_db):
     session = core.WorkoutSession("Push Day", db_path=sample_db)
     with pytest.raises(ValueError):

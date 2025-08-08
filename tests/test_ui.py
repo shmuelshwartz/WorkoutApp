@@ -111,7 +111,11 @@ def test_populate_blank_for_new_set(monkeypatch):
         current_set = 1
         awaiting_post_set_metrics = True
         exercises = [
-            {"name": "Bench", "sets": 3, "results": [{"Weight": 100, "Notes": "prev"}]}
+            {
+                "name": "Bench",
+                "sets": 3,
+                "results": [{"metrics": {"Weight": 100}, "notes": "prev"}],
+            }
         ]
 
         def next_exercise_name(self):
@@ -171,7 +175,7 @@ def test_prev_metrics_use_last_set(monkeypatch):
         current_set = 0
         awaiting_post_set_metrics = True
         exercises = [
-            {"name": "Push", "sets": 1, "results": [{"Reps": 10}]},
+            {"name": "Push", "sets": 1, "results": [{"metrics": {"Reps": 10}, "notes": ""}]},
             {"name": "Run", "sets": 1, "results": []},
         ]
 
@@ -237,8 +241,11 @@ def test_save_metrics_clears_next_metrics(monkeypatch):
         def record_metrics(self, ex_idx, set_idx, metrics):
             while len(self.exercises[0]["results"]) <= set_idx:
                 self.exercises[0]["results"].append(None)
-            self.exercises[0]["results"][set_idx] = metrics
-
+            notes = metrics.pop("Notes", "")
+            self.exercises[0]["results"][set_idx] = {
+                "metrics": metrics,
+                "notes": notes,
+            }
             self.current_set += 1
             return False
 
@@ -319,8 +326,11 @@ def test_pre_set_metrics_do_not_advance(monkeypatch):
         def record_metrics(self, ex_idx, set_idx, metrics):
             while len(self.exercises[0]["results"]) <= set_idx:
                 self.exercises[0]["results"].append(None)
-            self.exercises[0]["results"][set_idx] = {"metrics": metrics}
-
+            notes = metrics.pop("Notes", "")
+            self.exercises[0]["results"][set_idx] = {
+                "metrics": metrics,
+                "notes": notes,
+            }
             self.current_set += 1
             return False
 
@@ -1444,3 +1454,25 @@ def test_reordering_current_exercise_updates_index(monkeypatch, sample_db):
     screen.apply_session_changes()
     assert [e["name"] for e in session.exercises] == ["Bench Press", "Push-up"]
     assert session.current_exercise == 0
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_increasing_sets_updates_metric_store(monkeypatch, sample_db):
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    editor = core.PresetEditor("Push Day", db_path=sample_db)
+    app = _DummyApp()
+    app.workout_session = session
+    app.preset_editor = editor
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+    screen = EditPresetScreen(mode="session")
+
+    # increase sets for first exercise
+    first_ex = editor.sections[0]["exercises"][0]
+    first_ex["sets"] = first_ex.get("sets", 0) + 1
+    screen.apply_session_changes()
+
+    assert session.exercises[0]["sets"] == first_ex["sets"]
+
+    # record metrics for the newly added set; should not raise IndexError
+    session.record_metrics(0, first_ex["sets"] - 1, {"Reps": 5})
+    assert len(session.exercises[0]["results"]) == first_ex["sets"]
