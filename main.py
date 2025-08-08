@@ -412,12 +412,29 @@ class WorkoutApp(MDApp):
     def build(self):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
         Window.bind(on_keyboard=self._on_keyboard)
+        Window.bind(on_focus=self._on_focus)
         return root
 
     def _on_keyboard(self, window, key, scancode, codepoint, modifiers):
         if key in (27, 1001):
             return True
         return False
+
+    def _reset_rest_ready(self):
+        """Unset ready state when the rest screen loses focus."""
+        if not self.root or self.root.current != "rest":
+            return
+        screen = self.root.get_screen("rest")
+        screen.is_ready = False
+        screen.timer_color = (1, 0, 0, 1)
+
+    def _on_focus(self, window, focus):
+        if not focus:
+            self._reset_rest_ready()
+
+    def on_pause(self):
+        self._reset_rest_ready()
+        return True
 
     def init_preset_editor(self, force_reload: bool = False):
         """Create or reload the ``PresetEditor`` for the selected preset."""

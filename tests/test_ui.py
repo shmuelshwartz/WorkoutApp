@@ -29,6 +29,7 @@ if kivy_available:
         EditPresetScreen,
         PresetDetailScreen,
         PresetOverviewScreen,
+        WorkoutApp,
     )
     from ui.popups import AddMetricPopup, EditMetricPopup
     from ui.expandable_list_item import ExerciseSummaryItem
@@ -356,6 +357,28 @@ def test_rest_screen_toggle_ready_changes_state():
     screen.toggle_ready()
     assert screen.is_ready is True
     assert screen.timer_color == (0, 1, 0, 1)
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_rest_screen_unreadies_when_app_minimized():
+    screen = RestScreen()
+    screen.is_ready = True
+    screen.timer_color = (0, 1, 0, 1)
+
+    app = WorkoutApp()
+
+    class Root:
+        current = "rest"
+
+        def get_screen(self, name):
+            return screen
+
+    app.root = Root()
+
+    app._on_focus(None, False)
+
+    assert screen.is_ready is False
+    assert screen.timer_color == (1, 0, 0, 1)
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
