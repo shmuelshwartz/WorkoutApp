@@ -250,9 +250,20 @@ class MetricInputScreen(MDScreen):
             return
         exercise = self.session.exercises[self.exercise_idx]
         metrics = exercise.get("metric_defs", [])
-        # Determine any previously recorded values for this set
-        values = {}
+        # Determine previously recorded values and notes for this set
         results = exercise.get("results", [])
+        record = (
+            results[self.set_idx]
+            if self.set_idx < len(results) and results[self.set_idx]
+            else None
+        )
+        values = record.get("metrics", {}) if record else {}
+        notes_val = record.get("notes", "") if record else ""
+        pending = self.session.pending_pre_set_metrics.get(
+            (self.exercise_idx, self.set_idx), {}
+        )
+        values = {**values, **{k: v for k, v in pending.items() if k != "Notes"}}
+        notes_val = pending.get("Notes", notes_val)
         if self.set_idx < len(results):
             values = results[self.set_idx].get("metrics", {})
         else:
@@ -283,6 +294,8 @@ class MetricInputScreen(MDScreen):
             self.metrics_list.add_widget(
                 self._create_row(metric, values.get(name))
             )
+        # Notes field always appears at the bottom
+        self.metrics_list.add_widget(self._create_row("Notes", notes_val))
 
     # ------------------------------------------------------------------
     # Metric row helpers
@@ -319,7 +332,10 @@ class MetricInputScreen(MDScreen):
             mtype = metric.get("type", "str")
             values = metric.get("values", [])
 
-        row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
+        row_height = dp(120) if name == "Notes" else dp(48)
+        row = MDBoxLayout(
+            orientation="horizontal", size_hint_y=None, height=row_height
+        )
         row.metric_name = name
         row.type = mtype
         row.add_widget(MDLabel(text=name, size_hint_x=0.4))
@@ -353,7 +369,11 @@ class MetricInputScreen(MDScreen):
                 multiline=multiline,
                 input_filter=input_filter,
                 text=str(value) if value not in (None, "") else "",
+                mode="rectangle" if multiline else "fill",
             )
+            if multiline:
+                widget.size_hint_y = None
+                widget.height = dp(96)
 
         row.input_widget = widget
         row.add_widget(widget)

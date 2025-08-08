@@ -64,8 +64,10 @@ class _Spinner(_DummyWidget):
         self.values = values
 
 class _TextField(_DummyWidget):
-    def __init__(self, text="", **kwargs):
+    def __init__(self, text="", multiline=False, input_filter=None, **kwargs):
         self.text = text
+        self.multiline = multiline
+        self.input_filter = input_filter
 
 class _Slider(_DummyWidget):
     def __init__(self, value=0, **kwargs):
@@ -206,7 +208,8 @@ def test_save_future_metrics_preserves_session_state():
             ex = self.exercises[ex_idx]
             while len(ex.setdefault("results", [])) <= set_idx:
                 ex["results"].append(None)
-            ex["results"][set_idx] = {"metrics": metrics}
+            notes = metrics.pop("Notes", "")
+            ex["results"][set_idx] = {"metrics": metrics, "notes": notes}
             if ex_idx == self.current_exercise and set_idx == self.current_set:
                 self.current_set += 1
                 if self.current_set >= ex["sets"]:
@@ -282,7 +285,8 @@ def test_save_future_metrics_returns_to_rest():
             ex = self.exercises[ex_idx]
             while len(ex.setdefault("results", [])) <= set_idx:
                 ex["results"].append(None)
-            ex["results"][set_idx] = {"metrics": metrics}
+            notes = metrics.pop("Notes", "")
+            ex["results"][set_idx] = {"metrics": metrics, "notes": notes}
             if ex_idx == self.current_exercise and set_idx == self.current_set:
                 self.current_set += 1
                 if self.current_set >= ex["sets"]:
@@ -346,12 +350,14 @@ def test_edit_previous_set_does_not_leak_future_pending():
 
         def record_metrics(self, ex_idx, set_idx, metrics, end_time=None):
             key = (ex_idx, set_idx)
-            metrics = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
+            combined = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
+            notes = combined.pop("Notes", "")
             ex = self.exercises[ex_idx]
             if set_idx < len(ex["results"]):
-                ex["results"][set_idx]["metrics"] = metrics
+                ex["results"][set_idx]["metrics"] = combined
+                ex["results"][set_idx]["notes"] = notes
             else:
-                ex.setdefault("results", []).append({"metrics": metrics})
+                ex.setdefault("results", []).append({"metrics": combined, "notes": notes})
             if ex_idx == self.current_exercise and set_idx == self.current_set:
                 self.current_set += 1
             return False
@@ -386,6 +392,42 @@ def test_edit_previous_set_does_not_leak_future_pending():
     assert dummy_session.exercises[0]["results"][0]["metrics"] == {"Reps": 7}
     assert dummy_session.pending_pre_set_metrics == {(0, 1): {"Weight": 100}}
 
+
+def test_notes_row_is_multiline_and_last():
+    screen = MetricInputScreen()
+
+    class DummyList:
+        def __init__(self):
+            self.children = []
+
+        def clear_widgets(self):
+            self.children.clear()
+
+        def add_widget(self, widget):
+            self.children.append(widget)
+
+    screen.metrics_list = DummyList()
+    screen.session = types.SimpleNamespace(
+        exercises=[
+            {
+                "name": "Bench",
+                "sets": 1,
+                "metric_defs": [{"name": "Reps", "type": "int", "is_required": True}],
+                "results": [{"metrics": {"Reps": 5}, "notes": "prev note"}],
+            }
+        ],
+        pending_pre_set_metrics={},
+    )
+    screen.exercise_idx = 0
+    screen.set_idx = 0
+
+    screen.update_metrics()
+
+    assert screen.metrics_list.children[-1].metric_name == "Notes"
+    notes_row = screen.metrics_list.children[-1]
+    assert isinstance(notes_row.input_widget, metric_module.MDTextField)
+    assert notes_row.input_widget.multiline is True
+    assert notes_row.input_widget.text == "prev note"
 
 def test_time_metric_first_and_value():
     screen = MetricInputScreen()
