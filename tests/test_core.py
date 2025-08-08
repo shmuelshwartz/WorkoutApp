@@ -142,7 +142,7 @@ def test_workout_session_progress(sample_db, monkeypatch):
     complete = False
     count = 0
     while not complete:
-        complete = session.record_metrics({"Reps": 10})
+        complete = session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})
         count += 1
     assert count == 5  # two sets push up + three sets bench press
     assert session.end_time is not None

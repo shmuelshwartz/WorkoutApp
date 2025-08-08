@@ -22,6 +22,7 @@ from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton, MDRaisedButton
 from kivymd.uix.card import MDSeparator
 from kivymd.uix.dialog import MDDialog
+from kivymd.uix.label import MDIcon
 from ui.popups import AddMetricPopup, EditMetricPopup
 
 import os
@@ -57,6 +58,11 @@ class EditExerciseScreen(MDScreen):
     exercise_sets = NumericProperty(DEFAULT_SETS_PER_EXERCISE)
     exercise_rest = NumericProperty(DEFAULT_REST_DURATION)
     section_length = NumericProperty(0)
+    mode = StringProperty("library")
+
+    def __init__(self, mode: str = "library", **kwargs):
+        super().__init__(**kwargs)
+        self.mode = mode
 
     def switch_tab(self, tab: str):
         """Switch between available tabs."""
@@ -186,22 +192,25 @@ class EditExerciseScreen(MDScreen):
             row = MDBoxLayout(size_hint_y=None, height="40dp")
             lbl = MDLabel(text=m.get("name", ""), halign="left")
             row.add_widget(lbl)
-            edit_btn = MDIconButton(icon="pencil")
-            edit_btn.bind(
-                on_release=lambda inst, metric=m: self.open_edit_metric_popup(metric)
-            )
-            row.add_widget(edit_btn)
-            remove_btn = MDIconButton(
-                icon="delete",
-                theme_text_color="Custom",
-                text_color=(1, 0, 0, 1),
-            )
-            remove_btn.bind(
-                on_release=lambda inst, name=m.get(
-                    "name", ""
-                ): self.confirm_remove_metric(name)
-            )
-            row.add_widget(remove_btn)
+            if self.mode == "session":
+                row.add_widget(MDIcon(icon="lock"))
+            else:
+                edit_btn = MDIconButton(icon="pencil")
+                edit_btn.bind(
+                    on_release=lambda inst, metric=m: self.open_edit_metric_popup(metric)
+                )
+                row.add_widget(edit_btn)
+                remove_btn = MDIconButton(
+                    icon="delete",
+                    theme_text_color="Custom",
+                    text_color=(1, 0, 0, 1),
+                )
+                remove_btn.bind(
+                    on_release=lambda inst, name=m.get(
+                        "name", ""
+                    ): self.confirm_remove_metric(name)
+                )
+                row.add_widget(remove_btn)
             self.metrics_list.add_widget(row)
             self.metrics_list.add_widget(MDSeparator())
 
@@ -269,15 +278,21 @@ class EditExerciseScreen(MDScreen):
         dialog.open()
 
     def open_add_metric_popup(self):
-        popup = AddMetricPopup(self, mode="select")
+        if self.mode == "session":
+            return
+        popup = AddMetricPopup(self, popup_mode="select", mode=self.mode)
         popup.open()
 
     def open_new_metric_popup(self):
-        popup = AddMetricPopup(self, mode="new")
+        if self.mode == "session":
+            return
+        popup = AddMetricPopup(self, popup_mode="new", mode=self.mode)
         popup.open()
 
     def open_edit_metric_popup(self, metric):
-        popup = EditMetricPopup(self, metric)
+        if self.mode == "session":
+            return
+        popup = EditMetricPopup(self, metric, mode=self.mode)
         popup.open()
 
     def save_exercise(self):

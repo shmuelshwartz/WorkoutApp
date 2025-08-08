@@ -58,6 +58,8 @@ from ui.screens.metric_input_screen import MetricInputScreen
 from ui.screens.edit_exercise_screen import EditExerciseScreen
 
 from ui.screens.rest_screen import RestScreen
+from ui.screens.previous_workouts_screen import PreviousWorkoutsScreen
+
 
 
 # Load workout presets from the database at startup
@@ -86,6 +88,23 @@ from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
 if os.name == "nt" or sys.platform.startswith("win"):
     Window.size = (280, 280 * (20 / 9))
 
+try:
+    from android import mActivity
+    from jnius import autoclass
+
+    View = autoclass('android.view.View')
+    decorView = mActivity.getWindow().getDecorView()
+
+    decorView.setSystemUiVisibility(
+        View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+        View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+        View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+        View.SYSTEM_UI_FLAG_FULLSCREEN |
+        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+    )
+except Exception as e:
+    print("Immersive mode failed:", e)
 
 class Tab(MDBoxLayout, MDTabsBase):
     """A basic tab for use with :class:`~kivymd.uix.tab.MDTabs`."""
@@ -391,7 +410,14 @@ class WorkoutApp(MDApp):
     metric_library_version: int = 0
 
     def build(self):
-        return Builder.load_file(str(Path(__file__).with_name("main.kv")))
+        root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
+        Window.bind(on_keyboard=self._on_keyboard)
+        return root
+
+    def _on_keyboard(self, window, key, scancode, codepoint, modifiers):
+        if key in (27, 1001):
+            return True
+        return False
 
     def init_preset_editor(self, force_reload: bool = False):
         """Create or reload the ``PresetEditor`` for the selected preset."""
@@ -434,6 +460,38 @@ class WorkoutApp(MDApp):
 
         # ensure metric input doesn't accidentally advance sets
         self.record_new_set = False
+
+    def edit_active_preset(self):
+        """Open the preset editor for the active workout session."""
+        if not self.workout_session or not self.root:
+            return
+        editor = PresetEditor(db_path=DEFAULT_DB_PATH)
+        editor.preset_name = self.workout_session.preset_name
+        editor.sections = []
+        for s_idx, name in enumerate(self.workout_session.section_names):
+            start = self.workout_session.section_starts[s_idx]
+            end = (
+                self.workout_session.section_starts[s_idx + 1]
+                if s_idx + 1 < len(self.workout_session.section_starts)
+                else len(self.workout_session.exercises)
+            )
+            exercises = []
+            for ex in self.workout_session.exercises[start:end]:
+                exercises.append(
+                    {
+                        "name": ex.get("name"),
+                        "sets": ex.get("sets"),
+                        "rest": ex.get("rest"),
+                        "library_id": ex.get("library_exercise_id"),
+                        "id": ex.get("preset_section_exercise_id"),
+                    }
+                )
+            editor.sections.append({"name": name, "exercises": exercises})
+        editor.mark_saved()
+        self.preset_editor = editor
+        screen = self.root.get_screen("edit_preset")
+        screen.mode = "session"
+        self.root.current = "edit_preset"
 
     def mark_set_complete(self, adjust_seconds=0):
         if self.workout_session:

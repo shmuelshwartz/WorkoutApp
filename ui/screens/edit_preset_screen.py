@@ -38,9 +38,12 @@ class SectionWidget(MDBoxLayout):
     color = ListProperty([1, 1, 1, 1])
     expanded = BooleanProperty(True)
     visible = BooleanProperty(True)
+    locked = BooleanProperty(False)
 
     def on_section_name(self, instance, value):
         """Update the section name in the preset editor."""
+        if self.locked:
+            return
         app = MDApp.get_running_app()
         if app and app.preset_editor:
             try:
@@ -55,6 +58,8 @@ class SectionWidget(MDBoxLayout):
         self.expanded = not self.expanded
 
     def open_exercise_selection(self):
+        if self.locked:
+            return
         app = MDApp.get_running_app()
         app.editing_section_index = self.section_index
         if app.root:
@@ -70,14 +75,19 @@ class SectionWidget(MDBoxLayout):
             return
         box = self.ids.exercise_list
         box.clear_widgets()
+        edit = app.root.get_screen("edit_preset") if app.root else None
         for idx, ex in enumerate(
             app.preset_editor.sections[self.section_index]["exercises"]
         ):
+            locked = self.locked
+            if edit:
+                locked = locked or edit._is_exercise_locked(self.section_index, idx)
             box.add_widget(
                 SelectedExerciseItem(
                     text=ex["name"],
                     section_index=self.section_index,
                     exercise_index=idx,
+                    locked=locked,
                 )
             )
 
@@ -108,15 +118,22 @@ class SectionWidget(MDBoxLayout):
     def add_exercise_widget(self, name: str, idx: int) -> None:
         """Append a single exercise widget to the list."""
         box = self.ids.exercise_list
+        edit = MDApp.get_running_app().root.get_screen("edit_preset") if MDApp.get_running_app().root else None
+        locked = self.locked
+        if edit:
+            locked = locked or edit._is_exercise_locked(self.section_index, idx)
         box.add_widget(
             SelectedExerciseItem(
                 text=name,
                 section_index=self.section_index,
                 exercise_index=idx,
+                locked=locked,
             )
         )
 
     def confirm_delete(self):
+        if self.locked:
+            return
         dialog = None
 
         def do_delete(*args):
@@ -154,6 +171,7 @@ class EditPresetScreen(MDScreen):
     session_metric_list = ObjectProperty(None)
     save_enabled = BooleanProperty(False)
     loading_dialog = ObjectProperty(None, allownone=True)
+    mode = StringProperty("library")
 
     preset_metric_widgets: dict = {}
 
@@ -165,6 +183,10 @@ class EditPresetScreen(MDScreen):
         (0.9, 1, 1, 1),
         (1, 0.9, 1, 1),
     ]
+
+    def __init__(self, mode: str = "library", **kwargs):
+        super().__init__(**kwargs)
+        self.mode = mode
 
     def update_save_enabled(self):
         """Refresh ``save_enabled`` based on preset modifications."""
@@ -204,19 +226,143 @@ class EditPresetScreen(MDScreen):
 
     def _load_preset(self):
         app = MDApp.get_running_app()
-        app.init_preset_editor()
-        self.preset_name = app.preset_editor.preset_name or "Preset"
-        self.current_tab = "sections"
-        if self.sections_box:
-            self.sections_box.clear_widgets()
-            for idx, sec in enumerate(app.preset_editor.sections):
-                self.add_section(sec["name"], index=idx)
-            if not app.preset_editor.sections:
-                self.add_section()
-        self.update_save_enabled()
+        if self.mode == "session":
+            self.preset_name = (
+                app.preset_editor.preset_name if app.preset_editor else "Preset"
+            )
+            self.current_tab = "sections"
+            if self.sections_box:
+                self.sections_box.clear_widgets()
+                for idx, sec in enumerate(app.preset_editor.sections):
+                    locked = self._is_section_locked(idx)
+                    self.add_section(sec["name"], index=idx, locked=locked)
+                if not app.preset_editor.sections:
+                    self.add_section()
+            self.update_save_enabled()
+        else:
+            app.init_preset_editor()
+            self.preset_name = app.preset_editor.preset_name or "Preset"
+            self.current_tab = "sections"
+            if self.sections_box:
+                self.sections_box.clear_widgets()
+                for idx, sec in enumerate(app.preset_editor.sections):
+                    self.add_section(sec["name"], index=idx)
+                if not app.preset_editor.sections:
+                    self.add_section()
+            self.update_save_enabled()
         if self.loading_dialog:
             self.loading_dialog.dismiss()
             self.loading_dialog = None
+
+    def _is_section_locked(self, section_index: int) -> bool:
+        """Return ``True`` if the section at ``section_index`` is locked."""
+        if self.mode != "session":
+            return False
+        app = MDApp.get_running_app()
+        session = getattr(app, "workout_session", None)
+        if not session:
+            return False
+        if section_index >= len(session.section_starts):
+            return False
+        start = session.section_starts[section_index]
+        end = (
+            session.section_starts[section_index + 1]
+            if section_index + 1 < len(session.section_starts)
+            else len(session.exercises)
+        )
+        if session.current_exercise >= end:
+            return True
+        if start <= session.current_exercise < end and session.current_set > 0:
+            return True
+        return False
+
+    def _is_exercise_locked(self, section_index: int, exercise_index: int) -> bool:
+        """Return ``True`` if the exercise is locked."""
+        if self.mode != "session":
+            return False
+        app = MDApp.get_running_app()
+        session = getattr(app, "workout_session", None)
+        if not session:
+            return False
+        if section_index >= len(session.section_starts):
+            return False
+        global_index = session.section_starts[section_index] + exercise_index
+        if global_index < session.current_exercise:
+            return True
+        if global_index == session.current_exercise and session.current_set > 0:
+            return True
+        return False
+
+    def apply_session_changes(self):
+        """Merge edits back into the active workout session."""
+        app = MDApp.get_running_app()
+        session = getattr(app, "workout_session", None)
+        editor = getattr(app, "preset_editor", None)
+        if not session or not editor:
+            return
+        old_index = session.current_exercise
+        current_id = None
+        if old_index < len(session.exercises):
+            current_id = session.exercises[old_index].get(
+                "preset_section_exercise_id"
+            )
+
+        id_map = {
+            ex.get("preset_section_exercise_id"): ex for ex in session.exercises
+        }
+        new_exercises = []
+        new_section_names = []
+        new_section_starts = []
+        new_exercise_sections = []
+        for s_idx, sec in enumerate(editor.sections):
+            new_section_names.append(sec["name"])
+            new_section_starts.append(len(new_exercises))
+            for ex in sec.get("exercises", []):
+                old = id_map.get(ex.get("id"))
+                if old:
+                    results = old.get("results", [])
+                    description = old.get("exercise_description", "")
+                    metric_defs = old.get("metric_defs")
+                else:
+                    results = []
+                    description = ""
+                    metric_defs = core.get_metrics_for_exercise(
+                        ex["name"],
+                        db_path=session.db_path,
+                        preset_name=session.preset_name,
+                    )
+                new_exercises.append(
+                    {
+                        "name": ex.get("name"),
+                        "sets": ex.get("sets") or core.DEFAULT_SETS_PER_EXERCISE,
+                        "rest": ex.get("rest") or session.rest_duration,
+                        "results": results,
+                        "library_exercise_id": ex.get("library_id"),
+                        "preset_section_exercise_id": ex.get("id"),
+                        "exercise_description": description,
+                        "metric_defs": metric_defs,
+                        "section_index": s_idx,
+                        "section_name": sec.get("name"),
+                    }
+                )
+                new_exercise_sections.append(s_idx)
+
+        session.exercises = new_exercises
+        session.section_names = new_section_names
+        session.section_starts = new_section_starts
+        session.exercise_sections = new_exercise_sections
+
+        new_idx = None
+        if current_id is not None:
+            for idx, ex in enumerate(session.exercises):
+                if ex.get("preset_section_exercise_id") == current_id:
+                    new_idx = idx
+                    break
+
+        if new_idx is not None:
+            session.current_exercise = min(old_index, new_idx)
+        else:
+            session.current_exercise = min(old_index, len(session.exercises) - 1)
 
     def refresh_sections(self):
         """Repopulate the section widgets from the preset editor."""
@@ -225,7 +371,8 @@ class EditPresetScreen(MDScreen):
             return
         self.sections_box.clear_widgets()
         for idx, sec in enumerate(app.preset_editor.sections):
-            self.add_section(sec["name"], index=idx)
+            locked = self._is_section_locked(idx)
+            self.add_section(sec["name"], index=idx, locked=locked)
         if not app.preset_editor.sections:
             self.add_section()
 
@@ -257,7 +404,12 @@ class EditPresetScreen(MDScreen):
             if isinstance(child, SectionWidget):
                 child.visible = True
 
-    def add_section(self, name: str | None = None, index: int | None = None):
+    def add_section(
+        self,
+        name: str | None = None,
+        index: int | None = None,
+        locked: bool = False,
+    ):
         """Add a new section to the preset and return the widget."""
         if not self.sections_box:
             return None
@@ -267,7 +419,9 @@ class EditPresetScreen(MDScreen):
                 name = f"Section {len(app.preset_editor.sections) + 1}"
             index = app.preset_editor.add_section(name)
         color = self._colors[len(self.sections_box.children) % len(self._colors)]
-        section = SectionWidget(section_index=index, section_name=name, color=color)
+        section = SectionWidget(
+            section_index=index, section_name=name, color=color, locked=locked
+        )
         self.sections_box.add_widget(section)
         section.refresh_exercises()
         self.update_save_enabled()
@@ -341,6 +495,11 @@ class EditPresetScreen(MDScreen):
                 elif mtype == "float":
                     input_filter = "float"
                 widget = MDTextField(text=str(value if value is not None else ""), multiline=False, input_filter=input_filter)
+                if self.mode == "session":
+                    widget.readonly = True
+
+            if self.mode == "session" and not isinstance(widget, MDTextField):
+                widget.disabled = True
 
             self.preset_metric_widgets[name] = widget
 
@@ -415,6 +574,7 @@ class EditPresetScreen(MDScreen):
                 ).get(
                     "is_user_created", False
                 ),
+                "locked": self.mode == "session",
             }
             for m in metrics
         ]
@@ -482,30 +642,36 @@ class EditPresetScreen(MDScreen):
 
     def go_back(self):
         app = MDApp.get_running_app()
-        if app.preset_editor and app.preset_editor.is_modified():
-            dialog = None
+        if self.mode == "session":
+            self.apply_session_changes()
+            if self.manager:
+                self.manager.current = "rest"
+            self.mode = "library"
+        else:
+            if app.preset_editor and app.preset_editor.is_modified():
+                dialog = None
 
-            def discard(*args):
-                if dialog:
-                    dialog.dismiss()
-                app.init_preset_editor(force_reload=True)
+                def discard(*args):
+                    if dialog:
+                        dialog.dismiss()
+                    app.init_preset_editor(force_reload=True)
+                    if self.manager:
+                        self.manager.current = "presets"
+
+                dialog = MDDialog(
+                    title="Discard Changes?",
+                    text="You have unsaved changes. Discard them?",
+                    buttons=[
+                        MDRaisedButton(
+                            text="Cancel", on_release=lambda *a: dialog.dismiss()
+                        ),
+                        MDRaisedButton(text="Discard", on_release=discard),
+                    ],
+                )
+                dialog.open()
+            else:
                 if self.manager:
                     self.manager.current = "presets"
-
-            dialog = MDDialog(
-                title="Discard Changes?",
-                text="You have unsaved changes. Discard them?",
-                buttons=[
-                    MDRaisedButton(
-                        text="Cancel", on_release=lambda *a: dialog.dismiss()
-                    ),
-                    MDRaisedButton(text="Discard", on_release=discard),
-                ],
-            )
-            dialog.open()
-        else:
-            if self.manager:
-                self.manager.current = "presets"
 
 
 class SelectedExerciseItem(MDBoxLayout):
@@ -514,9 +680,12 @@ class SelectedExerciseItem(MDBoxLayout):
     text = StringProperty("")
     section_index = NumericProperty(0)
     exercise_index = NumericProperty(0)
+    locked = BooleanProperty(False)
 
     def edit(self):
         """Open the EditExerciseScreen for this exercise."""
+        if self.locked:
+            return
         app = MDApp.get_running_app()
         if not app.root:
             return
@@ -530,6 +699,8 @@ class SelectedExerciseItem(MDBoxLayout):
         app.root.current = "edit_exercise"
 
     def move_up(self):
+        if self.locked:
+            return
         app = MDApp.get_running_app()
         if not app or not app.preset_editor:
             return
@@ -552,6 +723,8 @@ class SelectedExerciseItem(MDBoxLayout):
             edit.update_save_enabled()
 
     def move_down(self):
+        if self.locked:
+            return
         app = MDApp.get_running_app()
         if not app or not app.preset_editor:
             return
@@ -575,6 +748,8 @@ class SelectedExerciseItem(MDBoxLayout):
             edit.update_save_enabled()
 
     def remove_self(self):
+        if self.locked:
+            return
         dialog = None
 
         def do_delete(*args):

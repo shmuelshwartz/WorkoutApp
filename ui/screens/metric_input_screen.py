@@ -6,6 +6,7 @@ from kivy.properties import (
     BooleanProperty,
     ListProperty,
 )
+from kivy.clock import Clock
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
@@ -38,6 +39,10 @@ class MetricInputScreen(MDScreen):
         self.session = None
         self.exercise_idx = 0
         self.set_idx = 0
+        self._left_taps = 0
+        self._right_taps = 0
+        self._left_event = None
+        self._right_event = None
         # Explicit defaults for stubbed property behavior in tests
         self.metrics_list = None
         self.label_text = ""
@@ -86,6 +91,40 @@ class MetricInputScreen(MDScreen):
         last_set = self.set_idx == ex["sets"] - 1
         self.can_nav_right = not (last_ex and last_set)
 
+    def register_left_tap(self):
+        self._left_taps += 1
+        if self._left_event:
+            self._left_event.cancel()
+        self._left_event = Clock.schedule_once(self._process_left_tap, 0.3)
+
+    def _process_left_tap(self, _dt):
+        count = self._left_taps
+        self._left_taps = 0
+        self._left_event = None
+        if count >= 3:
+            self.navigate_left_triple()
+        elif count == 2:
+            self.navigate_left_double()
+        else:
+            self.navigate_left()
+
+    def register_right_tap(self):
+        self._right_taps += 1
+        if self._right_event:
+            self._right_event.cancel()
+        self._right_event = Clock.schedule_once(self._process_right_tap, 0.3)
+
+    def _process_right_tap(self, _dt):
+        count = self._right_taps
+        self._right_taps = 0
+        self._right_event = None
+        if count >= 3:
+            self.navigate_right_triple()
+        elif count == 2:
+            self.navigate_right_double()
+        else:
+            self.navigate_right()
+
     def navigate_left(self):
         if not self.can_nav_left:
             return
@@ -94,6 +133,30 @@ class MetricInputScreen(MDScreen):
         else:
             self.exercise_idx -= 1
             self.set_idx = self.session.exercises[self.exercise_idx]["sets"] - 1
+        self.update_display()
+
+    def navigate_left_double(self):
+        if self.set_idx > 0:
+            self.set_idx = 0
+        elif self.exercise_idx > 0:
+            self.exercise_idx -= 1
+            self.set_idx = 0
+        self.update_display()
+
+    def navigate_left_triple(self):
+        if not self.session:
+            return
+        sections = getattr(self.session, "section_starts", [])
+        if not sections:
+            return
+        current_section = self.session.exercise_sections[self.exercise_idx]
+        first_idx = sections[current_section]
+        if self.exercise_idx != first_idx or self.set_idx != 0:
+            self.exercise_idx = first_idx
+            self.set_idx = 0
+        elif current_section > 0:
+            self.exercise_idx = sections[current_section - 1]
+            self.set_idx = 0
         self.update_display()
 
     def navigate_right(self):
@@ -106,6 +169,25 @@ class MetricInputScreen(MDScreen):
             self.exercise_idx += 1
             self.set_idx = 0
         self.update_display()
+
+    def navigate_right_double(self):
+        if self.exercise_idx < len(self.session.exercises) - 1:
+            self.exercise_idx += 1
+            self.set_idx = 0
+            self.update_display()
+
+    def navigate_right_triple(self):
+        if not self.session:
+            return
+        sections = getattr(self.session, "section_starts", [])
+        if not sections:
+            return
+        current_section = self.session.exercise_sections[self.exercise_idx]
+        next_section = current_section + 1
+        if next_section < len(sections):
+            self.exercise_idx = sections[next_section]
+            self.set_idx = 0
+            self.update_display()
 
     # ------------------------------------------------------------------
     # Filter buttons
@@ -172,12 +254,10 @@ class MetricInputScreen(MDScreen):
         results = exercise.get("results", [])
         if self.set_idx < len(results):
             values = results[self.set_idx].get("metrics", {})
-        elif (
-            getattr(self.session, "current_exercise", None) == self.exercise_idx
-            and getattr(self.session, "current_set", None) == self.set_idx
-        ):
-            # show pending pre-set metrics for the upcoming set
-            values = getattr(self.session, "pending_pre_set_metrics", {})
+        else:
+            values = self.session.pending_pre_set_metrics.get(
+                (self.exercise_idx, self.set_idx), {}
+            )
         for metric in self._apply_filters(metrics):
             name = metric.get("name")
             self.metrics_list.add_widget(
@@ -226,7 +306,12 @@ class MetricInputScreen(MDScreen):
 
         if mtype == "slider":
             widget = MDSlider(min=0, max=1, value=value or 0)
+            widget.size_hint_x = 0.4
+            value_label = MDLabel(
+                text=f"{widget.value:.2f}", size_hint_x=0.2
+            )
             widget.bind(
+                value=lambda _w, val: setattr(value_label, "text", f"{val:.2f}"),
                 on_touch_down=self.on_slider_touch_down,
                 on_touch_up=self.on_slider_touch_up,
             )
@@ -252,6 +337,8 @@ class MetricInputScreen(MDScreen):
 
         row.input_widget = widget
         row.add_widget(widget)
+        if mtype == "slider":
+            row.add_widget(value_label)
         return row
 
     def _collect_metrics(self, widget_list):
@@ -295,34 +382,37 @@ class MetricInputScreen(MDScreen):
         session = getattr(app, "workout_session", None)
         if not session:
             return
-
-        target_ex = self.exercise_idx
-        target_set = self.set_idx
+        if getattr(app, "record_pre_set", False) and not getattr(
+            app, "record_new_set", False
+        ):
+            session.set_pre_set_metrics(metrics, self.exercise_idx, self.set_idx)
+            app.record_pre_set = False
+            if getattr(self, "manager", None):
+                self.manager.current = "rest"
+            return
 
         orig_ex = session.current_exercise
         orig_set = session.current_set
-        orig_start = session.current_set_start_time
-        orig_pending = session.pending_pre_set_metrics.copy()
-        orig_awaiting = session.awaiting_post_set_metrics
 
-        session.current_exercise = target_ex
-        session.current_set = target_set
-        finished = session.record_metrics(metrics)
+        sel_ex = self.exercise_idx
+        sel_set = self.set_idx
 
-        if target_ex == orig_ex and target_set == orig_set:
-            self.exercise_idx = session.current_exercise
-            self.set_idx = session.current_set
-            self.update_display()
-            if finished and self.manager:
-                self.manager.current = "workout_summary"
-            elif self.manager:
-                self.manager.current = "rest"
+        finished = False
+        if getattr(app, "record_new_set", False):
+            post_metrics = metrics if (sel_ex == orig_ex and sel_set == orig_set) else {}
+            finished = session.record_metrics(orig_ex, orig_set, post_metrics)
+            if (sel_ex, sel_set) != (orig_ex, orig_set):
+                session.set_pre_set_metrics(metrics, sel_ex, sel_set)
         else:
-            session.current_exercise = orig_ex
-            session.current_set = orig_set
-            session.current_set_start_time = orig_start
-            session.pending_pre_set_metrics = orig_pending
-            session.awaiting_post_set_metrics = orig_awaiting
-            self.exercise_idx = target_ex
-            self.set_idx = target_set
-            self.update_display()
+            finished = session.record_metrics(sel_ex, sel_set, metrics)
+
+        app.record_new_set = False
+        app.record_pre_set = False
+
+        self.exercise_idx = session.current_exercise
+        self.set_idx = session.current_set
+        self.update_display()
+        if finished and getattr(self, "manager", None):
+            self.manager.current = "workout_summary"
+        elif getattr(self, "manager", None):
+            self.manager.current = "rest"

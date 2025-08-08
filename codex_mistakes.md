@@ -28,3 +28,11 @@ Add new entries below as issues are encountered. Over time this becomes a refere
 - **Problem** – App raised `AttributeError: 'MDFlatButton' object has no attribute 'texture_size'`
 - **Fix** – Removed dependency on `texture_size` and assigned fixed widths using `dp(110)`
 - **Lesson** – MDFlatButton doesn't expose `texture_size`; prefer fixed dimensions or other sizing methods
+
+### Incorrect MDIcon import path
+
+- **Context** – `EditExerciseScreen`
+- **Mistake** – Imported `MDIcon` from `kivymd.uix.icon`, which doesn't exist in KivyMD 1.x
+- **Problem** – App crashed with `ModuleNotFoundError: No module named 'kivymd.uix.icon'`
+- **Fix** – Import `MDIcon` from `kivymd.uix.label`
+- **Lesson** – In KivyMD 1.x, use `kivymd.uix.label.MDIcon`; `kivymd.uix.icon` only exists in KivyMD 2.x

@@ -2,8 +2,37 @@ import sqlite3
 from pathlib import Path
 import sys
 import pytest
+import importlib.util
+import types
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+# Provide a lightweight RestScreen when Kivy isn't available so tests can run
+if importlib.util.find_spec("kivy") is None or importlib.util.find_spec("kivymd") is None:
+    stub = types.ModuleType("ui.screens.rest_screen")
+
+    class RestScreen:
+        def confirm_finish(self):
+            dialog = stub.MDDialog()
+            dialog.open()
+
+    class DummyDialog:
+        def __init__(self, *a, **k):
+            pass
+
+        def open(self, *a, **k):
+            pass
+
+        def dismiss(self, *a, **k):
+            pass
+
+    stub.RestScreen = RestScreen
+    stub.MDDialog = DummyDialog
+    stub.MDRaisedButton = lambda *a, **k: None
+    sys.modules["ui.screens.rest_screen"] = stub
+    import builtins
+    builtins.RestScreen = RestScreen
+
 
 
 @pytest.fixture
