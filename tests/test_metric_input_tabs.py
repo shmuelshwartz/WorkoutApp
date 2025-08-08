@@ -327,6 +327,44 @@ def test_save_future_metrics_returns_to_rest():
     assert screen.manager.current == "rest"
 
 
+def test_pre_set_metrics_ignores_time():
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.received = None
+
+        def set_pre_set_metrics(self, metrics, exercise_index=None, set_index=None):
+            self.received = metrics
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(
+        workout_session=dummy_session, record_pre_set=True, record_new_set=False
+    )
+    metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
+
+    class DummyList:
+        def __init__(self):
+            self.children = []
+
+        def clear_widgets(self):
+            pass
+
+        def add_widget(self, widget):
+            pass
+
+    screen.metrics_list = DummyList()
+    screen._collect_metrics = lambda _w: {"Time": 5.0, "Reps": 3}
+    screen.session = dummy_session
+    screen.exercise_idx = 0
+    screen.set_idx = 0
+
+    screen.save_metrics()
+
+    assert dummy_session.received == {"Reps": 3}
+    assert dummy_app.record_pre_set is False
+
+
 def test_edit_previous_set_does_not_leak_future_pending():
     screen = MetricInputScreen()
 
@@ -441,12 +479,10 @@ def test_time_metric_first_and_value():
             self.exercises = [
                 {
                     "name": "Bench",
-                    "sets": 2,
-                    "results": [
-                        {"metrics": {"Reps": 7}},
-                        {"metrics": {}},
                     "sets": 1,
-                    "metric_defs": [{"name": "Reps", "type": "int", "is_required": True}],
+                    "metric_defs": [
+                        {"name": "Reps", "type": "int", "is_required": True}
+                    ],
                     "results": [
                         {
                             "metrics": {"Reps": 5},
@@ -457,63 +493,17 @@ def test_time_metric_first_and_value():
                 }
             ]
             self.current_exercise = 0
-            self.current_set = 1
-            self.current_set_start_time = 0
+            self.current_set = 0
+            self.current_set_start_time = 100.0
+            self.last_set_time = 105.4
             self.pending_pre_set_metrics = {}
             self.awaiting_post_set_metrics = False
-
-        def record_metrics(self, ex_idx, set_idx, metrics):
-            ex = self.exercises[ex_idx]
-            if set_idx < len(ex["results"]):
-                ex["results"][set_idx]["metrics"] = metrics
-            else:
-                ex.setdefault("results", []).append({"metrics": metrics})
-            if ex_idx == self.current_exercise and set_idx == self.current_set:
-                self.current_set += 1
-            return False
-
-        def set_pre_set_metrics(self, metrics, exercise_index=None, set_index=None):
-            ex = self.current_exercise if exercise_index is None else exercise_index
-            st = self.current_set if set_index is None else set_index
-            self.pending_pre_set_metrics[(ex, st)] = metrics.copy()
 
     dummy_session = DummySession()
-    dummy_app = types.SimpleNamespace(
-        workout_session=dummy_session, record_new_set=True, record_pre_set=False
-    )
+    dummy_app = types.SimpleNamespace(workout_session=dummy_session)
     metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
 
-    class DummyList:
-        def __init__(self):
-            self.children = []
-
-        def clear_widgets(self):
-            pass
-
-        def add_widget(self, widget):
-            pass
-
-    screen.metrics_list = DummyList()
-    screen._collect_metrics = lambda _w: {"Reps": 8}
     screen.session = dummy_session
-    screen.exercise_idx = 0
-    screen.set_idx = 0
-
-    screen.save_metrics()
-
-    assert dummy_session.exercises[0]["results"][0]["metrics"] == {"Reps": 8}
-    assert dummy_session.current_exercise == 0
-    assert dummy_session.current_set == 1
-    assert dummy_app.record_new_set is True
-    assert dummy_session.exercises[0]["results"][1]["metrics"] == {}
-
-            self.current_set = 0
-            self.pending_pre_set_metrics = {}
-            self.awaiting_post_set_metrics = False
-            self.current_set_start_time = 105.4
-            self.last_set_time = 105.4
-
-    screen.session = DummySession()
     screen.exercise_idx = 0
     screen.set_idx = 0
     screen.update_metrics()

@@ -426,6 +426,7 @@ class MetricInputScreen(MDScreen):
     # ------------------------------------------------------------------
     def save_metrics(self):
         metrics = self._collect_metrics(self.metrics_list)
+        time_val = metrics.pop("Time", None)
         app = MDApp.get_running_app()
         session = getattr(app, "workout_session", None)
         if not session:
@@ -441,7 +442,6 @@ class MetricInputScreen(MDScreen):
 
         sel_ex = self.exercise_idx
         sel_set = self.set_idx
-        time_val = metrics.pop("Time", None)
         end_override = None
         if time_val is not None:
             try:
