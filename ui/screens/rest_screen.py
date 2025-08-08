@@ -61,6 +61,7 @@ class RestScreen(MDScreen):
     """Screen shown between exercises with a rest timer."""
 
     timer_label = StringProperty("00:20")
+    workout_timer_label = StringProperty("00:00")
     target_time = NumericProperty(0)
     next_exercise_name = StringProperty("")
     next_exercise_desc = StringProperty("")
@@ -202,6 +203,15 @@ class RestScreen(MDScreen):
         return super().on_touch_down(touch)
 
     def update_timer(self, dt):
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
+        if session:
+            elapsed = int(time.time() - session.start_time)
+            minutes, seconds = divmod(elapsed, 60)
+            self.workout_timer_label = f"{minutes:02d}:{seconds:02d}"
+        else:
+            self.workout_timer_label = "00:00"
+
         remaining = self.target_time - time.time()
         if remaining <= 0:
             self.timer_label = "00:00"
