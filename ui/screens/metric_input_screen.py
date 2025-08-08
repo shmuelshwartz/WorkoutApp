@@ -199,9 +199,10 @@ class MetricInputScreen(MDScreen):
             "post": "show_post",
         }.get(name)
         if attr:
+            current_values = self._collect_metrics(self.metrics_list)
             setattr(self, attr, not getattr(self, attr))
             self._update_filter_colors()
-            self.update_metrics()
+            self.update_metrics(current_values)
 
     def filter_color(self, name: str):
         attr = {
@@ -241,7 +242,7 @@ class MetricInputScreen(MDScreen):
             visible.append(m)
         return visible
 
-    def update_metrics(self):
+    def update_metrics(self, preserve=None):
         if not self.metrics_list:
             return
         self.metrics_list.clear_widgets()
@@ -250,20 +251,22 @@ class MetricInputScreen(MDScreen):
         exercise = self.session.exercises[self.exercise_idx]
         metrics = exercise.get("metric_defs", [])
         # Determine any previously recorded values for this set
-        values = {}
         results = exercise.get("results", [])
         if self.set_idx < len(results):
-            values = results[self.set_idx].get("metrics", {})
+            values = dict(results[self.set_idx].get("metrics", {}))
         else:
-            values = self.session.pending_pre_set_metrics.get(
-                (self.exercise_idx, self.set_idx), {}
+            values = dict(
+                self.session.pending_pre_set_metrics.get(
+                    (self.exercise_idx, self.set_idx), {}
+                )
             )
+        if preserve:
+            values.update(preserve)
         for metric in self._apply_filters(metrics):
             name = metric.get("name")
             self.metrics_list.add_widget(
                 self._create_row(metric, values.get(name))
             )
-
     # ------------------------------------------------------------------
     # Metric row helpers
     def _parent_scroll(self, widget):
