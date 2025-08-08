@@ -14,7 +14,6 @@ from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
 from kivymd.uix.selectioncontrol import MDCheckbox
-import time
 
 
 class MetricInputScreen(MDScreen):
@@ -200,9 +199,10 @@ class MetricInputScreen(MDScreen):
             "post": "show_post",
         }.get(name)
         if attr:
+            current_values = self._collect_metrics(self.metrics_list)
             setattr(self, attr, not getattr(self, attr))
             self._update_filter_colors()
-            self.update_metrics()
+            self.update_metrics(current_values)
 
     def filter_color(self, name: str):
         attr = {
@@ -242,16 +242,18 @@ class MetricInputScreen(MDScreen):
             visible.append(m)
         return visible
 
-    def update_metrics(self):
+    def update_metrics(self, preserve=None):
         if not self.metrics_list:
             return
         self.metrics_list.clear_widgets()
         if not self.session or self.exercise_idx >= len(self.session.exercises):
             return
+
         exercise = self.session.exercises[self.exercise_idx]
         metrics = exercise.get("metric_defs", [])
-        # Determine previously recorded values and notes for this set
         results = exercise.get("results", [])
+
+        # Determine previously recorded values and notes for this set
         record = (
             results[self.set_idx]
             if self.set_idx < len(results) and results[self.set_idx]
@@ -259,17 +261,19 @@ class MetricInputScreen(MDScreen):
         )
         values = record.get("metrics", {}) if record else {}
         notes_val = record.get("notes", "") if record else ""
+
+        # Merge in any pending metrics
         pending = self.session.pending_pre_set_metrics.get(
             (self.exercise_idx, self.set_idx), {}
         )
         values = {**values, **{k: v for k, v in pending.items() if k != "Notes"}}
         notes_val = pending.get("Notes", notes_val)
-        if self.set_idx < len(results):
-            values = results[self.set_idx].get("metrics", {})
-        else:
-            values = self.session.pending_pre_set_metrics.get(
-                (self.exercise_idx, self.set_idx), {}
-            )
+
+        # Preserve values from UI if provided (for filter toggle)
+        if preserve:
+            values.update(preserve)
+
+        # --- TIME METRIC FIRST ---
         start_time = None
         end_time = None
         if self.set_idx < len(results) and results[self.set_idx]:
@@ -282,26 +286,30 @@ class MetricInputScreen(MDScreen):
         ):
             start_time = self.session.current_set_start_time
             end_time = self.session.last_set_time
+
         if start_time is not None and end_time is not None:
             time_val = round(end_time - start_time, 1)
         else:
             time_val = 0.0
+
         self.metrics_list.add_widget(
             self._create_row({"name": "Time", "type": "float"}, time_val)
         )
+
+        # --- OTHER METRICS ---
         for metric in self._apply_filters(metrics):
             name = metric.get("name")
             self.metrics_list.add_widget(
                 self._create_row(metric, values.get(name))
             )
-        # Notes field always appears at the bottom
+
+        # --- NOTES METRIC LAST ---
         self.metrics_list.add_widget(self._create_row("Notes", notes_val))
 
     # ------------------------------------------------------------------
     # Metric row helpers
     def _parent_scroll(self, widget):
         from kivy.uix.scrollview import ScrollView
-
         parent = widget.parent
         while parent:
             if isinstance(parent, ScrollView):
@@ -452,7 +460,6 @@ class MetricInputScreen(MDScreen):
 
         finished = False
         if getattr(app, "record_new_set", False):
-
             post_metrics = metrics if (sel_ex == orig_ex and sel_set == orig_set) else {}
             end_param = end_override if (sel_ex == orig_ex and sel_set == orig_set) else None
             finished = session.record_metrics(orig_ex, orig_set, post_metrics, end_time=end_param)
@@ -463,7 +470,6 @@ class MetricInputScreen(MDScreen):
 
         app.record_new_set = False
         app.record_pre_set = False
-
 
         self.exercise_idx = session.current_exercise
         self.set_idx = session.current_set
