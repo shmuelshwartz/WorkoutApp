@@ -308,8 +308,12 @@ class EditPresetScreen(MDScreen):
             )
 
         id_map = {
-            ex.get("preset_section_exercise_id"): ex for ex in session.exercises
+            ex.get("preset_section_exercise_id"): (idx, ex)
+            for idx, ex in enumerate(session.exercises)
         }
+        old_metric_store = session.metric_store
+        old_pending = session.pending_pre_set_metrics
+
         new_exercises = []
         new_section_names = []
         new_section_starts = []
@@ -318,9 +322,10 @@ class EditPresetScreen(MDScreen):
             new_section_names.append(sec["name"])
             new_section_starts.append(len(new_exercises))
             for ex in sec.get("exercises", []):
-                old = id_map.get(ex.get("id"))
+                old_idx, old = id_map.get(ex.get("id"), (None, None))
+                sets = ex.get("sets") or core.DEFAULT_SETS_PER_EXERCISE
                 if old:
-                    results = old.get("results", [])
+                    results = old.get("results", [])[:sets]
                     description = old.get("exercise_description", "")
                     metric_defs = old.get("metric_defs")
                 else:
@@ -334,7 +339,7 @@ class EditPresetScreen(MDScreen):
                 new_exercises.append(
                     {
                         "name": ex.get("name"),
-                        "sets": ex.get("sets") or core.DEFAULT_SETS_PER_EXERCISE,
+                        "sets": sets,
                         "rest": ex.get("rest") or session.rest_duration,
                         "results": results,
                         "library_exercise_id": ex.get("library_id"),
@@ -352,6 +357,24 @@ class EditPresetScreen(MDScreen):
         session.section_starts = new_section_starts
         session.exercise_sections = new_exercise_sections
 
+        # rebuild metric stores to match updated sets
+        new_metric_store: dict[tuple[int, int], dict[str, object]] = {}
+        new_pending: dict[tuple[int, int], dict[str, object]] = {}
+        for new_idx, ex in enumerate(session.exercises):
+            template = {m["name"]: None for m in ex.get("metric_defs", [])}
+            old_idx, _old = id_map.get(ex.get("preset_section_exercise_id"), (None, None))
+            for set_idx in range(ex["sets"]):
+                if old_idx is not None:
+                    store = old_metric_store.get((old_idx, set_idx), template.copy())
+                    pending = old_pending.get((old_idx, set_idx))
+                    if pending:
+                        new_pending[(new_idx, set_idx)] = pending
+                else:
+                    store = template.copy()
+                new_metric_store[(new_idx, set_idx)] = store
+        session.metric_store = new_metric_store
+        session.pending_pre_set_metrics = new_pending
+
         new_idx = None
         if current_id is not None:
             for idx, ex in enumerate(session.exercises):
@@ -363,6 +386,13 @@ class EditPresetScreen(MDScreen):
             session.current_exercise = min(old_index, new_idx)
         else:
             session.current_exercise = min(old_index, len(session.exercises) - 1)
+
+        if session.current_exercise < len(session.exercises):
+            session.current_set = min(
+                session.current_set, session.exercises[session.current_exercise]["sets"] - 1
+            )
+        else:
+            session.current_set = 0
 
     def refresh_sections(self):
         """Repopulate the section widgets from the preset editor."""

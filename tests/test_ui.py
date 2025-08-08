@@ -1454,3 +1454,25 @@ def test_reordering_current_exercise_updates_index(monkeypatch, sample_db):
     screen.apply_session_changes()
     assert [e["name"] for e in session.exercises] == ["Bench Press", "Push-up"]
     assert session.current_exercise == 0
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_increasing_sets_updates_metric_store(monkeypatch, sample_db):
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    editor = core.PresetEditor("Push Day", db_path=sample_db)
+    app = _DummyApp()
+    app.workout_session = session
+    app.preset_editor = editor
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+    screen = EditPresetScreen(mode="session")
+
+    # increase sets for first exercise
+    first_ex = editor.sections[0]["exercises"][0]
+    first_ex["sets"] = first_ex.get("sets", 0) + 1
+    screen.apply_session_changes()
+
+    assert session.exercises[0]["sets"] == first_ex["sets"]
+
+    # record metrics for the newly added set; should not raise IndexError
+    session.record_metrics(0, first_ex["sets"] - 1, {"Reps": 5})
+    assert len(session.exercises[0]["results"]) == first_ex["sets"]
