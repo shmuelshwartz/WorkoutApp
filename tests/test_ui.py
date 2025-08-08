@@ -111,7 +111,11 @@ def test_populate_blank_for_new_set(monkeypatch):
         current_set = 1
         awaiting_post_set_metrics = True
         exercises = [
-            {"name": "Bench", "sets": 3, "results": [{"Weight": 100, "Notes": "prev"}]}
+            {
+                "name": "Bench",
+                "sets": 3,
+                "results": [{"metrics": {"Weight": 100}, "notes": "prev"}],
+            }
         ]
 
         def next_exercise_name(self):
@@ -171,7 +175,7 @@ def test_prev_metrics_use_last_set(monkeypatch):
         current_set = 0
         awaiting_post_set_metrics = True
         exercises = [
-            {"name": "Push", "sets": 1, "results": [{"Reps": 10}]},
+            {"name": "Push", "sets": 1, "results": [{"metrics": {"Reps": 10}, "notes": ""}]},
             {"name": "Run", "sets": 1, "results": []},
         ]
 
@@ -237,8 +241,11 @@ def test_save_metrics_clears_next_metrics(monkeypatch):
         def record_metrics(self, ex_idx, set_idx, metrics):
             while len(self.exercises[0]["results"]) <= set_idx:
                 self.exercises[0]["results"].append(None)
-            self.exercises[0]["results"][set_idx] = metrics
-
+            notes = metrics.pop("Notes", "")
+            self.exercises[0]["results"][set_idx] = {
+                "metrics": metrics,
+                "notes": notes,
+            }
             self.current_set += 1
             return False
 
@@ -319,8 +326,11 @@ def test_pre_set_metrics_do_not_advance(monkeypatch):
         def record_metrics(self, ex_idx, set_idx, metrics):
             while len(self.exercises[0]["results"]) <= set_idx:
                 self.exercises[0]["results"].append(None)
-            self.exercises[0]["results"][set_idx] = {"metrics": metrics}
-
+            notes = metrics.pop("Notes", "")
+            self.exercises[0]["results"][set_idx] = {
+                "metrics": metrics,
+                "notes": notes,
+            }
             self.current_set += 1
             return False
 
