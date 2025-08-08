@@ -452,6 +452,7 @@ class MetricInputScreen(MDScreen):
 
         finished = False
         if getattr(app, "record_new_set", False):
+
             post_metrics = metrics if (sel_ex == orig_ex and sel_set == orig_set) else {}
             end_param = end_override if (sel_ex == orig_ex and sel_set == orig_set) else None
             finished = session.record_metrics(orig_ex, orig_set, post_metrics, end_time=end_param)
@@ -462,6 +463,7 @@ class MetricInputScreen(MDScreen):
 
         app.record_new_set = False
         app.record_pre_set = False
+
 
         self.exercise_idx = session.current_exercise
         self.set_idx = session.current_set
