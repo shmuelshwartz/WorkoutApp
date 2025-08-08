@@ -142,6 +142,23 @@ def test_undo_set_start_returns_to_rest(sample_db, monkeypatch):
     assert session.rest_target_time == start + session.rest_duration
 
 
+def test_edit_time_updates_rest_timer(sample_db, monkeypatch):
+    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=30)
+    start = session.current_set_start_time
+    monkeypatch.setattr(core.time, "time", lambda: start + 5)
+    session.mark_set_completed()
+    session.record_metrics(
+        session.current_exercise, session.current_set, {"Reps": 10}, end_time=start + 5
+    )
+
+    assert session.rest_target_time == pytest.approx(start + 5 + 30)
+
+    ex, st = session.last_completed_set_index()
+    session.record_metrics(ex, st, {}, end_time=start + 8)
+    assert session.last_set_time == pytest.approx(start + 8)
+    assert session.rest_target_time == pytest.approx(start + 8 + 30)
+
+
 def test_edit_set_overwrites_in_place(sample_db):
     session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})

@@ -14,6 +14,7 @@ from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
 from kivymd.uix.selectioncontrol import MDCheckbox
+import time
 
 
 class MetricInputScreen(MDScreen):
@@ -249,20 +250,52 @@ class MetricInputScreen(MDScreen):
             return
         exercise = self.session.exercises[self.exercise_idx]
         metrics = exercise.get("metric_defs", [])
-        # Determine any previously recorded values for this set
-        values = {}
+        # Determine previously recorded values and notes for this set
         results = exercise.get("results", [])
+        record = (
+            results[self.set_idx]
+            if self.set_idx < len(results) and results[self.set_idx]
+            else None
+        )
+        values = record.get("metrics", {}) if record else {}
+        notes_val = record.get("notes", "") if record else ""
+        pending = self.session.pending_pre_set_metrics.get(
+            (self.exercise_idx, self.set_idx), {}
+        )
+        values = {**values, **{k: v for k, v in pending.items() if k != "Notes"}}
+        notes_val = pending.get("Notes", notes_val)
         if self.set_idx < len(results):
             values = results[self.set_idx].get("metrics", {})
         else:
             values = self.session.pending_pre_set_metrics.get(
                 (self.exercise_idx, self.set_idx), {}
             )
+        start_time = None
+        end_time = None
+        if self.set_idx < len(results) and results[self.set_idx]:
+            start_time = results[self.set_idx].get("started_at")
+            end_time = results[self.set_idx].get("ended_at")
+        elif (
+            self.session.awaiting_post_set_metrics
+            and (self.exercise_idx, self.set_idx)
+            == (self.session.current_exercise, self.session.current_set)
+        ):
+            start_time = self.session.current_set_start_time
+            end_time = self.session.last_set_time
+        if start_time is not None and end_time is not None:
+            time_val = round(end_time - start_time, 1)
+        else:
+            time_val = 0.0
+        self.metrics_list.add_widget(
+            self._create_row({"name": "Time", "type": "float"}, time_val)
+        )
         for metric in self._apply_filters(metrics):
             name = metric.get("name")
             self.metrics_list.add_widget(
                 self._create_row(metric, values.get(name))
             )
+        # Notes field always appears at the bottom
+        self.metrics_list.add_widget(self._create_row("Notes", notes_val))
 
     # ------------------------------------------------------------------
     # Metric row helpers
@@ -299,7 +332,10 @@ class MetricInputScreen(MDScreen):
             mtype = metric.get("type", "str")
             values = metric.get("values", [])
 
-        row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
+        row_height = dp(120) if name == "Notes" else dp(48)
+        row = MDBoxLayout(
+            orientation="horizontal", size_hint_y=None, height=row_height
+        )
         row.metric_name = name
         row.type = mtype
         row.add_widget(MDLabel(text=name, size_hint_x=0.4))
@@ -333,7 +369,11 @@ class MetricInputScreen(MDScreen):
                 multiline=multiline,
                 input_filter=input_filter,
                 text=str(value) if value not in (None, "") else "",
+                mode="rectangle" if multiline else "fill",
             )
+            if multiline:
+                widget.size_hint_y = None
+                widget.height = dp(96)
 
         row.input_widget = widget
         row.add_widget(widget)
@@ -391,24 +431,39 @@ class MetricInputScreen(MDScreen):
                 self.manager.current = "rest"
             return
 
+        sel_ex = self.exercise_idx
+        sel_set = self.set_idx
+        time_val = metrics.pop("Time", None)
+        end_override = None
+        if time_val is not None:
+            try:
+                time_val = round(float(time_val), 1)
+            except ValueError:
+                time_val = 0.0
+            results = session.exercises[sel_ex].get("results", [])
+            if sel_set < len(results) and results[sel_set]:
+                start = results[sel_set].get("started_at", session.current_set_start_time)
+            else:
+                start = session.current_set_start_time
+            end_override = start + time_val
+
         orig_ex = session.current_exercise
         orig_set = session.current_set
 
-        sel_ex = self.exercise_idx
-        sel_set = self.set_idx
-
         finished = False
         if getattr(app, "record_new_set", False):
-            if (sel_ex, sel_set) == (orig_ex, orig_set):
-                finished = session.record_metrics(orig_ex, orig_set, metrics)
-                app.record_new_set = False
-                app.record_pre_set = False
-            else:
-                session.record_metrics(sel_ex, sel_set, metrics)
+
+            post_metrics = metrics if (sel_ex == orig_ex and sel_set == orig_set) else {}
+            end_param = end_override if (sel_ex == orig_ex and sel_set == orig_set) else None
+            finished = session.record_metrics(orig_ex, orig_set, post_metrics, end_time=end_param)
+            if (sel_ex, sel_set) != (orig_ex, orig_set):
+                session.set_pre_set_metrics(metrics, sel_ex, sel_set)
         else:
-            finished = session.record_metrics(sel_ex, sel_set, metrics)
-            app.record_new_set = False
-            app.record_pre_set = False
+            finished = session.record_metrics(sel_ex, sel_set, metrics, end_time=end_override)
+
+        app.record_new_set = False
+        app.record_pre_set = False
+
 
         self.exercise_idx = session.current_exercise
         self.set_idx = session.current_set

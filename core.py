@@ -997,6 +997,27 @@ class WorkoutSession:
         self.rest_target_time = self.last_set_time + self.rest_duration
         self.awaiting_post_set_metrics = True
 
+    def last_completed_set_index(self) -> tuple[int, int]:
+        """Return ``(exercise_index, set_index)`` of the most recent set.
+
+        If post-set metrics are pending, the current exercise/set represent the
+        last completed set.  Otherwise, the indices refer to the set immediately
+        preceding ``current_exercise``/``current_set``.
+        """
+
+        if self.awaiting_post_set_metrics:
+            return self.current_exercise, self.current_set
+        ex_idx = self.current_exercise
+        set_idx = self.current_set - 1
+        if set_idx < 0:
+            ex_idx -= 1
+            if ex_idx < 0:
+                return (-1, -1)
+            set_idx = len(self.exercises[ex_idx]["results"]) - 1
+            if set_idx < 0:
+                set_idx = self.exercises[ex_idx]["sets"] - 1
+        return ex_idx, set_idx
+
     def undo_set_start(self) -> None:
         """Revert state to before the current set began."""
 
@@ -1144,7 +1165,13 @@ class WorkoutSession:
 
         self.session_metrics = metrics.copy()
 
-    def record_metrics(self, exercise_index: int, set_index: int, metrics):
+    def record_metrics(
+        self,
+        exercise_index: int,
+        set_index: int,
+        metrics,
+        end_time: float | None = None,
+    ):
         if exercise_index >= len(self.exercises):
             if self.end_time is None:
                 self.end_time = time.time()
@@ -1164,23 +1191,45 @@ class WorkoutSession:
                 )
             store[name] = value
 
-        end_time = time.time()
-
         ex = self.exercises[exercise_index]
         results = ex["results"]
+        existing = (
+            results[set_index]
+            if set_index < len(results) and results[set_index] is not None
+            else None
+        )
+        if end_time is None:
+            if existing and not (
+                exercise_index == self.current_exercise and set_index == self.current_set
+            ):
+                end_time = existing.get("ended_at", time.time())
+            else:
+                end_time = time.time()
+
         while len(results) <= set_index:
             results.append(None)
-        start_time = (
-            self.current_set_start_time
-            if exercise_index == self.current_exercise and set_index == self.current_set
-            else end_time
-        )
+        if (
+            exercise_index == self.current_exercise
+            and set_index == self.current_set
+            and existing is None
+        ):
+            start_time = self.current_set_start_time
+        else:
+            if existing:
+                start_time = existing.get("started_at", end_time)
+            else:
+                start_time = end_time
         results[set_index] = {
             "metrics": store.copy(),
             "started_at": start_time,
             "ended_at": end_time,
             "notes": notes,
         }
+
+        last_ex, last_set = self.last_completed_set_index()
+        if (exercise_index, set_index) == (last_ex, last_set):
+            self.last_set_time = end_time
+            self.rest_target_time = self.last_set_time + self.rest_duration
 
         if exercise_index == self.current_exercise and set_index == self.current_set:
             self.current_set_start_time = end_time
