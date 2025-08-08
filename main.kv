@@ -405,8 +405,10 @@ ScreenManager:
         spacing: "10dp"
         padding: "20dp"
         MDLabel:
-            text: "Rest – The main screen shown between exercises. Displays a countdown timer while the user rests before the next exercise begins."
+            id: workout_time_label
+            text: root.workout_timer_label
             halign: "center"
+            font_style: "H4"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
         BoxLayout:
