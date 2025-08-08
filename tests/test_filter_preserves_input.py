@@ -24,6 +24,11 @@ def test_filter_toggle_preserves_input():
                 "results": [],
             }]
             self.pending_pre_set_metrics = {}
+            self.awaiting_post_set_metrics = False
+            self.current_exercise = 0
+            self.current_set = 0
+            self.current_set_start_time = 0
+            self.last_set_time = 0
     screen.session = DummySession()
     screen.update_metrics()
 
