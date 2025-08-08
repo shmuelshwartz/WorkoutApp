@@ -55,6 +55,9 @@ class _BoxLayout(_DummyWidget):
     def add_widget(self, widget):
         self.children.append(widget)
 
+    def clear_widgets(self):
+        self.children = []
+
 class _Spinner(_DummyWidget):
     def __init__(self, text="", values=()):
         self.text = text
@@ -199,7 +202,7 @@ def test_save_future_metrics_preserves_session_state():
             self.pending_pre_set_metrics = {}
             self.awaiting_post_set_metrics = False
 
-        def record_metrics(self, ex_idx, set_idx, metrics):
+        def record_metrics(self, ex_idx, set_idx, metrics, end_time=None):
             ex = self.exercises[ex_idx]
             while len(ex.setdefault("results", [])) <= set_idx:
                 ex["results"].append(None)
@@ -275,7 +278,7 @@ def test_save_future_metrics_returns_to_rest():
             self.pending_pre_set_metrics = {}
             self.awaiting_post_set_metrics = False
 
-        def record_metrics(self, ex_idx, set_idx, metrics):
+        def record_metrics(self, ex_idx, set_idx, metrics, end_time=None):
             ex = self.exercises[ex_idx]
             while len(ex.setdefault("results", [])) <= set_idx:
                 ex["results"].append(None)
@@ -341,7 +344,7 @@ def test_edit_previous_set_does_not_leak_future_pending():
             self.pending_pre_set_metrics = {(0, 1): {"Weight": 100}}
             self.awaiting_post_set_metrics = False
 
-        def record_metrics(self, ex_idx, set_idx, metrics):
+        def record_metrics(self, ex_idx, set_idx, metrics, end_time=None):
             key = (ex_idx, set_idx)
             metrics = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
             ex = self.exercises[ex_idx]
@@ -382,4 +385,41 @@ def test_edit_previous_set_does_not_leak_future_pending():
 
     assert dummy_session.exercises[0]["results"][0]["metrics"] == {"Reps": 7}
     assert dummy_session.pending_pre_set_metrics == {(0, 1): {"Weight": 100}}
+
+
+def test_time_metric_first_and_value():
+    screen = MetricInputScreen()
+    screen.metrics_list = _BoxLayout()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [
+                {
+                    "name": "Bench",
+                    "sets": 1,
+                    "metric_defs": [{"name": "Reps", "type": "int", "is_required": True}],
+                    "results": [
+                        {
+                            "metrics": {"Reps": 5},
+                            "started_at": 100.0,
+                            "ended_at": 105.4,
+                        }
+                    ],
+                }
+            ]
+            self.current_exercise = 0
+            self.current_set = 0
+            self.pending_pre_set_metrics = {}
+            self.awaiting_post_set_metrics = False
+            self.current_set_start_time = 105.4
+            self.last_set_time = 105.4
+
+    screen.session = DummySession()
+    screen.exercise_idx = 0
+    screen.set_idx = 0
+    screen.update_metrics()
+
+    assert screen.metrics_list.children[0].metric_name == "Time"
+    assert screen.metrics_list.children[1].metric_name == "Reps"
+    assert screen.metrics_list.children[0].input_widget.text == "5.4"
 
