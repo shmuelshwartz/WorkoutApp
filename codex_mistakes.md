@@ -36,3 +36,11 @@ Add new entries below as issues are encountered. Over time this becomes a refere
 - **Problem** – App crashed with `ModuleNotFoundError: No module named 'kivymd.uix.icon'`
 - **Fix** – Import `MDIcon` from `kivymd.uix.label`
 - **Lesson** – In KivyMD 1.x, use `kivymd.uix.label.MDIcon`; `kivymd.uix.icon` only exists in KivyMD 2.x
+
+### Loading full main.kv in screen preview
+
+- **Context** – `MetricInputScreen` preview block
+- **Mistake** – Loaded `main.kv`, which references many undeclared screen classes
+- **Problem** – Running `metric_input_screen.py` raised `FactoryException: Unknown class <PresetsScreen>`
+- **Fix** – Extracted only the `<MetricInputScreen>` rule from `main.kv` when previewing
+- **Lesson** – Previewing a single screen should load only its kv rules to avoid missing class errors
