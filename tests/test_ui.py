@@ -700,7 +700,7 @@ def test_add_session_metric_popup_filters_scope(monkeypatch):
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_edit_exercise_default_tab():
-    screen = EditExerciseScreen()
+    screen = EditExerciseScreen(test_mode=True)
     screen.previous_screen = "exercise_library"
     screen.on_pre_enter()
     assert screen.current_tab == "metrics"
@@ -708,7 +708,7 @@ def test_edit_exercise_default_tab():
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_edit_exercise_preset_tab():
-    screen = EditExerciseScreen()
+    screen = EditExerciseScreen(test_mode=True)
     screen.previous_screen = "edit_preset"
     screen.on_pre_enter()
     assert screen.current_tab == "config"
@@ -723,7 +723,7 @@ def test_edit_exercise_navigation_flags(monkeypatch):
         {"sections": [{"name": "S1", "exercises": [{"name": "a"}, {"name": "b"}]}]},
     )()
     monkeypatch.setattr(App, "get_running_app", lambda: app)
-    screen = EditExerciseScreen()
+    screen = EditExerciseScreen(test_mode=True)
     screen.section_index = 0
     screen.exercise_index = 0
     assert not screen.can_go_prev()
@@ -742,7 +742,7 @@ def test_edit_exercise_go_next(monkeypatch):
         {"sections": [{"name": "S1", "exercises": [{"name": "a"}, {"name": "b"}]}]},
     )()
     monkeypatch.setattr(App, "get_running_app", lambda: app)
-    screen = EditExerciseScreen()
+    screen = EditExerciseScreen(test_mode=True)
     screen.section_index = 0
     screen.exercise_index = 0
     screen.save_enabled = False
@@ -1040,7 +1040,7 @@ def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
     ex.name = "Custom"
     core.save_exercise(ex)
 
-    screen = EditExerciseScreen()
+    screen = EditExerciseScreen(test_mode=True)
     screen.exercise_obj = Exercise(db_path=db_path)
     screen.exercise_obj.name = "Custom"
     screen.name_field = type("F", (), {"error": False})()
