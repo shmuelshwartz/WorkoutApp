@@ -187,11 +187,13 @@ class EditPresetScreen(MDScreen):
         self,
         mode: str = "library",
         data_provider=None,
+        router=None,
         test_mode: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.mode = mode
+        self.router = router
         self.test_mode = test_mode
         if data_provider is None:
             self.data_provider = (
@@ -1005,29 +1007,220 @@ class AddSessionMetricPopup(MDDialog):
 
 
 if __name__ == "__main__":  # pragma: no cover - manual visual test
-    class _DemoPresetEditor:
-        def __init__(self):
-            self.preset_name = "Demo Preset"
-            self.sections = [{"name": "Demo", "exercises": []}]
-            self.preset_metrics = []
+    from kivy.lang import Builder
 
-        def add_section(self, name):
-            self.sections.append({"name": name, "exercises": []})
-            return len(self.sections) - 1
+    KV = """
+<SectionWidget>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: self.minimum_height if root.visible else 0
+    opacity: 1 if root.visible else 0
+    md_bg_color: root.color
+    padding: "10dp"
+    MDBoxLayout:
+        size_hint_y: None
+        height: "40dp"
+        MDTextField:
+            text: root.section_name
+            multiline: False
+            hint_text: "Section Name"
+            on_text: root.section_name = self.text
+            disabled: root.locked
+        MDIconButton:
+            icon: "chevron-down" if root.expanded else "chevron-right"
+            on_release: root.toggle()
+    BoxLayout:
+        orientation: "vertical"
+        size_hint_y: None
+        height: self.minimum_height if root.expanded else 0
+        opacity: 1 if root.expanded else 0
+        MDList:
+            id: exercise_list
+            size_hint_y: None
+            height: self.minimum_height
+        MDBoxLayout:
+            size_hint_y: None
+            height: "40dp"
+            spacing: "10dp"
+            MDRaisedButton:
+                text: "Add Exercise"
+                on_release: root.open_exercise_selection()
+                disabled: root.locked
+                opacity: 1 if not root.locked else 0
+            MDRaisedButton:
+                text: "Delete"
+                md_bg_color: 1, 0, 0, 1
+                on_release: root.confirm_delete()
+                disabled: root.locked
+                opacity: 1 if not root.locked else 0
 
-        def rename_section(self, idx, name):
-            self.sections[idx]["name"] = name
+<SelectedExerciseItem>:
+    orientation: "horizontal"
+    size_hint_y: None
+    height: "48dp"
+    MDLabel:
+        text: root.text
+        halign: "center"
+    MDIconButton:
+        icon: "pencil"
+        on_release: root.edit()
+        disabled: root.locked
+    MDIconButton:
+        icon: "delete"
+        theme_text_color: "Custom"
+        text_color: 1, 0, 0, 1
+        on_release: root.remove_self()
+        disabled: root.locked
 
-        def is_modified(self):
-            return False
+<ExerciseSelectionPanel>:
+    exercise_list: exercise_list
+    orientation: "vertical"
+    md_bg_color: 1, 1, 1, 1
+    MDBoxLayout:
+        size_hint_y: None
+        height: "40dp"
+        MDTextField:
+            id: search_field
+            hint_text: "Search exercises"
+            on_text: root.update_search(self.text)
+        MDRaisedButton:
+            text: "Filter"
+            on_release: root.open_filter_popup()
+    ScrollView:
+        MDList:
+            id: exercise_list
 
-        def add_metric(self, name):
-            self.preset_metrics.append({"name": name})
+<EditPresetScreen>:
+    sections_box: sections_box
+    exercise_panel: exercise_panel
+    details_box: details_box
+    metrics_box: metrics_box
+    panel_visible: False
+    FloatLayout:
+        MDBoxLayout:
+            orientation: "vertical"
+            spacing: "10dp"
+            padding: "5dp"
+            MDBoxLayout:
+                size_hint_y: None
+                height: "40dp"
+                spacing: "10dp"
+                MDRaisedButton:
+                    text: "Sections"
+                    on_release: root.switch_tab("sections")
+                MDRaisedButton:
+                    text: "Details"
+                    on_release: root.switch_tab("details")
+                MDRaisedButton:
+                    text: "Metrics"
+                    on_release: root.switch_tab("metrics")
+            ScreenManager:
+                id: edit_tabs
+                size_hint_y: 1
+                Screen:
+                    name: "sections"
+                    ScrollView:
+                        MDBoxLayout:
+                            orientation: "vertical"
+                            size_hint_y: None
+                            height: self.minimum_height
+                            MDBoxLayout:
+                                id: sections_box
+                                orientation: "vertical"
+                Screen:
+                    name: "details"
+                    ScrollView:
+                        MDBoxLayout:
+                            id: details_box
+                            orientation: "vertical"
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: "10dp"
+                            MDBoxLayout:
+                                id: preset_name_row
+                                size_hint_y: None
+                                height: "40dp"
+                                spacing: "10dp"
+                                MDLabel:
+                                    text: "Preset Name:"
+                                    size_hint_x: 0.4
+                                MDTextField:
+                                    id: preset_name
+                                    multiline: False
+                                    on_text: root.update_preset_name(self.text)
+                            MDBoxLayout:
+                                id: metrics_box
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                Screen:
+                    name: "metrics"
+                    ScrollView:
+                        MDBoxLayout:
+                            id: session_metric_list
+                            orientation: "vertical"
+                            size_hint_y: None
+                            height: self.minimum_height
+            MDBoxLayout:
+                size_hint_y: None
+                height: "40dp"
+                spacing: "10dp"
+                MDRaisedButton:
+                    text: "Save"
+                    on_release: root.save_preset()
+                    disabled: not root.save_enabled
+                MDRaisedButton:
+                    text: "Cancel"
+                    on_release: root.cancel_changes()
+        ExerciseSelectionPanel:
+            id: exercise_panel
+            size_hint_y: None
+            height: root.height * 0.4 if root.panel_visible else 0
+    """
 
-    class _TestApp(MDApp):  # pragma: no cover - stub app
-        def build(self):
-            self.preset_editor = _DemoPresetEditor()
-            return EditPresetScreen(test_mode=True)
+    choice = (
+        input("Type 1 for single-screen test\nType 2 for flow test\n").strip()
+        or "1"
+    )
+    Builder.load_string(KV)
+    if choice == "2":
+        from ui.testing.runners.flow_runner import run
 
-    _TestApp().run()
+        run("edit_preset_screen")
+    else:
+        from kivymd.app import MDApp
+        from ui.routers import SingleRouter
+
+        class _DemoPresetEditor:
+            def __init__(self):
+                self.preset_name = "Demo Preset"
+                self.sections = [{"name": "Demo", "exercises": []}]
+                self.preset_metrics = []
+
+            def add_section(self, name):
+                self.sections.append({"name": name, "exercises": []})
+                return len(self.sections) - 1
+
+            def rename_section(self, idx, name):
+                self.sections[idx]["name"] = name
+
+            def is_modified(self):
+                return False
+
+            def add_metric(self, name):
+                self.preset_metrics.append({"name": name})
+
+        class _TestApp(MDApp):
+            def init_preset_editor(self):
+                self.preset_editor = _DemoPresetEditor()
+
+            def build(self):
+                self.init_preset_editor()
+                return EditPresetScreen(
+                    data_provider=StubPresetDataProvider(),
+                    router=SingleRouter(),
+                    test_mode=True,
+                )
+
+        _TestApp().run()
 
