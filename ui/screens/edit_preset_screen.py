@@ -24,10 +24,9 @@ from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.dialog import MDDialog
 import os
-import sqlite3
 
-import core
-from core import DEFAULT_DB_PATH
+from ui.adapters.preset_data_provider import CorePresetDataProvider
+from ui.stubs.preset_data_provider import StubPresetDataProvider
 
 
 class SectionWidget(MDBoxLayout):
@@ -184,9 +183,22 @@ class EditPresetScreen(MDScreen):
         (1, 0.9, 1, 1),
     ]
 
-    def __init__(self, mode: str = "library", **kwargs):
+    def __init__(
+        self,
+        mode: str = "library",
+        data_provider=None,
+        test_mode: bool = False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.mode = mode
+        self.test_mode = test_mode
+        if data_provider is None:
+            self.data_provider = (
+                StubPresetDataProvider() if self.test_mode else CorePresetDataProvider()
+            )
+        else:
+            self.data_provider = data_provider
 
     def update_save_enabled(self):
         """Refresh ``save_enabled`` based on preset modifications."""
@@ -326,7 +338,7 @@ class EditPresetScreen(MDScreen):
                 else:
                     results = []
                     description = ""
-                    metric_defs = core.get_metrics_for_exercise(
+                    metric_defs = self.data_provider.get_metrics_for_exercise(
                         ex["name"],
                         db_path=session.db_path,
                         preset_name=session.preset_name,
@@ -334,7 +346,7 @@ class EditPresetScreen(MDScreen):
                 new_exercises.append(
                     {
                         "name": ex.get("name"),
-                        "sets": ex.get("sets") or core.DEFAULT_SETS_PER_EXERCISE,
+                        "sets": ex.get("sets") or self.data_provider.DEFAULT_SETS_PER_EXERCISE,
                         "rest": ex.get("rest") or session.rest_duration,
                         "results": results,
                         "library_exercise_id": ex.get("library_id"),
@@ -561,7 +573,7 @@ class EditPresetScreen(MDScreen):
 
         all_defs = {
             m["name"]: m
-            for m in core.get_all_metric_types(include_user_created=True)
+            for m in self.data_provider.get_all_metric_types(include_user_created=True)
         }
 
         rv.data = [
@@ -612,7 +624,7 @@ class EditPresetScreen(MDScreen):
         def do_confirm(*args):
             try:
                 app.preset_editor.save()
-                core.load_workout_presets(app.preset_editor.db_path)
+                self.data_provider.load_workout_presets(app.preset_editor.db_path)
                 app.selected_preset = app.preset_editor.preset_name
                 if dialog:
                     dialog.dismiss()
@@ -806,8 +818,8 @@ class ExerciseSelectionPanel(MDBoxLayout):
         if self.all_exercises is None or (
             app and self.cache_version != getattr(app, "exercise_library_version", 0)
         ):
-            db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(
+            db_path = self.data_provider.db_path
+            self.all_exercises = self.data_provider.get_all_exercises(
                 db_path, include_user_created=True
             )
             if app:
@@ -912,7 +924,7 @@ class AddPresetMetricPopup(MDDialog):
             }
         metrics = [
             m
-            for m in core.get_all_metric_types()
+            for m in self.screen.data_provider.get_all_metric_types()
             if m.get("scope") == "preset" and (
                 m.get("name") not in existing and m.get("metric_name") not in existing
             )
@@ -964,7 +976,7 @@ class AddSessionMetricPopup(MDDialog):
             }
         metrics = [
             m
-            for m in core.get_all_metric_types()
+            for m in self.screen.data_provider.get_all_metric_types()
             if m.get("scope") == "session" and (
                 m.get("name") not in existing and m.get("metric_name") not in existing
             )
@@ -990,4 +1002,32 @@ class AddSessionMetricPopup(MDDialog):
         self.dismiss()
         self.screen.populate_metrics()
         self.screen.update_save_enabled()
+
+
+if __name__ == "__main__":  # pragma: no cover - manual visual test
+    class _DemoPresetEditor:
+        def __init__(self):
+            self.preset_name = "Demo Preset"
+            self.sections = [{"name": "Demo", "exercises": []}]
+            self.preset_metrics = []
+
+        def add_section(self, name):
+            self.sections.append({"name": name, "exercises": []})
+            return len(self.sections) - 1
+
+        def rename_section(self, idx, name):
+            self.sections[idx]["name"] = name
+
+        def is_modified(self):
+            return False
+
+        def add_metric(self, name):
+            self.preset_metrics.append({"name": name})
+
+    class _TestApp(MDApp):  # pragma: no cover - stub app
+        def build(self):
+            self.preset_editor = _DemoPresetEditor()
+            return EditPresetScreen(test_mode=True)
+
+    _TestApp().run()
 
