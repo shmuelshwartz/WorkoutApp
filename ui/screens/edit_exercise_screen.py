@@ -30,7 +30,7 @@ import os
 DEFAULT_SETS_PER_EXERCISE = 3
 DEFAULT_REST_DURATION = 120
 
-from .metric_input_screen import MetricInputScreen
+from ui.screens.metric_input_screen import MetricInputScreen
 
 
 class EditExerciseScreen(MDScreen):
@@ -60,12 +60,14 @@ class EditExerciseScreen(MDScreen):
         self,
         mode: str = "library",
         data_provider=None,
+        router=None,
         test_mode: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.mode = mode
         self.test_mode = test_mode
+        self.router = router
         if data_provider is None:
             if test_mode:
                 from ui.stubs.exercise_data_provider import (
@@ -357,11 +359,21 @@ class EditExerciseScreen(MDScreen):
                 self.manager.current = self.previous_screen
 
 
-if __name__ == "__main__":
-    from kivymd.app import MDApp
+if __name__ == "__main__":  # pragma: no cover - manual visual test
+    choice = (
+        input("Type 1 for single-screen test\nType 2 for flow test\n").strip()
+        or "1"
+    )
+    if choice == "2":
+        from ui.testing.runners.flow_runner import run
 
-    class _TestApp(MDApp):
-        def build(self):
-            return EditExerciseScreen(test_mode=True)
+        run("edit_exercise_screen")
+    else:
+        from kivymd.app import MDApp
+        from ui.routers import SingleRouter
 
-    _TestApp().run()
+        class _TestApp(MDApp):
+            def build(self):
+                return EditExerciseScreen(router=SingleRouter(), test_mode=True)
+
+        _TestApp().run()
