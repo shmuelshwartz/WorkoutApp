@@ -443,7 +443,13 @@ if __name__ == "__main__":  # pragma: no cover - manual visual test
         def build(self):
             kv_path = Path(__file__).resolve().parents[2] / "main.kv"
             if kv_path.exists():
-                Builder.load_file(str(kv_path))
+                kv_text = kv_path.read_text(encoding="utf-8")
+                start = kv_text.find("<MetricInputScreen>")
+                if start != -1:
+                    end = kv_text.find("\n<", start + 1)
+                    if end == -1:
+                        end = len(kv_text)
+                    Builder.load_string(kv_text[start:end])
             return MetricInputScreen(test_mode=True)
 
     _PreviewApp().run()
