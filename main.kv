@@ -113,13 +113,13 @@ ScreenManager:
                 id: summary_list
         MDRaisedButton:
             text: "Edit Preset"
-            on_release: app.root.current = "edit_preset"
+            on_release: root.navigate("edit_preset")
         MDRaisedButton:
             text: "Go to Preset Overview"
-            on_release: app.root.current = "preset_overview"
+            on_release: root.navigate("preset_overview")
         MDRaisedButton:
             text: "Back to Presets"
-            on_release: app.root.current = "presets"
+            on_release: root.navigate("presets")
 
 <ExerciseRow@MDBoxLayout>:
     name: ""

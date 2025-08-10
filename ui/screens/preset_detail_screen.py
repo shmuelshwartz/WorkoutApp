@@ -9,13 +9,21 @@ class PresetDetailScreen(MDScreen):
     preset_name = StringProperty("")
     summary_list = ObjectProperty(None)
 
-    def __init__(self, data_provider=None, preset_name: str = "", test_mode: bool = False, **kwargs):
+    def __init__(
+        self,
+        data_provider=None,
+        router=None,
+        preset_name: str = "",
+        test_mode: bool = False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         if test_mode and data_provider is None:
             from ui.stubs.preset_detail_stub import StubPresetProvider
 
             data_provider = StubPresetProvider()
         self.data_provider = data_provider
+        self.router = router
         self.test_mode = test_mode
         if not preset_name and hasattr(self.data_provider, "get_default_preset_name"):
             preset_name = self.data_provider.get_default_preset_name()
@@ -45,12 +53,26 @@ class PresetDetailScreen(MDScreen):
                     ExerciseSummaryItem(name=ex["name"], sets=sets)
                 )
 
+    def navigate(self, target: str) -> None:
+        """Use the router to navigate if available."""
+        if self.router:
+            self.router.navigate(target)
+if __name__ == "__main__":  # pragma: no cover - manual visual test
+    choice = (
+        input("Type 1 for single-screen test\nType 2 for flow test\n").strip()
+        or "1"
+    )
+    if choice == "2":
+        from ui.testing.runners.flow_runner import run
 
-if __name__ == "__main__":
-    from kivymd.app import MDApp
-    from kivy.lang import Builder
+        run("preset_detail_screen")
+    else:
+        from kivymd.app import MDApp
+        from kivy.lang import Builder
+        from ui.routers.single_router import SingleRouter
+        from ui.stubs.preset_detail_stub import StubPresetProvider
 
-    KV = """
+        KV = """
 <PresetDetailScreen>:
     summary_list: summary_list
     BoxLayout:
@@ -67,20 +89,21 @@ if __name__ == "__main__":
                 id: summary_list
         MDRaisedButton:
             text: "Edit Preset"
-            on_release: print("Edit Preset clicked")
+            on_release: root.navigate("edit_preset")
         MDRaisedButton:
             text: "Go to Preset Overview"
-            on_release: print("Go to Preset Overview clicked")
+            on_release: root.navigate("preset_overview")
         MDRaisedButton:
             text: "Back to Presets"
-            on_release: print("Back to Presets clicked")
-    """
+            on_release: root.navigate("presets")
+"""
 
-    class _TestApp(MDApp):
-        def build(self):
-            from ui.stubs.preset_detail_stub import StubPresetProvider
+        class _TestApp(MDApp):
+            def build(self):
+                Builder.load_string(KV)
+                provider = StubPresetProvider()
+                return PresetDetailScreen(
+                    data_provider=provider, router=SingleRouter(), test_mode=True
+                )
 
-            Builder.load_string(KV)
-            return PresetDetailScreen(data_provider=StubPresetProvider(), test_mode=True)
-
-    _TestApp().run()
+        _TestApp().run()
