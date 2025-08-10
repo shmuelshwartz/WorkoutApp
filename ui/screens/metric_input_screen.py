@@ -453,11 +453,18 @@ if __name__ == "__main__":  # pragma: no cover - manual visual test
         run("metric_input_screen")
     else:
         from kivymd.app import MDApp
+        from kivy.lang import Builder
+        from pathlib import Path
         from ui.routers import SingleRouter
         from ui.stubs.metric_input_stub import StubDataProvider
 
         class _TestApp(MDApp):
             def build(self):
+                kv_path = Path(__file__).resolve().parents[2] / "main.kv"
+                kv_text = kv_path.read_text(encoding="utf-8")
+                start = kv_text.index("<MetricInputScreen>")
+                end = kv_text.index("<WorkoutEditScreen@")
+                Builder.load_string(kv_text[start:end])
                 provider = StubDataProvider()
                 return MetricInputScreen(
                     data_provider=provider, router=SingleRouter(), test_mode=True
