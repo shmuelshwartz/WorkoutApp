@@ -5,6 +5,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import core
+from backend.workout_session import WorkoutSession
 
 
 @pytest.fixture()
@@ -128,7 +129,7 @@ def test_add_and_remove_metric(sample_db):
 
 
 def test_workout_session_progress(sample_db, monkeypatch):
-    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     assert session.next_exercise_name() == "Push Up"
     assert session.next_exercise_display() == "Push Up set 1 of 2"
     # speed up time by patching time.time
