@@ -10,6 +10,7 @@ from kivy.properties import (
     StringProperty,
     ObjectProperty,
     ListProperty,
+    BooleanProperty,
 )
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.list import MDList, OneLineListItem
@@ -18,8 +19,7 @@ from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDRaisedButton
 
 import os
-import core
-from core import DEFAULT_DB_PATH
+from ui.adapters.library_adapter import LibraryAdapter
 
 
 class ExerciseLibraryScreen(MDScreen):
@@ -34,6 +34,7 @@ class ExerciseLibraryScreen(MDScreen):
     search_text = StringProperty("")
     metric_search_text = StringProperty("")
     current_tab = StringProperty("exercises")
+    test_mode = BooleanProperty(False)
     # Cached list of all exercises including user-created ones
     all_exercises = ListProperty(None, allownone=True)
     # Cached list of all metric types
@@ -47,15 +48,26 @@ class ExerciseLibraryScreen(MDScreen):
     _search_event = None
     _metric_search_event = None
 
+    def __init__(self, data_provider=None, test_mode=False, **kwargs):
+        super().__init__(**kwargs)
+        self.test_mode = test_mode
+        if data_provider is not None:
+            self.data_provider = data_provider
+        elif test_mode:
+            from ui.stubs.library_data import LibraryStubDataProvider
+
+            self.data_provider = LibraryStubDataProvider()
+        else:
+            self.data_provider = LibraryAdapter()
+
     def on_pre_enter(self, *args):
         """Populate the list widgets when the screen is shown."""
         app = MDApp.get_running_app()
         if self.all_exercises is None or (
             app and self.cache_version != getattr(app, "exercise_library_version", 0)
         ):
-            db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(
-                db_path, include_user_created=True
+            self.all_exercises = self.data_provider.get_all_exercises(
+                include_user_created=True
             )
             if app:
                 self.cache_version = app.exercise_library_version
@@ -64,9 +76,8 @@ class ExerciseLibraryScreen(MDScreen):
             app
             and self.metric_cache_version != getattr(app, "metric_library_version", 0)
         ):
-            db_path = DEFAULT_DB_PATH
-            self.all_metrics = core.get_all_metric_types(
-                db_path, include_user_created=True
+            self.all_metrics = self.data_provider.get_all_metric_types(
+                include_user_created=True
             )
             if app:
                 self.metric_cache_version = app.metric_library_version
@@ -103,9 +114,8 @@ class ExerciseLibraryScreen(MDScreen):
         if self.all_exercises is None or (
             app and self.cache_version != getattr(app, "exercise_library_version", 0)
         ):
-            db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(
-                db_path, include_user_created=True
+            self.all_exercises = self.data_provider.get_all_exercises(
+                include_user_created=True
             )
             if app:
                 self.cache_version = app.exercise_library_version
@@ -147,9 +157,8 @@ class ExerciseLibraryScreen(MDScreen):
             app
             and self.metric_cache_version != getattr(app, "metric_library_version", 0)
         ):
-            db_path = DEFAULT_DB_PATH
-            self.all_metrics = core.get_all_metric_types(
-                db_path, include_user_created=True
+            self.all_metrics = self.data_provider.get_all_metric_types(
+                include_user_created=True
             )
             if app:
                 self.metric_cache_version = app.metric_library_version
@@ -238,6 +247,9 @@ class ExerciseLibraryScreen(MDScreen):
 
     def open_edit_exercise_popup(self, exercise_name, is_user_created):
         """Navigate to ``EditExerciseScreen`` with ``exercise_name`` loaded."""
+        if self.test_mode:
+            print(f"Edit exercise: {exercise_name}")
+            return
         app = MDApp.get_running_app()
         if not app or not app.root:
             return
@@ -253,11 +265,8 @@ class ExerciseLibraryScreen(MDScreen):
         dialog = None
 
         def do_delete(*args):
-            db_path = DEFAULT_DB_PATH
             try:
-                core.delete_exercise(
-                    exercise_name, db_path=db_path, is_user_created=True
-                )
+                self.data_provider.delete_exercise(exercise_name)
                 app = MDApp.get_running_app()
                 if app:
                     app.exercise_library_version += 1
@@ -282,11 +291,8 @@ class ExerciseLibraryScreen(MDScreen):
         dialog = None
 
         def do_delete(*args):
-            db_path = DEFAULT_DB_PATH
             try:
-                core.delete_metric_type(
-                    metric_name, db_path=db_path, is_user_created=True
-                )
+                self.data_provider.delete_metric_type(metric_name)
                 app = MDApp.get_running_app()
                 if app:
                     app.metric_library_version += 1
@@ -309,6 +315,9 @@ class ExerciseLibraryScreen(MDScreen):
 
     def new_exercise(self):
         """Open ``EditExerciseScreen`` to create a new exercise."""
+        if self.test_mode:
+            print("Create new exercise")
+            return
         app = MDApp.get_running_app()
         if not app or not app.root:
             return
@@ -321,12 +330,18 @@ class ExerciseLibraryScreen(MDScreen):
         app.root.current = "edit_exercise"
 
     def open_edit_metric_popup(self, metric_name, is_user_created):
+        if self.test_mode:
+            print(f"Edit metric: {metric_name}")
+            return
         from main import EditMetricTypePopup  # local import to avoid circular dependency
 
         popup = EditMetricTypePopup(self, metric_name, is_user_created)
         popup.open()
 
     def new_metric(self):
+        if self.test_mode:
+            print("Create new metric")
+            return
         from main import EditMetricTypePopup  # local import to avoid circular dependency
 
         popup = EditMetricTypePopup(self, None, True)
@@ -342,3 +357,21 @@ class ExerciseLibraryScreen(MDScreen):
     def go_back(self):
         if self.manager:
             self.manager.current = self.previous_screen
+
+
+if __name__ == "__main__":
+    import sys
+
+    # Ensure repository root is on sys.path for absolute imports
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    from kivymd.app import MDApp
+    from ui.stubs.library_data import LibraryStubDataProvider
+
+    class _TestApp(MDApp):
+        def build(self):
+            return ExerciseLibraryScreen(
+                data_provider=LibraryStubDataProvider(), test_mode=True
+            )
+
+    _TestApp().run()
