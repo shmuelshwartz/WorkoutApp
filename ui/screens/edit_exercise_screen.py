@@ -364,6 +364,133 @@ if __name__ == "__main__":  # pragma: no cover - manual visual test
         input("Type 1 for single-screen test\nType 2 for flow test\n").strip()
         or "1"
     )
+    from kivy.lang import Builder
+
+    KV = """
+<EditExerciseScreen>:
+    metrics_list: metrics_list
+    name_field: name_field
+    description_field: description_field
+    current_tab: "metrics"
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        MDBoxLayout:
+            size_hint_y: 0.1
+            orientation: "horizontal"
+            spacing: "10dp"
+            MDIconButton:
+                icon: "chevron-left"
+                opacity: 1 if root.section_index >= 0 else 0
+                disabled: root.section_index < 0 or not app.preset_editor or root.exercise_index <= 0
+                on_release: root.go_prev_exercise()
+            MDLabel:
+                text: root.exercise_name if root.exercise_name else "Edit Exercise"
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: 0.2, 0.6, 0.86, 1
+            MDIconButton:
+                icon: "chevron-right"
+                opacity: 1 if root.section_index >= 0 else 0
+                disabled: root.section_index < 0 or not app.preset_editor or root.exercise_index >= root.section_length - 1
+                on_release: root.go_next_exercise()
+        MDBoxLayout:
+            size_hint_y: None
+            height: "40dp"
+            spacing: "10dp"
+            MDRaisedButton:
+                text: "Config"
+                opacity: 1 if root.section_index >= 0 else 0
+                disabled: root.section_index < 0
+                size_hint_x: None
+                width: dp(80) if root.section_index >= 0 else 0
+                md_bg_color: app.theme_cls.primary_color if root.current_tab == "config" else (.5, .5, .5, 1)
+                on_release: root.switch_tab("config") if root.section_index >= 0 else None
+            MDRaisedButton:
+                text: "Metrics"
+                md_bg_color: app.theme_cls.primary_color if root.current_tab == "metrics" else (.5, .5, .5, 1)
+                on_release: root.switch_tab("metrics")
+            MDRaisedButton:
+                text: "Details"
+                md_bg_color: app.theme_cls.primary_color if root.current_tab == "details" else (.5, .5, .5, 1)
+                on_release: root.switch_tab("details")
+        ScreenManager:
+            id: exercise_tabs
+            size_hint_y: 1
+            transition: NoTransition()
+            on_kv_post: self.current = root.current_tab
+            Screen:
+                name: "config"
+                BoxLayout:
+                    orientation: "vertical"
+                    spacing: "10dp"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    MDTextField:
+                        id: sets_field
+                        hint_text: "Sets"
+                        text: str(root.exercise_sets)
+                        input_filter: "int"
+                        on_text: root.update_sets(self.text)
+                    MDTextField:
+                        id: rest_field
+                        hint_text: "Rest Time (s)"
+                        text: str(root.exercise_rest)
+                        input_filter: "int"
+                        on_text: root.update_rest(self.text)
+            Screen:
+                name: "metrics"
+                FloatLayout:
+                ScrollView:
+                    MDList:
+                        id: metrics_list
+                MDFloatingActionButton:
+                    icon: "plus"
+                    md_bg_color: app.theme_cls.primary_color
+                    pos_hint: {"center_x": 0.5, "y": 0.02}
+                    tooltip_text: "Add Metric"
+                    opacity: 1 if root.mode != "session" else 0
+                    disabled: root.mode == "session"
+                    on_release: root.open_add_metric_popup()
+            Screen:
+                name: "details"
+                ScrollView:
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: "10dp"
+                        MDTextField:
+                            id: name_field
+                            hint_text: "Name"
+                            text: root.exercise_name
+                            multiline: False
+                            size_hint_x: 1
+                            disabled: root.mode == "session"
+                            on_text: root.update_name(self.text)
+                        MDTextField:
+                            id: description_field
+                            hint_text: "Description"
+                            text: root.exercise_description
+                            multiline: True
+                            size_hint_x: 1
+                            disabled: root.mode == "session"
+                            on_text: root.update_description(self.text)
+        MDBoxLayout:
+            size_hint_y: 0.1
+            spacing: "10dp"
+            MDRaisedButton:
+                text: "Save"
+                disabled: not root.save_enabled
+                on_release: root.save_exercise()
+            MDRaisedButton:
+                text: "Back"
+                on_release: root.go_back()
+    """
+
+    Builder.load_string(KV)
+
     if choice == "2":
         from ui.testing.runners.flow_runner import run
 
