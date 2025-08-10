@@ -34,9 +34,10 @@ class MetricInputScreen(MDScreen):
     pre_color = ListProperty([0, 1, 0, 1])
     post_color = ListProperty([0, 1, 0, 1])
 
-    def __init__(self, data_provider=None, test_mode=False, **kwargs):
+    def __init__(self, data_provider=None, router=None, test_mode=False, **kwargs):
         super().__init__(**kwargs)
         self.test_mode = test_mode
+        self.router = router
         self.data_provider = data_provider
         if self.test_mode and self.data_provider is None:
             try:
@@ -429,27 +430,37 @@ class MetricInputScreen(MDScreen):
         self.exercise_idx = session.current_exercise
         self.set_idx = session.current_set
         self.update_display()
-        if finished and getattr(self, "manager", None):
-            self.manager.current = "workout_summary"
-        elif getattr(self, "manager", None):
-            self.manager.current = "rest"
+        if finished:
+            if self.router:
+                self.router.navigate("workout_summary")
+            elif getattr(self, "manager", None):
+                self.manager.current = "workout_summary"
+        else:
+            if self.router:
+                self.router.navigate("rest")
+            elif getattr(self, "manager", None):
+                self.manager.current = "rest"
 
 
 if __name__ == "__main__":  # pragma: no cover - manual visual test
-    from kivy.lang import Builder
-    from pathlib import Path
+    choice = (
+        input("Type 1 for single-screen test\nType 2 for flow test\n").strip()
+        or "1"
+    )
+    if choice == "2":
+        from ui.testing.runners.flow_runner import run
 
-    class _PreviewApp(MDApp):
-        def build(self):
-            kv_path = Path(__file__).resolve().parents[2] / "main.kv"
-            if kv_path.exists():
-                kv_text = kv_path.read_text(encoding="utf-8")
-                start = kv_text.find("<MetricInputScreen>")
-                if start != -1:
-                    end = kv_text.find("\n<", start + 1)
-                    if end == -1:
-                        end = len(kv_text)
-                    Builder.load_string(kv_text[start:end])
-            return MetricInputScreen(test_mode=True)
+        run("metric_input_screen")
+    else:
+        from kivymd.app import MDApp
+        from ui.routers import SingleRouter
+        from ui.stubs.metric_input_stub import StubDataProvider
 
-    _PreviewApp().run()
+        class _TestApp(MDApp):
+            def build(self):
+                provider = StubDataProvider()
+                return MetricInputScreen(
+                    data_provider=provider, router=SingleRouter(), test_mode=True
+                )
+
+        _TestApp().run()

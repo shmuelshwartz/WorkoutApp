@@ -48,9 +48,10 @@ class ExerciseLibraryScreen(MDScreen):
     _search_event = None
     _metric_search_event = None
 
-    def __init__(self, data_provider=None, test_mode=False, **kwargs):
+    def __init__(self, data_provider=None, router=None, test_mode=False, **kwargs):
         super().__init__(**kwargs)
         self.test_mode = test_mode
+        self.router = router
         if data_provider is not None:
             self.data_provider = data_provider
         elif test_mode:
@@ -259,7 +260,10 @@ class ExerciseLibraryScreen(MDScreen):
         screen.section_index = -1
         screen.exercise_index = -1
         screen.previous_screen = "exercise_library"
-        app.root.current = "edit_exercise"
+        if self.router:
+            self.router.navigate("edit_exercise")
+        else:
+            app.root.current = "edit_exercise"
 
     def confirm_delete_exercise(self, exercise_name):
         dialog = None
@@ -327,7 +331,10 @@ class ExerciseLibraryScreen(MDScreen):
         screen.section_index = -1
         screen.exercise_index = -1
         screen.previous_screen = "exercise_library"
-        app.root.current = "edit_exercise"
+        if self.router:
+            self.router.navigate("edit_exercise")
+        else:
+            app.root.current = "edit_exercise"
 
     def open_edit_metric_popup(self, metric_name, is_user_created):
         if self.test_mode:
@@ -356,22 +363,31 @@ class ExerciseLibraryScreen(MDScreen):
 
     def go_back(self):
         if self.manager:
-            self.manager.current = self.previous_screen
+            if self.router:
+                self.router.navigate(self.previous_screen)
+            elif self.manager:
+                self.manager.current = self.previous_screen
 
 
-if __name__ == "__main__":
-    import sys
+if __name__ == "__main__":  # pragma: no cover - manual visual test
+    choice = (
+        input("Type 1 for single-screen test\nType 2 for flow test\n").strip()
+        or "1"
+    )
+    if choice == "2":
+        from ui.testing.runners.flow_runner import run
 
-    # Ensure repository root is on sys.path for absolute imports
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        run("exercise_library")
+    else:
+        from kivymd.app import MDApp
+        from ui.routers import SingleRouter
+        from ui.stubs.library_data import LibraryStubDataProvider
 
-    from kivymd.app import MDApp
-    from ui.stubs.library_data import LibraryStubDataProvider
+        class _TestApp(MDApp):
+            def build(self):
+                provider = LibraryStubDataProvider()
+                return ExerciseLibraryScreen(
+                    data_provider=provider, router=SingleRouter(), test_mode=True
+                )
 
-    class _TestApp(MDApp):
-        def build(self):
-            return ExerciseLibraryScreen(
-                data_provider=LibraryStubDataProvider(), test_mode=True
-            )
-
-    _TestApp().run()
+        _TestApp().run()
