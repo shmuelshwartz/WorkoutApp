@@ -656,8 +656,8 @@ def test_add_preset_metric_popup_filters_scope(monkeypatch):
         {"name": "Session", "scope": "session"},
     ]
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
-    screen = EditPresetScreen()
+    screen = EditPresetScreen(test_mode=True)
+    screen.data_provider.get_all_metric_types = lambda *a, **k: metrics
     popup = AddPresetMetricPopup(screen)
     list_view = popup.content_cls.children[0]
     names = {child.text for child in list_view.children}
@@ -687,8 +687,8 @@ def test_add_session_metric_popup_filters_scope(monkeypatch):
         {"name": "Focus", "scope": "preset"},
     ]
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
-    screen = EditPresetScreen()
+    screen = EditPresetScreen(test_mode=True)
+    screen.data_provider.get_all_metric_types = lambda *a, **k: metrics
     popup = AddSessionMetricPopup(screen)
     list_view = popup.content_cls.children[0]
     names = {child.text for child in list_view.children}
@@ -1256,8 +1256,6 @@ def test_edit_preset_populate_details(monkeypatch):
         },
     ]
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
-
     app = _DummyApp()
     app.preset_editor = type(
         "PE",
@@ -1274,7 +1272,8 @@ def test_edit_preset_populate_details(monkeypatch):
     )()
     monkeypatch.setattr(App, "get_running_app", lambda: app)
 
-    screen = EditPresetScreen()
+    screen = EditPresetScreen(test_mode=True)
+    screen.data_provider.get_all_metric_types = lambda *a, **k: metrics
     screen.populate_details()
 
     assert set(screen.preset_metric_widgets.keys()) == {"Focus", "Level"}
@@ -1288,8 +1287,6 @@ def test_preset_name_row_preserved(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
-
     app = _DummyApp()
     app.preset_editor = type(
         "PE",
@@ -1303,7 +1300,8 @@ def test_preset_name_row_preserved(monkeypatch):
     )()
     monkeypatch.setattr(App, "get_running_app", lambda: app)
 
-    screen = EditPresetScreen()
+    screen = EditPresetScreen(test_mode=True)
+    screen.data_provider.get_all_metric_types = lambda *a, **k: []
     screen.populate_details()
 
     assert screen.ids.preset_name_row in screen.details_box.children
@@ -1317,8 +1315,6 @@ def test_details_has_add_button(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
-
     app = _DummyApp()
     app.preset_editor = type(
         "PE",
@@ -1332,7 +1328,8 @@ def test_details_has_add_button(monkeypatch):
     )()
     monkeypatch.setattr(App, "get_running_app", lambda: app)
 
-    screen = EditPresetScreen()
+    screen = EditPresetScreen(test_mode=True)
+    screen.data_provider.get_all_metric_types = lambda *a, **k: []
     screen.populate_details()
 
     assert "add_metric_btn" in screen.ids
@@ -1345,8 +1342,6 @@ def test_metrics_has_add_button(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
-
     app = _DummyApp()
     app.preset_editor = type(
         "PE",
@@ -1360,7 +1355,8 @@ def test_metrics_has_add_button(monkeypatch):
     )()
     monkeypatch.setattr(App, "get_running_app", lambda: app)
 
-    screen = EditPresetScreen()
+    screen = EditPresetScreen(test_mode=True)
+    screen.data_provider.get_all_metric_types = lambda *a, **k: []
     screen.populate_metrics()
 
     assert "add_session_metric_btn" in screen.ids
