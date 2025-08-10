@@ -19,7 +19,7 @@ from kivymd.uix.selectioncontrol import MDCheckbox
 class MetricInputScreen(MDScreen):
     """Screen for entering workout metrics with navigation and filtering."""
 
-    metrics_list = ObjectProperty(None)
+    metrics_list = ObjectProperty(None, allownone=True)
     label_text = StringProperty("")
     can_nav_left = BooleanProperty(False)
     can_nav_right = BooleanProperty(False)
