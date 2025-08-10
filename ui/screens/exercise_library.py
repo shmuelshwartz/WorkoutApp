@@ -1,4 +1,12 @@
-"""Exercise library screen module for WorkoutApp."""
+"""Exercise library screen module for WorkoutApp.
+
+Expected ``data_provider`` interface::
+
+    get_all_exercises(include_user_created=True) -> list[tuple[str, bool]]
+    get_all_metric_types(include_user_created=True) -> list[dict]
+    delete_exercise(name: str) -> None
+    delete_metric_type(name: str) -> None
+"""
 
 from __future__ import annotations
 
@@ -14,16 +22,37 @@ from kivy.properties import (
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.list import MDList, OneLineListItem
 from kivy.uix.scrollview import ScrollView
-from kivymd.uix.dialog import MDDialog
-from kivymd.uix.button import MDRaisedButton
-
 import os
-import core
-from core import DEFAULT_DB_PATH
+try:  # pragma: no cover - support running as script
+    from .exercise_library_helpers import (
+        populate_exercises as _populate_exercises_helper,
+        populate_metrics as _populate_metrics_helper,
+        confirm_delete_exercise as _confirm_delete_exercise_helper,
+        confirm_delete_metric as _confirm_delete_metric_helper,
+    )
+except Exception:  # pragma: no cover - direct script execution
+    from exercise_library_helpers import (
+        populate_exercises as _populate_exercises_helper,
+        populate_metrics as _populate_metrics_helper,
+        confirm_delete_exercise as _confirm_delete_exercise_helper,
+        confirm_delete_metric as _confirm_delete_metric_helper,
+    )
 
 
 class ExerciseLibraryScreen(MDScreen):
     """Screen allowing the user to manage exercises and metric types."""
+
+    def __init__(self, data_provider=None, test_mode: bool = False, **kwargs):
+        super().__init__(**kwargs)
+        self.test_mode = test_mode
+        if data_provider is not None:
+            self.data_provider = data_provider
+        elif test_mode:
+            from ui.stubs.exercise_library import StubExerciseLibraryProvider
+
+            self.data_provider = StubExerciseLibraryProvider()
+        else:
+            self.data_provider = None
 
     previous_screen = StringProperty("home")
     exercise_list = ObjectProperty(None)
@@ -53,9 +82,11 @@ class ExerciseLibraryScreen(MDScreen):
         if self.all_exercises is None or (
             app and self.cache_version != getattr(app, "exercise_library_version", 0)
         ):
-            db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(
-                db_path, include_user_created=True
+            provider = getattr(self, "data_provider", None)
+            self.all_exercises = (
+                provider.get_all_exercises(include_user_created=True)
+                if provider
+                else []
             )
             if app:
                 self.cache_version = app.exercise_library_version
@@ -64,9 +95,11 @@ class ExerciseLibraryScreen(MDScreen):
             app
             and self.metric_cache_version != getattr(app, "metric_library_version", 0)
         ):
-            db_path = DEFAULT_DB_PATH
-            self.all_metrics = core.get_all_metric_types(
-                db_path, include_user_created=True
+            provider = getattr(self, "data_provider", None)
+            self.all_metrics = (
+                provider.get_all_metric_types(include_user_created=True)
+                if provider
+                else []
             )
             if app:
                 self.metric_cache_version = app.metric_library_version
@@ -78,13 +111,17 @@ class ExerciseLibraryScreen(MDScreen):
     def populate(self, show_loading: bool = False):
         """Populate exercises or metrics depending on current tab."""
         if show_loading and not os.environ.get("KIVY_UNITTEST"):
-            from main import LoadingDialog  # local import to avoid circular dependency
+            try:
+                from main import LoadingDialog  # local import to avoid circular dependency
+            except Exception:  # pragma: no cover - preview fallback
+                LoadingDialog = None
 
-            self.loading_dialog = LoadingDialog()
-            self.loading_dialog.open()
-            Clock.schedule_once(self._populate_impl, 0)
-        else:
-            self._populate_impl()
+            if LoadingDialog:
+                self.loading_dialog = LoadingDialog()
+                self.loading_dialog.open()
+                Clock.schedule_once(self._populate_impl, 0)
+                return
+        self._populate_impl()
 
     def _populate_impl(self, dt: float | None = None):
         if self.current_tab == "exercises":
@@ -93,90 +130,10 @@ class ExerciseLibraryScreen(MDScreen):
             self._populate_metrics()
 
     def _populate_exercises(self):
-        if not self.exercise_list:
-            if self.loading_dialog:
-                self.loading_dialog.dismiss()
-                self.loading_dialog = None
-            return
-        self.exercise_list.data = []
-        app = MDApp.get_running_app()
-        if self.all_exercises is None or (
-            app and self.cache_version != getattr(app, "exercise_library_version", 0)
-        ):
-            db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(
-                db_path, include_user_created=True
-            )
-            if app:
-                self.cache_version = app.exercise_library_version
-        exercises = self.all_exercises or []
-
-        mode = self.filter_mode
-        if mode == "user":
-            exercises = [ex for ex in exercises if ex[1]]
-        elif mode == "premade":
-            exercises = [ex for ex in exercises if not ex[1]]
-        if self.search_text:
-            s = self.search_text.lower()
-            exercises = [ex for ex in exercises if s in ex[0].lower()]
-        data = []
-        for name, is_user in exercises:
-            data.append(
-                {
-                    "name": name,
-                    "text": name,
-                    "is_user_created": is_user,
-                    "edit_callback": self.open_edit_exercise_popup,
-                    "delete_callback": self.confirm_delete_exercise,
-                }
-            )
-        self.exercise_list.data = data
-        if self.loading_dialog:
-            self.loading_dialog.dismiss()
-            self.loading_dialog = None
+        _populate_exercises_helper(self)
 
     def _populate_metrics(self):
-        if not self.metric_list:
-            if self.loading_dialog:
-                self.loading_dialog.dismiss()
-                self.loading_dialog = None
-            return
-        self.metric_list.data = []
-        app = MDApp.get_running_app()
-        if self.all_metrics is None or (
-            app
-            and self.metric_cache_version != getattr(app, "metric_library_version", 0)
-        ):
-            db_path = DEFAULT_DB_PATH
-            self.all_metrics = core.get_all_metric_types(
-                db_path, include_user_created=True
-            )
-            if app:
-                self.metric_cache_version = app.metric_library_version
-        metrics = self.all_metrics or []
-        mode = self.metric_filter_mode
-        if mode == "user":
-            metrics = [m for m in metrics if m["is_user_created"]]
-        elif mode == "premade":
-            metrics = [m for m in metrics if not m["is_user_created"]]
-        if self.metric_search_text:
-            s = self.metric_search_text.lower()
-            metrics = [m for m in metrics if s in m["name"].lower()]
-        data = []
-        for m in metrics:
-            data.append(
-                {
-                    "name": m["name"],
-                    "text": m["name"],
-                    "is_user_created": m["is_user_created"],
-                    "edit_callback": self.open_edit_metric_popup,
-                    "delete_callback": self.confirm_delete_metric,
-                }
-            )
-        self.metric_list.data = data
-        if self.loading_dialog:
-            self.loading_dialog.dismiss()
-            self.loading_dialog = None
+        _populate_metrics_helper(self)
 
     def open_filter_popup(self):
         """Open the filter dialog."""
@@ -250,62 +207,10 @@ class ExerciseLibraryScreen(MDScreen):
         app.root.current = "edit_exercise"
 
     def confirm_delete_exercise(self, exercise_name):
-        dialog = None
-
-        def do_delete(*args):
-            db_path = DEFAULT_DB_PATH
-            try:
-                core.delete_exercise(
-                    exercise_name, db_path=db_path, is_user_created=True
-                )
-                app = MDApp.get_running_app()
-                if app:
-                    app.exercise_library_version += 1
-            except Exception:
-                pass
-            self.all_exercises = None
-            self.populate()
-            if dialog:
-                dialog.dismiss()
-
-        dialog = MDDialog(
-            title="Delete Exercise?",
-            text=f"Delete {exercise_name}?",
-            buttons=[
-                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
-                MDRaisedButton(text="Delete", on_release=do_delete),
-            ],
-        )
-        dialog.open()
+        _confirm_delete_exercise_helper(self, exercise_name)
 
     def confirm_delete_metric(self, metric_name):
-        dialog = None
-
-        def do_delete(*args):
-            db_path = DEFAULT_DB_PATH
-            try:
-                core.delete_metric_type(
-                    metric_name, db_path=db_path, is_user_created=True
-                )
-                app = MDApp.get_running_app()
-                if app:
-                    app.metric_library_version += 1
-            except Exception:
-                pass
-            self.all_metrics = None
-            self.populate()
-            if dialog:
-                dialog.dismiss()
-
-        dialog = MDDialog(
-            title="Delete Metric?",
-            text=f"Delete {metric_name}?",
-            buttons=[
-                MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
-                MDRaisedButton(text="Delete", on_release=do_delete),
-            ],
-        )
-        dialog.open()
+        _confirm_delete_metric_helper(self, metric_name)
 
     def new_exercise(self):
         """Open ``EditExerciseScreen`` to create a new exercise."""
@@ -321,16 +226,24 @@ class ExerciseLibraryScreen(MDScreen):
         app.root.current = "edit_exercise"
 
     def open_edit_metric_popup(self, metric_name, is_user_created):
-        from main import EditMetricTypePopup  # local import to avoid circular dependency
+        try:
+            from main import EditMetricTypePopup  # local import to avoid circular dependency
+        except Exception:  # pragma: no cover - preview fallback
+            EditMetricTypePopup = None
 
-        popup = EditMetricTypePopup(self, metric_name, is_user_created)
-        popup.open()
+        if EditMetricTypePopup:
+            popup = EditMetricTypePopup(self, metric_name, is_user_created)
+            popup.open()
 
     def new_metric(self):
-        from main import EditMetricTypePopup  # local import to avoid circular dependency
+        try:
+            from main import EditMetricTypePopup  # local import to avoid circular dependency
+        except Exception:  # pragma: no cover - preview fallback
+            EditMetricTypePopup = None
 
-        popup = EditMetricTypePopup(self, None, True)
-        popup.open()
+        if EditMetricTypePopup:
+            popup = EditMetricTypePopup(self, None, True)
+            popup.open()
 
     def switch_tab(self, tab: str):
         if tab in ("exercises", "metrics"):
@@ -342,3 +255,11 @@ class ExerciseLibraryScreen(MDScreen):
     def go_back(self):
         if self.manager:
             self.manager.current = self.previous_screen
+
+
+if __name__ == "__main__":
+    class _ExerciseLibraryApp(MDApp):
+        def build(self):  # pragma: no cover - manual testing
+            return ExerciseLibraryScreen(test_mode=True)
+
+    _ExerciseLibraryApp().run()
