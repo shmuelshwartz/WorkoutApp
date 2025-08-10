@@ -1438,6 +1438,7 @@ def test_session_edit_locking(monkeypatch, sample_db):
 def test_reordering_current_exercise_updates_index(monkeypatch, sample_db):
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     editor = PresetEditor("Push Day", db_path=sample_db)
+
     app = _DummyApp()
     app.workout_session = session
     app.preset_editor = editor

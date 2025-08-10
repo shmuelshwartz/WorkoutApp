@@ -9,6 +9,7 @@ from backend.workout_session import WorkoutSession
 from backend.exercise import Exercise
 
 
+
 @pytest.fixture()
 def sample_db(tmp_path):
     db_path = tmp_path / "workout.db"

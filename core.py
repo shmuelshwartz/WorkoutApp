@@ -6,6 +6,7 @@ import time
 import re
 import copy
 import json
+from typing import TYPE_CHECKING
 
 # Number of sets each exercise defaults to when starting a workout
 DEFAULT_SETS_PER_EXERCISE = 3
@@ -15,6 +16,9 @@ DEFAULT_REST_DURATION = 120
 
 # Default path to the bundled SQLite database
 DEFAULT_DB_PATH = Path(__file__).resolve().parent / "data" / "workout.db"
+
+if TYPE_CHECKING:
+    from backend.exercise import Exercise
 
 # Will hold preset data loaded from the database. Each item is a dict with
 #   {'name': <preset name>,
@@ -1040,7 +1044,7 @@ def save_completed_session(
 
 
 
-def save_exercise(exercise: Exercise) -> None:
+def save_exercise(exercise: "Exercise") -> None:
     """Persist ``exercise`` to the database as a user-defined copy."""
 
     db_path = exercise.db_path
@@ -1299,7 +1303,7 @@ def find_presets_using_exercise(
 
 
 def apply_exercise_changes_to_presets(
-    exercise: Exercise,
+    exercise: "Exercise",
     presets: list[str],
     *,
     db_path: Path = DEFAULT_DB_PATH,

@@ -11,6 +11,7 @@ from backend.preset_editor import PresetEditor
 from core import DEFAULT_SETS_PER_EXERCISE, DEFAULT_REST_DURATION
 
 
+
 @pytest.fixture
 def db_copy(tmp_path):
     """Return a temporary empty database using the bundled schema."""
