@@ -17,6 +17,9 @@ if kivy_available:
     from kivy.app import App
     from kivy.properties import ObjectProperty
     import core
+    from backend.preset_editor import PresetEditor
+    from backend.workout_session import WorkoutSession
+    from backend.exercise import Exercise
 
     from main import (
         RestScreen,
@@ -430,7 +433,7 @@ def test_open_metric_input_prefers_pre_set(monkeypatch):
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_active_screen_resumes_from_session(monkeypatch, sample_db):
     screen = WorkoutActiveScreen()
-    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     session.current_set_start_time = 100.0
     session.resume_from_last_start = True
     dummy_app = _DummyApp()
@@ -1033,12 +1036,12 @@ def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
         conn.executescript(fh.read())
     conn.close()
 
-    ex = core.Exercise(db_path=db_path)
+    ex = Exercise(db_path=db_path)
     ex.name = "Custom"
     core.save_exercise(ex)
 
     screen = EditExerciseScreen()
-    screen.exercise_obj = core.Exercise(db_path=db_path)
+    screen.exercise_obj = Exercise(db_path=db_path)
     screen.exercise_obj.name = "Custom"
     screen.name_field = type("F", (), {"error": False})()
 
@@ -1401,7 +1404,7 @@ def test_refresh_sections_preserves_names(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
     app = _DummyApp()
-    app.preset_editor = core.PresetEditor()
+    app.preset_editor = PresetEditor()
     app.preset_editor.add_section("Warmup")
     app.preset_editor.add_section("Skill work")
     app.preset_editor.add_section("Workout")
@@ -1418,7 +1421,7 @@ def test_refresh_sections_preserves_names(monkeypatch):
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_session_edit_locking(monkeypatch, sample_db):
-    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     app = _DummyApp()
     app.workout_session = session
     monkeypatch.setattr(App, "get_running_app", lambda: app)
@@ -1433,8 +1436,8 @@ def test_session_edit_locking(monkeypatch, sample_db):
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_reordering_current_exercise_updates_index(monkeypatch, sample_db):
-    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
-    editor = core.PresetEditor("Push Day", db_path=sample_db)
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    editor = PresetEditor("Push Day", db_path=sample_db)
     app = _DummyApp()
     app.workout_session = session
     app.preset_editor = editor

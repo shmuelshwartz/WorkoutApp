@@ -1,6 +1,7 @@
 import sqlite3
 import pytest
 import core
+from backend.workout_session import WorkoutSession
 
 
 def _complete_session(db_path):
@@ -23,7 +24,7 @@ def _complete_session(db_path):
     conn.commit()
     conn.close()
 
-    session = core.WorkoutSession("Push Day", db_path=db_path, rest_duration=1)
+    session = WorkoutSession("Push Day", db_path=db_path, rest_duration=1)
     session.set_session_metrics({"Session Reps": 28})
     session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})
     session.mark_set_completed()
@@ -60,6 +61,6 @@ def test_save_completed_session(sample_db):
 
 
 def test_save_session_validation(sample_db):
-    session = core.WorkoutSession("Push Day", db_path=sample_db)
+    session = WorkoutSession("Push Day", db_path=sample_db)
     with pytest.raises(ValueError):
         core.save_completed_session(session, db_path=sample_db)

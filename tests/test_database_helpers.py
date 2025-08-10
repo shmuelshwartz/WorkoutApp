@@ -1,11 +1,12 @@
 import core
+from backend.exercise import Exercise
 
 
 def test_get_all_exercises(sample_db):
     names = core.get_all_exercises(sample_db)
     assert names == ["Bench Press", "Push-up"]
 
-    ex = core.Exercise(db_path=sample_db)
+    ex = Exercise(db_path=sample_db)
     ex.name = "Custom"
     ex.add_metric({
         "name": "Reps",
