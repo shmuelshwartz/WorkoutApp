@@ -119,3 +119,25 @@ AGENTS.md
   - Use `SingleRouter` to log navigation in single mode, `FlowRouter` to navigate in flow mode.
   - Load all stub data and scenarios from `ui/stubs/`, never inline in the screen.
   - Keep changes localized to the screen unless explicitly updating shared routers, context, or adapters.
+
+# Flow Runner Standard
+
+**Purpose:** Runs flow-mode tests with a shared `AppContext` and router.
+
+**Location:** `ui/testing/runners/`
+
+## Usage
+```bash
+python flow_runner.py --start <screen_id> [--scenario <scenario>]
+```
+
+--start (required) → Starting screen (e.g., workout_screen)
+
+--scenario (optional) → Seed test data (e.g., presets_default)
+
+Rules
+All flow-mode screens use the shared AppContext.
+
+When run directly, a screen calls the flow runner with itself as --start.
+
+Keeps single-screen tests independent, flow tests coordinated, and allows starting anywhere.
