@@ -18,7 +18,6 @@ from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import OneLineListItem, MDList
-from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton, MDRaisedButton
 from kivymd.uix.card import MDSeparator
 from kivymd.uix.dialog import MDDialog
@@ -26,16 +25,10 @@ from kivymd.uix.label import MDIcon
 from ui.popups import AddMetricPopup, EditMetricPopup
 
 import os
-import string
-import sqlite3
 
-import core
-from core import (
-    DEFAULT_SETS_PER_EXERCISE,
-    DEFAULT_REST_DURATION,
-    DEFAULT_DB_PATH,
-)
-from backend.exercise import Exercise
+# Default values duplicated here to avoid backend imports
+DEFAULT_SETS_PER_EXERCISE = 3
+DEFAULT_REST_DURATION = 120
 
 from .metric_input_screen import MetricInputScreen
 
@@ -60,10 +53,34 @@ class EditExerciseScreen(MDScreen):
     exercise_rest = NumericProperty(DEFAULT_REST_DURATION)
     section_length = NumericProperty(0)
     mode = StringProperty("library")
+    data_provider = ObjectProperty(None, allownone=True)
+    test_mode = BooleanProperty(False)
 
-    def __init__(self, mode: str = "library", **kwargs):
+    def __init__(
+        self,
+        mode: str = "library",
+        data_provider=None,
+        test_mode: bool = False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.mode = mode
+        self.test_mode = test_mode
+        if data_provider is None:
+            if test_mode:
+                from ui.stubs.exercise_data_provider import (
+                    StubExerciseDataProvider,
+                )
+
+                self.data_provider = StubExerciseDataProvider()
+            else:
+                from ui.adapters.exercise_data_provider import (
+                    ExerciseDataProvider,
+                )
+
+                self.data_provider = ExerciseDataProvider()
+        else:
+            self.data_provider = data_provider
 
     def switch_tab(self, tab: str):
         """Switch between available tabs."""
@@ -152,15 +169,12 @@ class EditExerciseScreen(MDScreen):
         return super().on_pre_enter(*args)
 
     def _load_exercise(self):
-        db_path = DEFAULT_DB_PATH
-        self.exercise_obj = Exercise(
-            self.exercise_name,
-            db_path=db_path,
-            is_user_created=self.is_user_created,
+        self.exercise_obj = self.data_provider.get_exercise(
+            self.exercise_name, is_user_created=self.is_user_created
         )
-        self.is_user_created = self.exercise_obj.is_user_created
-        self.exercise_name = self.exercise_obj.name
-        self.exercise_description = self.exercise_obj.description
+        self.is_user_created = getattr(self.exercise_obj, "is_user_created", True)
+        self.exercise_name = getattr(self.exercise_obj, "name", "")
+        self.exercise_description = getattr(self.exercise_obj, "description", "")
         if self.section_index >= 0 and self.exercise_index >= 0:
             app = MDApp.get_running_app()
             if app.preset_editor and self.section_index < len(
@@ -300,7 +314,6 @@ class EditExerciseScreen(MDScreen):
         if not self.exercise_obj:
             return
 
-        # Only update the preset if editing from preset editor
         app = MDApp.get_running_app()
         if (
             app
@@ -308,229 +321,15 @@ class EditExerciseScreen(MDScreen):
             and self.exercise_index >= 0
             and app.preset_editor
         ):
-            update_in_preset = True
-        else:
-            update_in_preset = False
-
-        if not self.exercise_obj.is_modified():
-            if update_in_preset:
-                app.preset_editor.update_exercise(
-                    self.section_index,
-                    self.exercise_index,
-                    sets=self.exercise_sets,
-                    rest=self.exercise_rest,
-                )
-            self.save_enabled = False
-            return
-
-        # ------------------------------------------------------------------
-        # Validation
-        # ------------------------------------------------------------------
-        name = self.exercise_obj.name.strip()
-
-        db_path = DEFAULT_DB_PATH
-
-        conn = sqlite3.connect(str(db_path))
-        cursor = conn.cursor()
-
-        if not name:
-            if self.name_field:
-                self.name_field.error = True
-            conn.close()
-            dialog = MDDialog(
-                title="Error",
-                text="Name cannot be empty",
-                buttons=[
-                    MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())
-                ],
-            )
-            dialog.open()
-            return
-
-        cursor.execute(
-            "SELECT 1 FROM library_exercises WHERE name = ? AND is_user_created = 1",
-            (name,),
-        )
-        exists = cursor.fetchone()
-        original_name = None
-        if self.exercise_obj._original:
-            original_name = self.exercise_obj._original.get("name")
-        if exists and (original_name != name or not self.exercise_obj.is_user_created):
-            if self.name_field:
-                self.name_field.error = True
-            conn.close()
-            dialog = MDDialog(
-                title="Error",
-                text="Duplicate name",
-                buttons=[
-                    MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())
-                ],
-            )
-            dialog.open()
-            return
-
-        msg = "Save changes to this exercise?"
-        if not self.exercise_obj.is_user_created:
-            cursor.execute(
-                "SELECT 1 FROM library_exercises WHERE name = ? AND is_user_created = 1",
-                (self.exercise_obj.name,),
-            )
-            exists = cursor.fetchone()
-            if exists:
-                msg = f"A user-defined copy of {self.exercise_obj.name} exists and will be overwritten."
-            else:
-                msg = f"{self.exercise_obj.name} is predefined. A user-defined copy will be created."
-        conn.close()
-
-        dialog = None
-
-        def do_save(*args):
-            update_library = (not update_in_preset) or (checkbox and checkbox.active)
-            if update_library:
-                core.save_exercise(self.exercise_obj)
-                if app:
-                    app.exercise_library_version += 1
-            if (not update_in_preset) and checkbox and checkbox.active and presets:
-                core.apply_exercise_changes_to_presets(
-                    self.exercise_obj,
-                    presets,
-                    db_path=DEFAULT_DB_PATH,
-                )
-            if update_in_preset:
-                app.preset_editor.update_exercise(
-                    self.section_index,
-                    self.exercise_index,
-                    sets=self.exercise_sets,
-                    rest=self.exercise_rest,
-                )
-                if not update_library:
-                    preset_name = app.preset_editor.preset_name
-                    orig = {
-                        m.get("name"): m
-                        for m in (self.exercise_obj._original or {}).get("metrics", [])
-                    }
-                    current = {m.get("name"): m for m in self.exercise_obj.metrics}
-                    for name, metric in current.items():
-                        old = orig.get(name)
-                        if old is None or any(
-                            metric.get(field) != old.get(field)
-                            for field in ("input_timing", "is_required", "scope")
-                        ):
-                            core.set_section_exercise_metric_override(
-                                preset_name,
-                                self.section_index,
-                                self.exercise_obj.name,
-                                name,
-                                input_timing=metric.get("input_timing"),
-                                is_required=bool(metric.get("is_required")),
-                                scope=metric.get("scope", "set"),
-                            )
-
-                    removed = [name for name in orig if name not in current]
-                    if removed:
-                        db_path = DEFAULT_DB_PATH
-                        conn = sqlite3.connect(str(db_path))
-                        cur = conn.cursor()
-                        cur.execute(
-                            "SELECT id FROM preset_presets WHERE name = ?",
-                            (preset_name,),
-                        )
-                        row = cur.fetchone()
-                        if row:
-                            preset_id = row[0]
-                            cur.execute(
-                                "SELECT id FROM preset_preset_sections WHERE preset_id = ? ORDER BY position",
-                                (preset_id,),
-                            )
-                            sections = cur.fetchall()
-                            if 0 <= self.section_index < len(sections):
-                                section_id = sections[self.section_index][0]
-                                cur.execute(
-                                    """SELECT id FROM preset_section_exercises WHERE section_id = ? AND exercise_name = ? ORDER BY position LIMIT 1""",
-                                    (section_id, self.exercise_obj.name),
-                                )
-                                se_row = cur.fetchone()
-                                if se_row:
-                                    se_id = se_row[0]
-                                    for mname in removed:
-                                        cur.execute(
-                                            "DELETE FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ?",
-                                            (se_id, mname),
-                                        )
-                                    conn.commit()
-                        conn.close()
-
-            self.save_enabled = False
-            if dialog:
-                dialog.dismiss()
-
-        if update_in_preset:
-            label_text = (
-                "Update exercise in library"
-                if self.exercise_obj.is_user_created
-                else "Create editable copy in library"
-            )
-            msg = (
-                "Changes will apply only to this preset."
-                if self.exercise_obj.is_user_created
-                else f"{self.exercise_obj.name} is predefined and cannot be edited."
-            )
-            checkbox = MDCheckbox(size_hint=(None, None), height="40dp", width="40dp")
-            label = MDLabel(text=label_text, halign="left")
-            content = MDBoxLayout(
-                orientation="horizontal",
-                spacing="8dp",
-                size_hint_y=None,
-                height="40dp",
-            )
-            content.add_widget(checkbox)
-            content.add_widget(label)
-            dialog = MDDialog(
-                title="Confirm Save",
-                type="custom",
-                text=msg,
-                content_cls=content,
-                buttons=[
-                    MDRaisedButton(
-                        text="Cancel", on_release=lambda *a: dialog.dismiss()
-                    ),
-                    MDRaisedButton(text="Save", on_release=do_save),
-                ],
-            )
-        else:
-            checkbox = None
-            extra_content = None
-            if self.previous_screen == "exercise_library":
-                presets = core.find_presets_using_exercise(self.exercise_obj.name)
-                if presets:
-                    checkbox = MDCheckbox(
-                        size_hint=(None, None), height="40dp", width="40dp"
-                    )
-                    label = MDLabel(
-                        text="Update all presets that use this exercise", halign="left"
-                    )
-                    extra_content = MDBoxLayout(
-                        orientation="horizontal",
-                        spacing="8dp",
-                        size_hint_y=None,
-                        height="40dp",
-                    )
-                    extra_content.add_widget(checkbox)
-                    extra_content.add_widget(label)
-            dialog = MDDialog(
-                title="Confirm Save",
-                type="custom" if extra_content else "simple",
-                text=msg,
-                content_cls=extra_content,
-                buttons=[
-                    MDRaisedButton(
-                        text="Cancel", on_release=lambda *a: dialog.dismiss()
-                    ),
-                    MDRaisedButton(text="Save", on_release=do_save),
-                ],
+            app.preset_editor.update_exercise(
+                self.section_index,
+                self.exercise_index,
+                sets=self.exercise_sets,
+                rest=self.exercise_rest,
             )
 
-        dialog.open()
+        self.data_provider.save_exercise(self.exercise_obj)
+        self.save_enabled = False
 
     def go_back(self):
         if self.save_enabled:
@@ -556,3 +355,13 @@ class EditExerciseScreen(MDScreen):
         else:
             if self.manager:
                 self.manager.current = self.previous_screen
+
+
+if __name__ == "__main__":
+    from kivymd.app import MDApp
+
+    class _TestApp(MDApp):
+        def build(self):
+            return EditExerciseScreen(test_mode=True)
+
+    _TestApp().run()
