@@ -34,8 +34,17 @@ class MetricInputScreen(MDScreen):
     pre_color = ListProperty([0, 1, 0, 1])
     post_color = ListProperty([0, 1, 0, 1])
 
-    def __init__(self, **kwargs):
+    def __init__(self, data_provider=None, test_mode=False, **kwargs):
         super().__init__(**kwargs)
+        self.test_mode = test_mode
+        self.data_provider = data_provider
+        if self.test_mode and self.data_provider is None:
+            try:
+                from ui.stubs.metric_input_stub import StubDataProvider
+
+                self.data_provider = StubDataProvider()
+            except Exception:  # pragma: no cover - stubs optional
+                self.data_provider = None
         self.session = None
         self.exercise_idx = 0
         self.set_idx = 0
@@ -56,9 +65,17 @@ class MetricInputScreen(MDScreen):
 
     # ------------------------------------------------------------------
     # Navigation
-    def on_pre_enter(self, *args):
+    def _get_session(self):
+        if self.data_provider:
+            try:
+                return self.data_provider.get_session()
+            except AttributeError:
+                return None
         app = MDApp.get_running_app()
-        self.session = getattr(app, "workout_session", None)
+        return getattr(app, "workout_session", None)
+
+    def on_pre_enter(self, *args):
+        self.session = self._get_session()
         if self.session:
             self.exercise_idx = self.session.current_exercise
             self.set_idx = self.session.current_set
@@ -416,3 +433,17 @@ class MetricInputScreen(MDScreen):
             self.manager.current = "workout_summary"
         elif getattr(self, "manager", None):
             self.manager.current = "rest"
+
+
+if __name__ == "__main__":  # pragma: no cover - manual visual test
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    class _PreviewApp(MDApp):
+        def build(self):
+            kv_path = Path(__file__).resolve().parents[2] / "main.kv"
+            if kv_path.exists():
+                Builder.load_file(str(kv_path))
+            return MetricInputScreen(test_mode=True)
+
+    _PreviewApp().run()
