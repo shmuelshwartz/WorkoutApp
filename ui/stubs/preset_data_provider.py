@@ -39,3 +39,10 @@ class StubPresetDataProvider:
             ("Sit Ups", False),
             ("Custom Move", True),
         ]
+
+    def get_presets(self) -> list:
+        return [
+            {"name": "Push"},
+            {"name": "Pull"},
+            {"name": "Legs"},
+        ]

@@ -2,7 +2,6 @@ from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivy.properties import ObjectProperty, StringProperty, ListProperty
 from kivymd.uix.list import OneLineListItem
-import core
 
 
 class PresetsScreen(MDScreen):
@@ -15,6 +14,12 @@ class PresetsScreen(MDScreen):
     _selected_color = (0, 1, 0, 1)
     _selected_text_color = (0, 1, 0, 1)
     _default_btn_color = ListProperty(None, allownone=True)
+
+    def __init__(self, data_provider=None, router=None, test_mode=False, **kwargs):
+        super().__init__(**kwargs)
+        self.data_provider = data_provider
+        self.router = router
+        self.test_mode = test_mode
 
     def on_kv_post(self, base_widget):
         # Store the default color of the "Select" button so it can be restored
@@ -57,7 +62,13 @@ class PresetsScreen(MDScreen):
         if not self.preset_list:
             return
         self.preset_list.clear_widgets()
-        for preset in core.WORKOUT_PRESETS:
+        presets = []
+        if self.data_provider:
+            try:
+                presets = self.data_provider.get_presets()
+            except Exception:
+                presets = []
+        for preset in presets:
             item = OneLineListItem(text=preset["name"])
             item.bind(
                 on_release=lambda inst, name=preset["name"]: self.select_preset(
@@ -84,12 +95,38 @@ class PresetsScreen(MDScreen):
         self.selected_item.md_bg_color = self._selected_color
         self.selected_item.theme_text_color = "Custom"
         self.selected_item.text_color = self._selected_text_color
-        if any(p["name"] == name for p in core.WORKOUT_PRESETS):
-            self.selected_preset = name
-            MDApp.get_running_app().selected_preset = name
+        self.selected_preset = name
+        MDApp.get_running_app().selected_preset = name
 
     def confirm_selection(self):
-        if self.selected_preset and self.manager:
+        if not self.selected_preset:
+            return
+        if self.router:
+            self.router.navigate("preset_detail")
+        elif self.manager:
             detail = self.manager.get_screen("preset_detail")
             detail.preset_name = self.selected_preset
             self.manager.current = "preset_detail"
+
+if __name__ == "__main__":  # pragma: no cover - manual visual test
+    choice = (
+        input("Type 1 for single-screen test\nType 2 for flow test\n").strip()
+        or "1"
+    )
+    if choice == "2":
+        from ui.testing.runners.flow_runner import run
+
+        run("presets_screen")
+    else:
+        from kivymd.app import MDApp
+        from ui.routers import SingleRouter
+        from ui.stubs.preset_data_provider import StubPresetDataProvider
+
+        class _TestApp(MDApp):
+            def build(self):
+                provider = StubPresetDataProvider()
+                return PresetsScreen(
+                    data_provider=provider, router=SingleRouter(), test_mode=True
+                )
+
+        _TestApp().run()
