@@ -391,7 +391,10 @@ if __name__ == "__main__":  # pragma: no cover - manual visual test
                 kv_text = kv_path.read_text(encoding="utf-8")
                 start = kv_text.index("<ExerciseRow@")
                 end = kv_text.index("<ProgressScreen@")
-                Builder.load_string(kv_text[start:end])
+                Builder.load_string(
+                    "#:import NoTransition kivy.uix.screenmanager.NoTransition\n"
+                    + kv_text[start:end]
+                )
                 provider = LibraryStubDataProvider()
                 return ExerciseLibraryScreen(
                     data_provider=provider, router=SingleRouter(), test_mode=True
