@@ -1,6 +1,6 @@
 import sqlite3
 
-from core import PresetEditor
+from backend.preset_editor import PresetEditor
 
 
 def test_save_preset_exercise_metric_not_duplicated(sample_db):
