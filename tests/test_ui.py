@@ -17,10 +17,9 @@ if kivy_available:
     from kivy.app import App
     from kivy.properties import ObjectProperty
     import core
-    from backend.exercise import Exercise
     from backend.preset_editor import PresetEditor
     from backend.workout_session import WorkoutSession
-
+    from backend.exercise import Exercise
 
     from main import (
         RestScreen,
@@ -1437,8 +1436,8 @@ def test_session_edit_locking(monkeypatch, sample_db):
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_reordering_current_exercise_updates_index(monkeypatch, sample_db):
-    editor = PresetEditor("Push Day", db_path=sample_db)
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    editor = PresetEditor("Push Day", db_path=sample_db)
 
     app = _DummyApp()
     app.workout_session = session
