@@ -5,6 +5,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import core
+from backend.exercise import Exercise
 
 
 @pytest.fixture()
@@ -277,7 +278,7 @@ def test_find_presets_and_apply_changes(sample_db):
     names = core.find_presets_using_exercise("Push Up", db_path=sample_db)
     assert names == ["Push Day"]
 
-    ex = core.Exercise("Push Up", db_path=sample_db, is_user_created=False)
+    ex = Exercise("Push Up", db_path=sample_db, is_user_created=False)
     ex.add_metric(
         {
             "name": "Weight",
