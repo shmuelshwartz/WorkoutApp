@@ -17,7 +17,7 @@ if kivy_available:
     from kivy.app import App
     from kivy.properties import ObjectProperty
     import core
-    from backend import exercises
+    from backend import metrics, exercises
     from backend.preset_editor import PresetEditor
     from backend.exercise import Exercise
     from backend.workout_session import WorkoutSession
@@ -619,14 +619,14 @@ def test_add_metric_popup_filters_scope(monkeypatch):
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
 
-    metrics = [
+    metric_types = [
         {"name": "Session", "scope": "session"},
         {"name": "Section", "scope": "section"},
         {"name": "Exercise", "scope": "exercise"},
         {"name": "Set", "scope": "set"},
     ]
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: metric_types)
 
     popup = AddMetricPopup(DummyScreen(), popup_mode="select")
     list_view = popup.content_cls.children[0]
@@ -651,13 +651,13 @@ def test_add_preset_metric_popup_filters_scope(monkeypatch):
     )()
     monkeypatch.setattr(App, "get_running_app", lambda: app)
 
-    metrics = [
+    metric_types = [
         {"name": "Focus", "scope": "preset"},
         {"name": "Level", "scope": "preset"},
         {"name": "Session", "scope": "session"},
     ]
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: metric_types)
     screen = EditPresetScreen()
     popup = AddPresetMetricPopup(screen)
     list_view = popup.content_cls.children[0]
@@ -682,13 +682,13 @@ def test_add_session_metric_popup_filters_scope(monkeypatch):
     )()
     monkeypatch.setattr(App, "get_running_app", lambda: app)
 
-    metrics = [
+    metric_types = [
         {"name": "Duration", "scope": "session"},
         {"name": "Mood", "scope": "session"},
         {"name": "Focus", "scope": "preset"},
     ]
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: metric_types)
     screen = EditPresetScreen()
     popup = AddSessionMetricPopup(screen)
     list_view = popup.content_cls.children[0]
@@ -947,7 +947,7 @@ def test_preset_overview_screen_populate(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        core,
+        metrics,
         "get_metrics_for_exercise",
         lambda name, *a, **k: [{"name": "M1"}, {"name": "M2"}],
     )
@@ -1082,7 +1082,7 @@ def test_edit_metric_duplicate_name(monkeypatch):
     metric = DummyScreen.exercise_obj.metrics[0]
     popup = EditMetricPopup(DummyScreen(), metric)
     popup.input_widgets["name"].text = "Weight"
-    monkeypatch.setattr(core, "is_metric_type_user_created", lambda *a, **k: False)
+    monkeypatch.setattr(metrics, "is_metric_type_user_created", lambda *a, **k: False)
     popup.save_metric()
 
     assert not DummyScreen.exercise_obj.updated
@@ -1158,7 +1158,7 @@ def test_edit_metric_type_popup_shows_affected(monkeypatch):
         ]
 
     monkeypatch.setattr(
-        core, "find_exercises_using_metric_type", lambda *a, **k: ["A", "B"]
+        metrics, "find_exercises_using_metric_type", lambda *a, **k: ["A", "B"]
     )
     popup = EditMetricTypePopup(DummyScreen(), "Speed", True)
     labels = [
@@ -1240,7 +1240,7 @@ def test_edit_preset_populate_details(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
-    metrics = [
+    metric_types = [
         {
             "name": "Focus",
             "type": "str",
@@ -1257,7 +1257,7 @@ def test_edit_preset_populate_details(monkeypatch):
         },
     ]
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: metric_types)
 
     app = _DummyApp()
     app.preset_editor = type(
@@ -1289,7 +1289,7 @@ def test_preset_name_row_preserved(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: [])
 
     app = _DummyApp()
     app.preset_editor = type(
@@ -1318,7 +1318,7 @@ def test_details_has_add_button(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: [])
 
     app = _DummyApp()
     app.preset_editor = type(
@@ -1346,7 +1346,7 @@ def test_metrics_has_add_button(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: [])
 
     app = _DummyApp()
     app.preset_editor = type(
@@ -1374,7 +1374,7 @@ def test_fallback_input_timing_options(monkeypatch):
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
 
-    monkeypatch.setattr(core, "get_metric_type_schema", lambda *a, **k: [])
+    monkeypatch.setattr(metrics, "get_metric_type_schema", lambda *a, **k: [])
     popup = AddMetricPopup(DummyScreen(), popup_mode="new")
     opts = list(popup.input_widgets["input_timing"].values)
     assert opts == [

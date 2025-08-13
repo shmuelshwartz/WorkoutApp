@@ -5,7 +5,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import core
-from backend import exercises
+from backend import metrics, exercises
 
 
 def create_empty_db(path: Path) -> None:
@@ -88,7 +88,7 @@ def sample_db(tmp_db: Path) -> Path:
 
 
 def test_get_metric_type_schema(tmp_db: Path):
-    fields = core.get_metric_type_schema(db_path=tmp_db)
+    fields = metrics.get_metric_type_schema(db_path=tmp_db)
     names = {f["name"] for f in fields}
     assert names == {"name", "type", "input_timing", "is_required", "scope", "description", "enum_values_json"}
     type_opts = next(f["options"] for f in fields if f["name"] == "type")
@@ -123,7 +123,7 @@ def test_load_workout_presets(sample_db: Path):
 
 
 def test_add_and_remove_metric_from_exercise(sample_db: Path):
-    core.add_metric_to_exercise("Bench Press", "Reps", db_path=sample_db)
+    metrics.add_metric_to_exercise("Bench Press", "Reps", db_path=sample_db)
     conn = sqlite3.connect(sample_db)
     cur = conn.cursor()
     cur.execute(
@@ -131,7 +131,7 @@ def test_add_and_remove_metric_from_exercise(sample_db: Path):
     )
     count = cur.fetchone()[0]
     assert count == 1
-    core.remove_metric_from_exercise("Bench Press", "Reps", db_path=sample_db)
+    metrics.remove_metric_from_exercise("Bench Press", "Reps", db_path=sample_db)
     cur.execute(
         """SELECT COUNT(*) FROM library_exercise_metrics em JOIN library_exercises e ON em.exercise_id = e.id JOIN library_metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps' AND em.deleted = 0 AND e.deleted = 0 AND mt.deleted = 0"""
     )
