@@ -54,6 +54,8 @@ class MetricInputScreen(MDScreen):
         self.show_post = True
         self._update_filter_colors()
 
+        self._notes_widget = None
+
     # ------------------------------------------------------------------
     # Navigation
     def on_pre_enter(self, *args):
@@ -248,7 +250,9 @@ class MetricInputScreen(MDScreen):
         if not self.session or self.exercise_idx >= len(self.session.exercises):
             return
         exercise = self.session.exercises[self.exercise_idx]
-        metrics = exercise.get("metric_defs", [])
+        metrics = [
+            m for m in exercise.get("metric_defs", []) if m.get("name") != "Notes"
+        ]
         # Determine any previously recorded values for this set
         values = {}
         results = exercise.get("results", [])
@@ -263,6 +267,11 @@ class MetricInputScreen(MDScreen):
             self.metrics_list.add_widget(
                 self._create_row(metric, values.get(name))
             )
+
+        notes_text = self.session.get_set_notes(self.exercise_idx, self.set_idx)
+        notes_row = self._create_notes_row(notes_text)
+        self.metrics_list.add_widget(notes_row)
+        self._notes_widget = notes_row.input_widget
 
     # ------------------------------------------------------------------
     # Metric row helpers
@@ -373,9 +382,8 @@ class MetricInputScreen(MDScreen):
                 input_filter = "int"
             elif mtype == "float":
                 input_filter = "float"
-            multiline = name == "Notes"
             widget = MDTextField(
-                multiline=multiline,
+                multiline=False,
                 input_filter=input_filter,
                 text=str(value) if value not in (None, "") else "",
             )
@@ -393,6 +401,8 @@ class MetricInputScreen(MDScreen):
         if not widget_list:
             return data
         for row in reversed(widget_list.children):
+            if getattr(row, "is_notes", False):
+                continue
             name = getattr(row, "metric_name", "")
             widget = getattr(row, "input_widget", None)
             mtype = getattr(row, "type", "str")
@@ -463,3 +473,24 @@ class MetricInputScreen(MDScreen):
             self.manager.current = "workout_summary"
         elif getattr(self, "manager", None):
             self.manager.current = "rest"
+
+    def _on_notes_change(self, instance, text):
+        app = MDApp.get_running_app()
+        session = getattr(app, "workout_session", None)
+        if not session:
+            return
+        session.set_set_notes(self.exercise_idx, self.set_idx, text)
+
+    def _create_notes_row(self, text: str = ""):
+        row = MDBoxLayout(orientation="vertical", size_hint_y=None, height=dp(96))
+        label = MDLabel(text="Notes", size_hint_y=None, height=dp(24))
+        widget = MDTextField(multiline=True, text=text)
+        widget.size_hint_y = None
+        widget.height = dp(72)
+        if hasattr(widget, "bind"):
+            widget.bind(text=self._on_notes_change)
+        row.add_widget(label)
+        row.add_widget(widget)
+        row.input_widget = widget
+        row.is_notes = True
+        return row

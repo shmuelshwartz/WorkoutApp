@@ -113,6 +113,8 @@ class WorkoutSession:
 
         # build storage for all exercise metrics
         self.metric_store: dict[tuple[int, int], dict[str, object]] = {}
+        # dedicated storage for per-set notes
+        self.set_notes: dict[tuple[int, int], str] = {}
         for ex_idx, ex in enumerate(self.preset_snapshot):
             template = {m["name"]: None for m in ex.get("metric_defs", [])}
             for set_idx in range(ex["sets"]):
@@ -311,13 +313,29 @@ class WorkoutSession:
             return
         pending = self.pending_pre_set_metrics.setdefault((ex, st), {})
         for name, value in metrics.items():
-            if name == "Notes":
-                pending["Notes"] = value
-                continue
             if name not in store:
                 raise KeyError(f"Unknown metric '{name}' for exercise {ex}")
             store[name] = value
             pending[name] = value
+
+    def get_set_notes(self, ex_idx: int, set_idx: int) -> str:
+        """Return stored notes for the specified set."""
+
+        if 0 <= ex_idx < len(self.session_data):
+            results = self.session_data[ex_idx]["results"]
+            if 0 <= set_idx < len(results) and results[set_idx]:
+                return results[set_idx].get("notes", "")
+        return self.set_notes.get((ex_idx, set_idx), "")
+
+    def set_set_notes(self, ex_idx: int, set_idx: int, text: str) -> None:
+        """Store notes for the specified set."""
+
+        key = (ex_idx, set_idx)
+        self.set_notes[key] = text
+        if 0 <= ex_idx < len(self.session_data):
+            results = self.session_data[ex_idx]["results"]
+            if 0 <= set_idx < len(results) and results[set_idx]:
+                results[set_idx]["notes"] = text
 
     def set_session_metrics(self, metrics: dict) -> None:
         """Store metrics that apply to the entire session."""
@@ -335,7 +353,7 @@ class WorkoutSession:
         if store is None:
             raise IndexError("Invalid exercise/set index")
         combined = {**self.pending_pre_set_metrics.pop(key, {}), **metrics}
-        notes = str(combined.pop("Notes", ""))
+        notes = self.set_notes.get(key, "")
 
         for name, value in combined.items():
             if name not in store:
@@ -361,6 +379,7 @@ class WorkoutSession:
             "ended_at": end_time,
             "notes": notes,
         }
+        self.set_notes[key] = notes
 
         if exercise_index == self.current_exercise and set_index == self.current_set:
             self.current_set_start_time = end_time
@@ -421,6 +440,7 @@ class WorkoutSession:
         if not data["results"]:
             return False
         last = data["results"].pop()
+        self.set_notes.pop((ex_idx, set_idx), None)
 
         # Restore indices to point at the reopened set
         self.current_exercise = ex_idx
@@ -521,6 +541,7 @@ class WorkoutSession:
             template = {m["name"]: None for m in ex.get("metric_defs", [])}
             for set_idx in range(ex["sets"]):
                 self.metric_store[(ex_idx, set_idx)] = template.copy()
+        self.set_notes = {}
 
     def adjust_rest_timer(self, seconds: int) -> None:
         """Adjust the target time for the current rest period."""
