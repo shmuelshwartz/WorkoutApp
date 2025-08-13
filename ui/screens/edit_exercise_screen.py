@@ -35,6 +35,7 @@ from core import (
     DEFAULT_REST_DURATION,
     DEFAULT_DB_PATH,
 )
+from backend.exercise import Exercise
 
 from .metric_input_screen import MetricInputScreen
 
@@ -152,7 +153,7 @@ class EditExerciseScreen(MDScreen):
 
     def _load_exercise(self):
         db_path = DEFAULT_DB_PATH
-        self.exercise_obj = core.Exercise(
+        self.exercise_obj = Exercise(
             self.exercise_name,
             db_path=db_path,
             is_user_created=self.is_user_created,

@@ -17,6 +17,7 @@ if kivy_available:
     from kivy.app import App
     from kivy.properties import ObjectProperty
     import core
+    from backend.exercise import Exercise
     from backend.workout_session import WorkoutSession
 
     from main import (
@@ -1034,12 +1035,12 @@ def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
         conn.executescript(fh.read())
     conn.close()
 
-    ex = core.Exercise(db_path=db_path)
+    ex = Exercise(db_path=db_path)
     ex.name = "Custom"
     core.save_exercise(ex)
 
     screen = EditExerciseScreen()
-    screen.exercise_obj = core.Exercise(db_path=db_path)
+    screen.exercise_obj = Exercise(db_path=db_path)
     screen.exercise_obj.name = "Custom"
     screen.name_field = type("F", (), {"error": False})()
 
