@@ -27,6 +27,7 @@ import os
 import sqlite3
 
 import core
+from backend import exercises
 from core import DEFAULT_DB_PATH
 
 
@@ -807,7 +808,7 @@ class ExerciseSelectionPanel(MDBoxLayout):
             app and self.cache_version != getattr(app, "exercise_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(
+            self.all_exercises = exercises.get_all_exercises(
                 db_path, include_user_created=True
             )
             if app:
