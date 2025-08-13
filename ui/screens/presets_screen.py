@@ -1,6 +1,6 @@
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
-from kivy.properties import ObjectProperty, StringProperty, ListProperty
+from kivy.properties import ObjectProperty, StringProperty
 from kivymd.uix.list import OneLineListItem
 from backend import presets
 
@@ -14,12 +14,6 @@ class PresetsScreen(MDScreen):
 
     _selected_color = (0, 1, 0, 1)
     _selected_text_color = (0, 1, 0, 1)
-    _default_btn_color = ListProperty(None, allownone=True)
-
-    def on_kv_post(self, base_widget):
-        # Store the default color of the "Select" button so it can be restored
-        self._default_btn_color = self.ids.select_btn.md_bg_color
-        return super().on_kv_post(base_widget)
 
     def clear_selection(self, reset_app: bool = True):
         """Reset any selected preset and remove highlight.
@@ -39,8 +33,6 @@ class PresetsScreen(MDScreen):
             app = MDApp.get_running_app()
             if app:
                 app.selected_preset = ""
-        if self._default_btn_color is not None:
-            self.ids.select_btn.md_bg_color = self._default_btn_color
 
     def on_pre_enter(self, *args):
         self.clear_selection()
@@ -67,14 +59,9 @@ class PresetsScreen(MDScreen):
             self.preset_list.add_widget(item)
 
     def select_preset(self, name, item):
-        """Select a preset from WORKOUT_PRESETS and highlight item."""
+        """Highlight an item, confirm on second tap."""
         if self.selected_item is item:
-            # Toggle off selection if tapping the already selected item
-            item.md_bg_color = (0, 0, 0, 0)
-            item.theme_text_color = "Primary"
-            self.selected_item = None
-            self.selected_preset = ""
-            MDApp.get_running_app().selected_preset = ""
+            self.confirm_selection()
             return
 
         if self.selected_item:
