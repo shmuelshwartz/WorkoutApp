@@ -1,5 +1,7 @@
 #:import NoTransition kivy.uix.screenmanager.NoTransition
 #:import ButtonBehavior kivy.uix.behaviors.button.ButtonBehavior
+#:import PINK_BG ui.colors.PINK_BG
+#:import PURPLE_BG ui.colors.PURPLE_BG
 ScreenManager:
     WelcomeScreen:
         name: "welcome"
@@ -39,6 +41,7 @@ ScreenManager:
         name: "previous_workouts"
 
 <HomeScreen@MDScreen>:
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -66,6 +69,7 @@ ScreenManager:
 
 <PresetsScreen>:
     preset_list: preset_list
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -99,6 +103,7 @@ ScreenManager:
 
 <PresetDetailScreen>:
     summary_list: summary_list
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -205,6 +210,7 @@ ScreenManager:
     exercise_list: exercise_list
     metric_list: metric_list
     current_tab: "exercises"
+    md_bg_color: PINK_BG
     FloatLayout:
         MDBoxLayout:
             orientation: "vertical"
@@ -325,6 +331,7 @@ ScreenManager:
                                 on_release: root.new_metric()
 
 <ProgressScreen@MDScreen>:
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -339,6 +346,7 @@ ScreenManager:
             on_release: app.root.current = "home"
 
 <WorkoutHistoryScreen@MDScreen>:
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -353,6 +361,7 @@ ScreenManager:
             on_release: app.root.current = "home"
 
 <SettingsScreen@MDScreen>:
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -400,6 +409,7 @@ ScreenManager:
         text_color: root.text_color
 
 <RestScreen>:
+    md_bg_color: PURPLE_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -483,6 +493,7 @@ ScreenManager:
 
 <WorkoutActiveScreen>:
     on_leave: root.stop_timer()
+    md_bg_color: PURPLE_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -528,6 +539,7 @@ ScreenManager:
 <MetricInputScreen>:
     on_pre_enter: root.on_pre_enter()
     metrics_list: metrics_list
+    md_bg_color: PURPLE_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -612,6 +624,7 @@ ScreenManager:
             on_release: root.save_metrics()
 
 <WorkoutEditScreen@MDScreen>:
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -626,6 +639,7 @@ ScreenManager:
             on_release: app.root.current = "rest"
 
 <WorkoutSettingsScreen@MDScreen>:
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -641,6 +655,7 @@ ScreenManager:
 
 <WorkoutSummaryScreen>:
     summary_list: summary_list
+    md_bg_color: PURPLE_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -658,6 +673,7 @@ ScreenManager:
             on_release: app.root.current = "home"
 
 <WelcomeScreen@MDScreen>:
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -730,6 +746,7 @@ ScreenManager:
     metrics_box: metrics_box
     panel_visible: False
     on_current_tab: edit_tabs.current = self.current_tab
+    md_bg_color: PINK_BG
     FloatLayout:
         MDBoxLayout:
             id: main_content
@@ -988,6 +1005,7 @@ ScreenManager:
     details_list: details_tab.ids.details_list
     workout_list: workout_tab.ids.workout_list
     preset_label: preset_label
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -1018,6 +1036,7 @@ ScreenManager:
     name_field: name_field
     description_field: description_field
     current_tab: "metrics"
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
