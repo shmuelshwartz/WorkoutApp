@@ -1,4 +1,14 @@
-"""Helpers for loading and updating workout presets."""
+"""Helpers for loading and updating workout presets.
+
+This module exposes a small collection of helper functions:
+
+* :func:`load_workout_presets` – populate :data:`WORKOUT_PRESETS` from the
+  database.
+* :func:`find_presets_using_exercise` – list presets referencing a given
+  exercise.
+* :func:`apply_exercise_changes_to_presets` – update presets when an exercise
+  definition changes.
+"""
 
 from __future__ import annotations
 
@@ -39,8 +49,8 @@ def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
             exercises = [
                 {
                     "name": row[0],
-                    "sets": row[1],
-                    "rest": row[2],
+                    "sets": row[1] or DEFAULT_SETS_PER_EXERCISE,
+                    "rest": row[2] or DEFAULT_REST_DURATION,
                 }
                 for row in cursor.fetchall()
             ]
@@ -168,4 +178,10 @@ def apply_exercise_changes_to_presets(
                             ),
                         )
         conn.commit()
+
+__all__ = [
+    "load_workout_presets",
+    "find_presets_using_exercise",
+    "apply_exercise_changes_to_presets",
+]
 
