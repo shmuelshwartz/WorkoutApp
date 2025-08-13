@@ -7,6 +7,8 @@ import re
 import copy
 import json
 
+from backend.utils import _to_db_timing, _from_db_timing
+
 # Number of sets each exercise defaults to when starting a workout
 DEFAULT_SETS_PER_EXERCISE = 3
 
@@ -20,30 +22,6 @@ DEFAULT_DB_PATH = Path(__file__).resolve().parent / "data" / "workout.db"
 #   {'name': <preset name>,
 #    'exercises': [{'name': <exercise name>, 'sets': <number_of_sets>}, ...]}
 WORKOUT_PRESETS = []
-
-# Map legacy session-level input_timing values to the canonical
-# values expected by the ``preset_preset_metrics`` table.
-_TIMING_TO_DB = {
-    "pre_session": "pre_workout",
-    "post_session": "post_workout",
-}
-_TIMING_FROM_DB = {v: k for k, v in _TIMING_TO_DB.items()}
-
-
-def _to_db_timing(value: str | None) -> str | None:
-    """Return canonical timing value for database writes."""
-
-    if value is None:
-        return None
-    return _TIMING_TO_DB.get(value, value)
-
-
-def _from_db_timing(value: str | None) -> str | None:
-    """Return UI-friendly timing value from the database."""
-
-    if value is None:
-        return None
-    return _TIMING_FROM_DB.get(value, value)
 
 
 def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
