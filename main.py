@@ -49,11 +49,11 @@ from backend.workout_session import WorkoutSession
 from core import (
     load_workout_presets,
     get_metrics_for_exercise,
-    PresetEditor,
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,
     DEFAULT_DB_PATH,
 )
+from backend.preset_editor import PresetEditor
 from ui.screens.metric_input_screen import MetricInputScreen
 from ui.screens.edit_exercise_screen import EditExerciseScreen
 

@@ -17,6 +17,7 @@ if kivy_available:
     from kivy.app import App
     from kivy.properties import ObjectProperty
     import core
+    from backend.preset_editor import PresetEditor
     from backend.exercise import Exercise
     from backend.workout_session import WorkoutSession
 
@@ -1403,7 +1404,7 @@ def test_refresh_sections_preserves_names(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
     app = _DummyApp()
-    app.preset_editor = core.PresetEditor()
+    app.preset_editor = PresetEditor()
     app.preset_editor.add_section("Warmup")
     app.preset_editor.add_section("Skill work")
     app.preset_editor.add_section("Workout")
@@ -1435,8 +1436,9 @@ def test_session_edit_locking(monkeypatch, sample_db):
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_reordering_current_exercise_updates_index(monkeypatch, sample_db):
+    editor = PresetEditor("Push Day", db_path=sample_db)
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
-    editor = core.PresetEditor("Push Day", db_path=sample_db)
+
     app = _DummyApp()
     app.workout_session = session
     app.preset_editor = editor
