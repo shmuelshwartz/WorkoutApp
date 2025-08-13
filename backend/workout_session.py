@@ -239,6 +239,49 @@ class WorkoutSession:
         return {}
 
     # --------------------------------------------------------------
+    # Time metric helpers
+    # --------------------------------------------------------------
+
+    def get_set_duration(self, exercise_index: int, set_index: int) -> float | None:
+        """Return the duration of the specified set in seconds."""
+
+        if (
+            self.awaiting_post_set_metrics
+            and exercise_index == self.current_exercise
+            and set_index == self.current_set
+        ):
+            return self.last_set_time - self.current_set_start_time
+
+        self._ensure_session_entry(exercise_index)
+        results = self.session_data[exercise_index]["results"]
+        if set_index < len(results) and results[set_index]:
+            start = results[set_index].get("started_at")
+            end = results[set_index].get("ended_at")
+            if start is not None and end is not None:
+                return end - start
+        return None
+
+    def update_set_duration(
+        self, exercise_index: int, set_index: int, duration: float
+    ) -> None:
+        """Adjust end time for the specified set without changing start time."""
+
+        if (
+            self.awaiting_post_set_metrics
+            and exercise_index == self.current_exercise
+            and set_index == self.current_set
+        ):
+            self.last_set_time = self.current_set_start_time + duration
+            return
+
+        self._ensure_session_entry(exercise_index)
+        results = self.session_data[exercise_index]["results"]
+        if set_index < len(results) and results[set_index]:
+            start = results[set_index].get("started_at")
+            if start is not None:
+                results[set_index]["ended_at"] = start + duration
+
+    # --------------------------------------------------------------
     # Pre-set metric helpers
     # --------------------------------------------------------------
 
@@ -344,7 +387,14 @@ class WorkoutSession:
                 )
             store[name] = value
 
-        end_time = time.time()
+        if (
+            self.awaiting_post_set_metrics
+            and exercise_index == self.current_exercise
+            and set_index == self.current_set
+        ):
+            end_time = self.last_set_time
+        else:
+            end_time = time.time()
 
         self._ensure_session_entry(exercise_index)
         results = self.session_data[exercise_index]["results"]
@@ -353,6 +403,8 @@ class WorkoutSession:
         start_time = (
             self.current_set_start_time
             if exercise_index == self.current_exercise and set_index == self.current_set
+            else results[set_index]["started_at"]
+            if set_index < len(results) and results[set_index]
             else end_time
         )
         results[set_index] = {

@@ -123,6 +123,9 @@ def test_populate_blank_for_new_set(monkeypatch):
         def upcoming_exercise_name(self):
             return "Bench"
 
+        def get_set_duration(self, ex_idx, set_idx):
+            return None
+
     dummy_app = _DummyApp()
     dummy_app.workout_session = DummySession()
     monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
@@ -187,6 +190,9 @@ def test_prev_metrics_use_last_set(monkeypatch):
         def last_recorded_set_metrics(self):
             return {"Reps": 10}
 
+        def get_set_duration(self, ex_idx, set_idx):
+            return None
+
     dummy_app = _DummyApp()
     dummy_app.workout_session = DummySession()
     monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
@@ -248,6 +254,12 @@ def test_save_metrics_clears_next_metrics(monkeypatch):
         def set_pre_set_metrics(self, metrics):
             key = (self.current_exercise, self.current_set)
             self.pending_pre_set_metrics[key] = metrics.copy()
+
+        def get_set_duration(self, ex_idx, set_idx):
+            return None
+
+        def get_set_duration(self, ex_idx, set_idx):
+             return None
 
     dummy_app = _DummyApp()
     dummy_app.workout_session = DummySession()
