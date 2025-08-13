@@ -42,30 +42,34 @@ ScreenManager:
 
 <HomeScreen@MDScreen>:
     md_bg_color: PINK_BG
-    BoxLayout:
-        orientation: "vertical"
-        spacing: "10dp"
-        padding: "20dp"
-        MDLabel:
-            text: "Home - choose where you want to go"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-        MDRaisedButton:
-            text: "Go to Presets"
-            on_release: app.root.current = "presets"
-        MDRaisedButton:
-            text: "Go to Library"
-            on_release: app.root.current = "exercise_library"
-        MDRaisedButton:
-            text: "Go to Progress"
-            on_release: app.root.current = "progress"
-        MDRaisedButton:
-            text: "Go to Settings"
-            on_release: app.root.current = "settings"
-        MDRaisedButton:
-            text: "Go to Workout History"
-            on_release: app.root.current = "workout_history"
+    ScrollView:
+        do_scroll_x: False
+        MDBoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: self.minimum_height
+            spacing: "10dp"
+            padding: "20dp"
+            MDLabel:
+                text: "Home"
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: 0.2, 0.6, 0.86, 1
+            MDRaisedButton:
+                text: "Presets"
+                on_release: app.root.current = "presets"
+            MDRaisedButton:
+                text: "Library"
+                on_release: app.root.current = "exercise_library"
+            MDRaisedButton:
+                text: "Progress"
+                on_release: app.root.current = "progress"
+            MDRaisedButton:
+                text: "Settings"
+                on_release: app.root.current = "settings"
+            MDRaisedButton:
+                text: "History"
+                on_release: app.root.current = "workout_history"
 
 <PresetsScreen>:
     preset_list: preset_list
