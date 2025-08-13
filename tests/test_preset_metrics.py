@@ -1,5 +1,5 @@
 import sqlite3
-import core
+from backend import metrics
 
 def test_get_metrics_for_preset_pre_session(sample_db):
     conn = sqlite3.connect(sample_db)
@@ -18,7 +18,7 @@ def test_get_metrics_for_preset_pre_session(sample_db):
     conn.commit()
     conn.close()
 
-    metrics = core.get_metrics_for_preset('Push Day', db_path=sample_db)
-    duration = next(m for m in metrics if m["name"] == "Duration")
+    metric_defs = metrics.get_metrics_for_preset('Push Day', db_path=sample_db)
+    duration = next(m for m in metric_defs if m["name"] == "Duration")
     assert duration["input_timing"] == "pre_session"
     assert duration["type"] == "int"

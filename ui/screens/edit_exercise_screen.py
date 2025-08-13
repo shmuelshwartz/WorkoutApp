@@ -29,13 +29,12 @@ import os
 import string
 import sqlite3
 
-import core
-from backend import exercises
-from core import (
+from backend import (
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,
     DEFAULT_DB_PATH,
 )
+from backend import exercises, metrics, presets
 from backend.exercise import Exercise
 
 from .metric_input_screen import MetricInputScreen
@@ -384,6 +383,7 @@ class EditExerciseScreen(MDScreen):
         conn.close()
 
         dialog = None
+        preset_names: list[str] = []
 
         def do_save(*args):
             update_library = (not update_in_preset) or (checkbox and checkbox.active)
@@ -391,10 +391,10 @@ class EditExerciseScreen(MDScreen):
                 exercises.save_exercise(self.exercise_obj)
                 if app:
                     app.exercise_library_version += 1
-            if (not update_in_preset) and checkbox and checkbox.active and presets:
-                core.apply_exercise_changes_to_presets(
+            if (not update_in_preset) and checkbox and checkbox.active and preset_names:
+                presets.apply_exercise_changes_to_presets(
                     self.exercise_obj,
-                    presets,
+                    preset_names,
                     db_path=DEFAULT_DB_PATH,
                 )
             if update_in_preset:
@@ -417,7 +417,7 @@ class EditExerciseScreen(MDScreen):
                             metric.get(field) != old.get(field)
                             for field in ("input_timing", "is_required", "scope")
                         ):
-                            core.set_section_exercise_metric_override(
+                            metrics.set_section_exercise_metric_override(
                                 preset_name,
                                 self.section_index,
                                 self.exercise_obj.name,
@@ -502,8 +502,8 @@ class EditExerciseScreen(MDScreen):
             checkbox = None
             extra_content = None
             if self.previous_screen == "exercise_library":
-                presets = core.find_presets_using_exercise(self.exercise_obj.name)
-                if presets:
+                preset_names = presets.find_presets_using_exercise(self.exercise_obj.name)
+                if preset_names:
                     checkbox = MDCheckbox(
                         size_hint=(None, None), height="40dp", width="40dp"
                     )

@@ -54,7 +54,7 @@ except Exception:  # pragma: no cover - simple stubs
 
 import time
 import math
-from core import DEFAULT_REST_DURATION
+from backend import DEFAULT_REST_DURATION
 from backend.exercises import get_exercise_details
 
 

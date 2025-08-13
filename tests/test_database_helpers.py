@@ -1,5 +1,4 @@
-import core
-from backend import exercises
+from backend import exercises, metrics, presets
 from backend.exercise import Exercise
 
 
@@ -24,20 +23,20 @@ def test_get_all_exercises(sample_db):
 
 
 def test_get_metrics_for_exercise(sample_db):
-    default = core.get_metrics_for_exercise("Bench Press", db_path=sample_db)
-    override = core.get_metrics_for_exercise("Bench Press", preset_name="Push Day", db_path=sample_db)
+    default = metrics.get_metrics_for_exercise("Bench Press", db_path=sample_db)
+    override = metrics.get_metrics_for_exercise("Bench Press", preset_name="Push Day", db_path=sample_db)
 
     def get_timing(metrics, name):
         return next(m for m in metrics if m["name"] == name)["input_timing"]
 
     assert get_timing(default, "Reps") == "post_set"
     assert get_timing(override, "Reps") == "pre_set"
-    assert core.get_metrics_for_exercise("Unknown", db_path=sample_db) == []
+    assert metrics.get_metrics_for_exercise("Unknown", db_path=sample_db) == []
 
 
 def test_load_workout_presets(sample_db):
-    presets = core.load_workout_presets(sample_db)
-    assert presets == [
+    preset_data = presets.load_workout_presets(sample_db)
+    assert preset_data == [
         {
             "name": "Push Day",
             "exercises": [

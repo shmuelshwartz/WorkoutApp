@@ -3,7 +3,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-from core import (
+from backend import (
     DEFAULT_DB_PATH,
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,
