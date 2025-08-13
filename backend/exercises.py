@@ -11,7 +11,7 @@ import sqlite3
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from core import DEFAULT_DB_PATH
+from . import DEFAULT_DB_PATH
 
 if TYPE_CHECKING:  # pragma: no cover - imported only for type checking
     from .exercise import Exercise

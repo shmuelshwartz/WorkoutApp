@@ -4,7 +4,7 @@ from kivymd.uix.list import OneLineListItem
 from kivy.properties import ObjectProperty
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDRaisedButton
-import core
+from backend import sessions
 
 
 class WorkoutSummaryScreen(MDScreen):
@@ -17,12 +17,12 @@ class WorkoutSummaryScreen(MDScreen):
         app = MDApp.get_running_app()
         session = app.workout_session if app else None
         if session and not getattr(session, "saved", False):
-            errors = core.validate_workout_session(session)
+            errors = sessions.validate_workout_session(session)
             if errors:
                 self._show_error("\n".join(errors))
             else:
                 try:
-                    core.save_completed_session(session, db_path=session.db_path)
+                    sessions.save_completed_session(session, db_path=session.db_path)
                 except Exception as exc:
                     self._show_error(str(exc))
         return super().on_pre_enter(*args)

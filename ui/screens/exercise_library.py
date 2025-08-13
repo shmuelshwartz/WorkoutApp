@@ -18,9 +18,7 @@ from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDRaisedButton
 
 import os
-import core
-from backend import exercises
-from core import DEFAULT_DB_PATH
+from backend import exercises, metrics as metrics_lib, DEFAULT_DB_PATH
 
 
 class ExerciseLibraryScreen(MDScreen):
@@ -66,7 +64,7 @@ class ExerciseLibraryScreen(MDScreen):
             and self.metric_cache_version != getattr(app, "metric_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_metrics = core.get_all_metric_types(
+            self.all_metrics = metrics_lib.get_all_metric_types(
                 db_path, include_user_created=True
             )
             if app:
@@ -149,7 +147,7 @@ class ExerciseLibraryScreen(MDScreen):
             and self.metric_cache_version != getattr(app, "metric_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_metrics = core.get_all_metric_types(
+            self.all_metrics = metrics_lib.get_all_metric_types(
                 db_path, include_user_created=True
             )
             if app:
@@ -285,7 +283,7 @@ class ExerciseLibraryScreen(MDScreen):
         def do_delete(*args):
             db_path = DEFAULT_DB_PATH
             try:
-                core.delete_metric_type(
+                metrics_lib.delete_metric_type(
                     metric_name, db_path=db_path, is_user_created=True
                 )
                 app = MDApp.get_running_app()
