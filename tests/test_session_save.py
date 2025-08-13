@@ -1,6 +1,6 @@
 import sqlite3
 import pytest
-import core
+from backend.sessions import save_completed_session
 from backend.workout_session import WorkoutSession
 
 
@@ -38,7 +38,7 @@ def _complete_session(db_path):
 
 def test_save_completed_session(sample_db):
     session = _complete_session(sample_db)
-    core.save_completed_session(session, db_path=sample_db)
+    save_completed_session(session, db_path=sample_db)
     conn = sqlite3.connect(sample_db)
     cur = conn.cursor()
     cur.execute("SELECT preset_id FROM session_sessions")
@@ -63,4 +63,4 @@ def test_save_completed_session(sample_db):
 def test_save_session_validation(sample_db):
     session = WorkoutSession("Push Day", db_path=sample_db)
     with pytest.raises(ValueError):
-        core.save_completed_session(session, db_path=sample_db)
+        save_completed_session(session, db_path=sample_db)
