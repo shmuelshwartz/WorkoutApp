@@ -111,6 +111,16 @@ def test_mark_set_completed_time_adjustment(sample_db, monkeypatch):
     assert session.rest_target_time == pytest.approx(190.0)
 
 
+def test_update_set_duration_updates_rest(sample_db, monkeypatch):
+    monkeypatch.setattr(core.time, "time", lambda: 100.0)
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=30)
+    start = session.current_set_start_time
+    session.mark_set_completed()
+    session.update_set_duration(session.current_exercise, session.current_set, 42.0)
+    assert session.last_set_time == pytest.approx(start + 42.0)
+    assert session.rest_target_time == pytest.approx(start + 42.0 + session.rest_duration)
+
+
 def test_undo_last_set_restores_metrics_and_timer(sample_db, monkeypatch):
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     start = session.current_set_start_time

@@ -251,7 +251,9 @@ class MetricInputScreen(MDScreen):
             return
         exercise = self.session.exercises[self.exercise_idx]
         metrics = [
-            m for m in exercise.get("metric_defs", []) if m.get("name") != "Notes"
+            m
+            for m in exercise.get("metric_defs", [])
+            if m.get("name") not in ("Notes", "Time")
         ]
         # Determine any previously recorded values for this set
         values = {}
@@ -262,14 +264,14 @@ class MetricInputScreen(MDScreen):
             values = self.session.pending_pre_set_metrics.get(
                 (self.exercise_idx, self.set_idx), {}
             )
+        duration = self.session.get_set_duration(self.exercise_idx, self.set_idx)
+        if duration is not None:
+            self.metrics_list.add_widget(self._create_time_row(duration))
         for metric in self._apply_filters(metrics):
             name = metric.get("name")
             self.metrics_list.add_widget(
                 self._create_row(metric, values.get(name))
             )
-        duration = self.session.get_set_duration(self.exercise_idx, self.set_idx)
-        if duration is not None:
-            self.metrics_list.add_widget(self._create_time_row(duration))
 
         notes_text = ""
         if hasattr(self.session, "get_set_notes"):
@@ -361,6 +363,7 @@ class MetricInputScreen(MDScreen):
         def _enable_edit(field, touch):
             if field.readonly and field.collide_point(*touch.pos):
                 field.readonly = False
+                field.focus = True
             return False
 
         if hasattr(widget, "bind"):

@@ -274,6 +274,7 @@ class WorkoutSession:
             and set_index == self.current_set
         ):
             self.last_set_time = self.current_set_start_time + duration
+            self.rest_target_time = self.last_set_time + self.rest_duration
             return
 
         self._ensure_session_entry(exercise_index)
