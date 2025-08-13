@@ -267,6 +267,9 @@ class MetricInputScreen(MDScreen):
             self.metrics_list.add_widget(
                 self._create_row(metric, values.get(name))
             )
+        duration = self.session.get_set_duration(self.exercise_idx, self.set_idx)
+        if duration is not None:
+            self.metrics_list.add_widget(self._create_time_row(duration))
 
         notes_text = self.session.get_set_notes(self.exercise_idx, self.set_idx)
         notes_row = self._create_notes_row(notes_text)
@@ -317,6 +320,14 @@ class MetricInputScreen(MDScreen):
             value = widget.text
         elif isinstance(widget, MDCheckbox):
             value = widget.active
+        if name == "Time":
+            try:
+                duration = float(value)
+            except (TypeError, ValueError):
+                duration = 0.0
+            session.update_set_duration(self.exercise_idx, self.set_idx, duration)
+            widget.text = f"{duration:.2f}"
+            return
         if value in (None, ""):
             value = 0 if mtype in ("int", "float", "slider") else ""
         if mtype == "int":
@@ -335,6 +346,29 @@ class MetricInputScreen(MDScreen):
             session.edit_set_metrics(self.exercise_idx, self.set_idx, {name: value})
         else:
             session.set_pre_set_metrics({name: value}, self.exercise_idx, self.set_idx)
+
+    def _create_time_row(self, duration: float):
+        row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
+        row.metric_name = "Time"
+        row.type = "float"
+        row.add_widget(MDLabel(text="Time", size_hint_x=0.4))
+        widget = MDTextField(
+            text=f"{duration:.2f}", input_filter="float", readonly=True
+        )
+
+        def _enable_edit(field, touch):
+            if field.readonly and field.collide_point(*touch.pos):
+                field.readonly = False
+            return False
+
+        if hasattr(widget, "bind"):
+            widget.bind(
+                text=lambda _w, _val, row=row: self._on_metric_change(row),
+                on_touch_down=_enable_edit,
+            )
+        row.input_widget = widget
+        row.add_widget(widget)
+        return row
 
     def _create_row(self, metric, value=None):
         if isinstance(metric, str):
@@ -404,6 +438,8 @@ class MetricInputScreen(MDScreen):
             if getattr(row, "is_notes", False):
                 continue
             name = getattr(row, "metric_name", "")
+            if name == "Time":
+                continue
             widget = getattr(row, "input_widget", None)
             mtype = getattr(row, "type", "str")
             if widget is None:
@@ -461,7 +497,12 @@ class MetricInputScreen(MDScreen):
             if (sel_ex, sel_set) != (orig_ex, orig_set):
                 session.set_pre_set_metrics(metrics, sel_ex, sel_set)
         else:
-            finished = session.record_metrics(sel_ex, sel_set, metrics)
+            exercise = session.exercises[sel_ex]
+            results = exercise.get("results", [])
+            if sel_set < len(results):
+                session.edit_set_metrics(sel_ex, sel_set, metrics)
+            else:
+                finished = session.record_metrics(sel_ex, sel_set, metrics)
 
         app.record_new_set = False
         app.record_pre_set = False

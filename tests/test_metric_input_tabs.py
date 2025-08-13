@@ -136,6 +136,9 @@ def test_navigation_across_sets_and_exercises():
             self.section_starts = [0]
             self.exercise_sections = [0, 0]
 
+        def get_set_duration(self, ex_idx, set_idx):
+            return None
+
     screen.session = DummySession()
     screen.update_display()
 
@@ -167,6 +170,9 @@ def test_multi_tap_navigation():
             self.current_set = 0
             self.section_starts = [0, 2]
             self.exercise_sections = [0, 0, 1]
+
+        def get_set_duration(self, ex_idx, set_idx):
+            return None
 
     screen.session = DummySession()
     screen.update_display()
@@ -224,6 +230,18 @@ def test_save_future_metrics_preserves_session_state():
 
         def set_set_notes(self, ex_idx, set_idx, text):
             pass
+        def get_set_duration(self, ex_idx, set_idx):
+            return None
+
+        def get_set_duration(self, ex_idx, set_idx):
+            return None
+
+        def get_set_duration(self, ex_idx, set_idx):
+            return None
+
+        def get_set_duration(self, ex_idx, set_idx):
+            return None
+
 
     dummy_session = DummySession()
     dummy_app = types.SimpleNamespace(workout_session=dummy_session)
@@ -364,6 +382,9 @@ def test_save_future_metrics_returns_to_rest():
 
         def set_set_notes(self, ex_idx, set_idx, text):
             pass
+        def get_set_duration(self, ex_idx, set_idx):
+            return None
+
 
     dummy_session = DummySession()
     dummy_app = types.SimpleNamespace(workout_session=dummy_session)
@@ -433,6 +454,11 @@ def test_edit_previous_set_does_not_leak_future_pending():
 
         def set_set_notes(self, ex_idx, set_idx, text):
             pass
+        def edit_set_metrics(self, ex_idx, set_idx, metrics):
+            self.exercises[ex_idx]["results"][set_idx]["metrics"] = metrics
+
+        def get_set_duration(self, ex_idx, set_idx):
+            return None
 
     dummy_session = DummySession()
     dummy_app = types.SimpleNamespace(workout_session=dummy_session)
@@ -458,4 +484,53 @@ def test_edit_previous_set_does_not_leak_future_pending():
 
     assert dummy_session.exercises[0]["results"][0]["metrics"] == {"Reps": 7}
     assert dummy_session.pending_pre_set_metrics == {(0, 1): {"Weight": 100}}
+
+
+def test_time_metric_row_and_edit():
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.current_exercise = 0
+            self.current_set = 0
+            self.awaiting_post_set_metrics = True
+            self.current_set_start_time = 100.0
+            self.last_set_time = 122.08
+            self.pending_pre_set_metrics = {}
+            self.exercises = [
+                {"name": "Run", "sets": 1, "metric_defs": [{"name": "Reps", "type": "int"}], "results": []}
+            ]
+
+        def update_set_duration(self, ex_idx, set_idx, duration):
+            self.last_set_time = self.current_set_start_time + duration
+
+        def get_set_duration(self, ex_idx, set_idx):
+            return self.last_set_time - self.current_set_start_time
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(workout_session=dummy_session)
+    metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
+
+    class DummyList:
+        def __init__(self):
+            self.children = []
+
+        def clear_widgets(self):
+            self.children.clear()
+
+        def add_widget(self, widget):
+            self.children.append(widget)
+
+    screen.metrics_list = DummyList()
+    screen.session = dummy_session
+    screen.update_metrics()
+
+    assert screen.metrics_list.children[0].metric_name == "Time"
+    time_row = screen.metrics_list.children[0]
+    assert time_row.input_widget.text == "22.08"
+
+    time_row.input_widget.text = "25.00"
+    screen._on_metric_change(time_row)
+    assert dummy_session.last_set_time == 125.0
+    assert time_row.input_widget.text == "25.00"
 
