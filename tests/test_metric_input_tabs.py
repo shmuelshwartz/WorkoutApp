@@ -225,6 +225,11 @@ def test_save_future_metrics_preserves_session_state():
             st = self.current_set if set_index is None else set_index
             self.pending_pre_set_metrics[(ex, st)] = metrics.copy()
 
+        def get_set_notes(self, ex_idx, set_idx):
+            return ""
+
+        def set_set_notes(self, ex_idx, set_idx, text):
+            pass
         def get_set_duration(self, ex_idx, set_idx):
             return None
 
@@ -236,6 +241,7 @@ def test_save_future_metrics_preserves_session_state():
 
         def get_set_duration(self, ex_idx, set_idx):
             return None
+
 
     dummy_session = DummySession()
     dummy_app = types.SimpleNamespace(workout_session=dummy_session)
@@ -371,8 +377,14 @@ def test_save_future_metrics_returns_to_rest():
             st = self.current_set if set_index is None else set_index
             self.pending_pre_set_metrics[(ex, st)] = metrics.copy()
 
+        def get_set_notes(self, ex_idx, set_idx):
+            return ""
+
+        def set_set_notes(self, ex_idx, set_idx, text):
+            pass
         def get_set_duration(self, ex_idx, set_idx):
             return None
+
 
     dummy_session = DummySession()
     dummy_app = types.SimpleNamespace(workout_session=dummy_session)
@@ -437,6 +449,11 @@ def test_edit_previous_set_does_not_leak_future_pending():
             st = self.current_set if set_index is None else set_index
             self.pending_pre_set_metrics[(ex, st)] = metrics.copy()
 
+        def get_set_notes(self, ex_idx, set_idx):
+            return ""
+
+        def set_set_notes(self, ex_idx, set_idx, text):
+            pass
         def edit_set_metrics(self, ex_idx, set_idx, metrics):
             self.exercises[ex_idx]["results"][set_idx]["metrics"] = metrics
 
