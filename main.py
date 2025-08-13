@@ -29,6 +29,7 @@ from kivymd.uix.card import MDSeparator
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.tab import MDTabsBase
+from kivy.uix.scatter import Scatter
 
 try:
     from kivymd.uix.spinner import MDSpinner
@@ -91,10 +92,7 @@ if os.name == "nt" or sys.platform.startswith("win"):
     Window.size = (140, 140 * (20 / 9))
 elif platform == "android":
     full_width, full_height = Window.system_size
-    if HALF_SCREEN:
-        Window.size = (full_width / 2, full_height / 2)
-    else:
-        Window.size = (full_width, full_height)
+    Window.size = (full_width, full_height)
 
 if not TESTING:
     try:
@@ -423,6 +421,19 @@ class WorkoutApp(MDApp):
     def build(self):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
         Window.bind(on_keyboard=self._on_keyboard)
+
+        if HALF_SCREEN:
+            container = Scatter(
+                scale=0.5,
+                do_rotation=False,
+                do_translation=False,
+                size=Window.size,
+                size_hint=(None, None),
+                pos=(0, 0),
+            )
+            container.add_widget(root)
+            return container
+
         return root
 
     def _on_keyboard(self, window, key, scancode, codepoint, modifiers):
