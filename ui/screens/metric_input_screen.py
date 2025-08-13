@@ -357,19 +357,12 @@ class MetricInputScreen(MDScreen):
         row.type = "float"
         row.add_widget(MDLabel(text="Time", size_hint_x=0.4))
         widget = MDTextField(
-            text=f"{duration:.2f}", input_filter="float", readonly=True
+            text=f"{duration:.2f}", input_filter="float"
         )
-
-        def _enable_edit(field, touch):
-            if field.readonly and field.collide_point(*touch.pos):
-                field.readonly = False
-                field.focus = True
-            return False
 
         if hasattr(widget, "bind"):
             widget.bind(
-                text=lambda _w, _val, row=row: self._on_metric_change(row),
-                on_touch_down=_enable_edit,
+                text=lambda _w, _val, row=row: self._on_metric_change(row)
             )
         row.input_widget = widget
         row.add_widget(widget)
