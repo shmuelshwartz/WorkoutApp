@@ -28,6 +28,7 @@ import sqlite3
 
 import core
 from core import DEFAULT_DB_PATH
+from backend.metrics import get_metrics_for_exercise, get_all_metric_types
 
 
 class SectionWidget(MDBoxLayout):
@@ -326,7 +327,7 @@ class EditPresetScreen(MDScreen):
                 else:
                     results = []
                     description = ""
-                    metric_defs = core.get_metrics_for_exercise(
+                    metric_defs = get_metrics_for_exercise(
                         ex["name"],
                         db_path=session.db_path,
                         preset_name=session.preset_name,
@@ -561,7 +562,7 @@ class EditPresetScreen(MDScreen):
 
         all_defs = {
             m["name"]: m
-            for m in core.get_all_metric_types(include_user_created=True)
+            for m in get_all_metric_types(include_user_created=True)
         }
 
         rv.data = [
@@ -912,7 +913,7 @@ class AddPresetMetricPopup(MDDialog):
             }
         metrics = [
             m
-            for m in core.get_all_metric_types()
+            for m in get_all_metric_types()
             if m.get("scope") == "preset" and (
                 m.get("name") not in existing and m.get("metric_name") not in existing
             )
@@ -964,7 +965,7 @@ class AddSessionMetricPopup(MDDialog):
             }
         metrics = [
             m
-            for m in core.get_all_metric_types()
+            for m in get_all_metric_types()
             if m.get("scope") == "session" and (
                 m.get("name") not in existing and m.get("metric_name") not in existing
             )

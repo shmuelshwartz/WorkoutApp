@@ -35,6 +35,7 @@ from core import (
     DEFAULT_REST_DURATION,
     DEFAULT_DB_PATH,
 )
+from backend import metrics as bm
 from backend.exercise import Exercise
 
 from .metric_input_screen import MetricInputScreen
@@ -416,7 +417,7 @@ class EditExerciseScreen(MDScreen):
                             metric.get(field) != old.get(field)
                             for field in ("input_timing", "is_required", "scope")
                         ):
-                            core.set_section_exercise_metric_override(
+                            bm.set_section_exercise_metric_override(
                                 preset_name,
                                 self.section_index,
                                 self.exercise_obj.name,

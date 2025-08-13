@@ -1,5 +1,6 @@
 from pathlib import Path
-from core import DEFAULT_DB_PATH, get_exercise_details, get_metrics_for_exercise
+from core import DEFAULT_DB_PATH, get_exercise_details
+from backend.metrics import get_metrics_for_exercise
 
 
 class Exercise:
