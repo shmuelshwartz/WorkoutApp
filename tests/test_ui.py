@@ -1,6 +1,7 @@
 import importlib.util
 import os
 import pytest
+import time
 
 os.environ["KIVY_WINDOW"] = "mock"
 # Skip tests entirely if Kivy (and KivyMD) are not installed
@@ -359,6 +360,16 @@ def test_rest_screen_toggle_ready_changes_state():
     screen.toggle_ready()
     assert screen.is_ready is True
     assert screen.timer_color == (0, 1, 0, 1)
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_rest_screen_session_time_updates(monkeypatch):
+    screen = RestScreen()
+    screen.target_time = 200.0
+    screen.session_start_time = 100.0
+    monkeypatch.setattr(time, "time", lambda: 160.0)
+    screen.update_timer(0)
+    assert screen.session_time_label == "01:00"
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
