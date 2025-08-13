@@ -1,12 +1,13 @@
 import core
+from backend import presets
 from backend.workout_session import WorkoutSession
 import sqlite3
 import pytest
 
 
 def test_workout_session_flow(sample_db):
-    presets = core.load_workout_presets(sample_db)
-    assert any(p["name"] == "Push Day" for p in presets)
+    loaded = presets.load_workout_presets(sample_db)
+    assert any(p["name"] == "Push Day" for p in loaded)
 
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     assert session.next_exercise_display() == "Push-up set 1 of 2"

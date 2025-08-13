@@ -4,7 +4,7 @@ import sys
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import core
+from backend import presets
 from backend import metrics, exercises
 
 
@@ -110,8 +110,8 @@ def test_get_all_exercises_and_details(sample_db: Path):
 
 
 def test_load_workout_presets(sample_db: Path):
-    presets = core.load_workout_presets(db_path=sample_db)
-    assert presets == [
+    loaded = presets.load_workout_presets(db_path=sample_db)
+    assert loaded == [
         {
             "name": "Push Day",
             "exercises": [

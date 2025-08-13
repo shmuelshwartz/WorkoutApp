@@ -16,8 +16,7 @@ if kivy_available:
 
     from kivy.app import App
     from kivy.properties import ObjectProperty
-    import core
-    from backend import metrics, exercises
+    from backend import metrics, exercises, presets
     from backend.preset_editor import PresetEditor
     from backend.exercise import Exercise
     from backend.workout_session import WorkoutSession
@@ -793,7 +792,7 @@ def test_preset_select_button_updates(monkeypatch):
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     monkeypatch.setattr(
-        core,
+        presets,
         "WORKOUT_PRESETS",
         [{"name": "Sample", "exercises": []}],
     )
@@ -814,7 +813,7 @@ def test_presets_screen_preserves_selection_on_leave(monkeypatch):
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     # Ensure the preset exists
-    monkeypatch.setattr(core, "WORKOUT_PRESETS", [{"name": "Sample", "exercises": []}])
+    monkeypatch.setattr(presets, "WORKOUT_PRESETS", [{"name": "Sample", "exercises": []}])
 
     # Provide an app instance with a selected_preset attribute
     class DummyApp:
@@ -998,7 +997,7 @@ def test_pre_session_metrics_prompt_before_start(monkeypatch):
     monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
 
     monkeypatch.setattr(
-        core,
+        presets,
         "get_metrics_for_preset",
         lambda name: [{"name": "M1", "input_timing": "pre_session"}],
     )
@@ -1178,7 +1177,7 @@ def test_preset_select_button_color(monkeypatch):
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     monkeypatch.setattr(
-        core,
+        presets,
         "WORKOUT_PRESETS",
         [{"name": "Sample", "exercises": []}],
     )
@@ -1207,7 +1206,7 @@ def test_preset_selected_text_color_and_clear(monkeypatch):
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     monkeypatch.setattr(
-        core,
+        presets,
         "WORKOUT_PRESETS",
         [{"name": "Sample", "exercises": []}],
     )

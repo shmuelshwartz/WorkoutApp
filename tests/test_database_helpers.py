@@ -1,4 +1,4 @@
-import core
+from backend import presets
 from backend import metrics, exercises
 from backend.exercise import Exercise
 
@@ -36,8 +36,8 @@ def test_get_metrics_for_exercise(sample_db):
 
 
 def test_load_workout_presets(sample_db):
-    presets = core.load_workout_presets(sample_db)
-    assert presets == [
+    loaded = presets.load_workout_presets(sample_db)
+    assert loaded == [
         {
             "name": "Push Day",
             "exercises": [
