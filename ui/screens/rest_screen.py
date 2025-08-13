@@ -133,6 +133,12 @@ class RestScreen(MDScreen):
             if self.manager:
                 self.manager.current = "workout_active"
 
+    def unready(self):
+        """Reset the ready state without toggling."""
+        if self.is_ready:
+            self.is_ready = False
+            self.timer_color = (1, 0, 0, 1)
+
     def update_record_button_color(self):
         app = MDApp.get_running_app()
         session = app.workout_session if app else None

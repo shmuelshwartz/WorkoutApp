@@ -435,6 +435,20 @@ class WorkoutApp(MDApp):
             return True
         return False
 
+    def on_pause(self):
+        """Ensure rest timer isn't marked ready when app is backgrounded."""
+        if self.root and self.root.current == "rest":
+            try:
+                rest_screen = self.root.get_screen("rest")
+            except Exception:
+                rest_screen = None
+            if rest_screen and getattr(rest_screen, "is_ready", False):
+                if hasattr(rest_screen, "unready"):
+                    rest_screen.unready()
+                else:
+                    rest_screen.is_ready = False
+        return True
+
     def init_preset_editor(self, force_reload: bool = False):
         """Create or reload the ``PresetEditor`` for the selected preset."""
 
