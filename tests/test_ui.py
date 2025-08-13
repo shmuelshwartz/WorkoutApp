@@ -18,6 +18,7 @@ if kivy_available:
     from kivy.properties import ObjectProperty
     import core
     from backend.exercise import Exercise
+    from backend.workout_session import WorkoutSession
 
     from main import (
         RestScreen,
@@ -431,7 +432,7 @@ def test_open_metric_input_prefers_pre_set(monkeypatch):
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_active_screen_resumes_from_session(monkeypatch, sample_db):
     screen = WorkoutActiveScreen()
-    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     session.current_set_start_time = 100.0
     session.resume_from_last_start = True
     dummy_app = _DummyApp()
@@ -1419,7 +1420,7 @@ def test_refresh_sections_preserves_names(monkeypatch):
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_session_edit_locking(monkeypatch, sample_db):
-    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     app = _DummyApp()
     app.workout_session = session
     monkeypatch.setattr(App, "get_running_app", lambda: app)
@@ -1434,7 +1435,7 @@ def test_session_edit_locking(monkeypatch, sample_db):
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_reordering_current_exercise_updates_index(monkeypatch, sample_db):
-    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     editor = core.PresetEditor("Push Day", db_path=sample_db)
     app = _DummyApp()
     app.workout_session = session
