@@ -1,9 +1,10 @@
 import core
+from backend import exercises
 from backend.exercise import Exercise
 
 
 def test_get_all_exercises(sample_db):
-    names = core.get_all_exercises(sample_db)
+    names = exercises.get_all_exercises(sample_db)
     assert names == ["Bench Press", "Push-up"]
 
     ex = Exercise(db_path=sample_db)
@@ -16,9 +17,9 @@ def test_get_all_exercises(sample_db):
         "scope": "set",
         "description": "",
     })
-    core.save_exercise(ex)
+    exercises.save_exercise(ex)
 
-    all_with_flags = core.get_all_exercises(sample_db, include_user_created=True)
+    all_with_flags = exercises.get_all_exercises(sample_db, include_user_created=True)
     assert ("Custom", True) in all_with_flags
 
 

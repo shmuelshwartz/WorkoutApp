@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 import core
+from backend import exercises
 from backend.exercise import Exercise
 
 
@@ -26,7 +27,7 @@ def test_enum_values_default_and_override(sample_db: Path) -> None:
     # Override enum values for Bench Press
     ex = Exercise("Bench Press", db_path=sample_db)
     ex.update_metric("Machine", values=["A"])
-    core.save_exercise(ex)
+    exercises.save_exercise(ex)
 
     metrics_bench2 = core.get_metrics_for_exercise("Bench Press", db_path=sample_db)
     vals_bench2 = next(m["values"] for m in metrics_bench2 if m["name"] == "Machine")

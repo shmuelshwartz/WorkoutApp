@@ -17,6 +17,7 @@ if kivy_available:
     from kivy.app import App
     from kivy.properties import ObjectProperty
     import core
+    from backend import exercises
     from backend.preset_editor import PresetEditor
     from backend.exercise import Exercise
     from backend.workout_session import WorkoutSession
@@ -770,7 +771,7 @@ def test_exercise_selection_panel_filters(monkeypatch):
     )()
 
     monkeypatch.setattr(
-        core,
+        exercises,
         "get_all_exercises",
         lambda *a, **k: [("Push Ups", False), ("Custom", True)],
     )
@@ -937,7 +938,7 @@ def test_preset_overview_screen_populate(monkeypatch):
     monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
 
     monkeypatch.setattr(
-        core,
+        exercises,
         "get_exercise_details",
         lambda name, *a, **k: {
             "name": name,
@@ -1038,7 +1039,7 @@ def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
 
     ex = Exercise(db_path=db_path)
     ex.name = "Custom"
-    core.save_exercise(ex)
+    exercises.save_exercise(ex)
 
     screen = EditExerciseScreen()
     screen.exercise_obj = Exercise(db_path=db_path)

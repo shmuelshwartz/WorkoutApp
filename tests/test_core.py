@@ -5,6 +5,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import core
+from backend import exercises
 from backend.exercise import Exercise
 from backend.workout_session import WorkoutSession
 
@@ -83,9 +84,9 @@ def test_load_workout_presets(sample_db):
 
 
 def test_get_all_exercises(sample_db):
-    names = core.get_all_exercises(sample_db)
+    names = exercises.get_all_exercises(sample_db)
     assert names == ["Bench Press", "Push Up"]
-    names_flags = core.get_all_exercises(sample_db, include_user_created=True)
+    names_flags = exercises.get_all_exercises(sample_db, include_user_created=True)
     assert names_flags == [("Bench Press", False), ("Push Up", False)]
 
 

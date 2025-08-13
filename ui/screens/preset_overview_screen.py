@@ -2,6 +2,7 @@ from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivy.properties import ObjectProperty
 import core
+from backend import exercises
 from ui.expandable_list_item import ExpandableListItem, ExerciseSummaryItem
 from ui.popups import PreSessionMetricPopup
 
@@ -65,7 +66,7 @@ class PresetOverviewScreen(MDScreen):
         # Populate workout tab with full exercise details
         for section in editor.sections:
             for ex in section.get("exercises", []):
-                desc_info = core.get_exercise_details(ex["name"])
+                desc_info = exercises.get_exercise_details(ex["name"])
                 desc = desc_info.get("description", "") if desc_info else ""
                 sets = ex.get("sets", 0) or 0
                 rest = ex.get("rest", 0) or 0

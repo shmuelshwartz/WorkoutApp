@@ -30,6 +30,7 @@ import string
 import sqlite3
 
 import core
+from backend import exercises
 from core import (
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,
@@ -387,7 +388,7 @@ class EditExerciseScreen(MDScreen):
         def do_save(*args):
             update_library = (not update_in_preset) or (checkbox and checkbox.active)
             if update_library:
-                core.save_exercise(self.exercise_obj)
+                exercises.save_exercise(self.exercise_obj)
                 if app:
                     app.exercise_library_version += 1
             if (not update_in_preset) and checkbox and checkbox.active and presets:
