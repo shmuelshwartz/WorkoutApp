@@ -1,3 +1,5 @@
+TESTING = False
+
 from kivymd.app import MDApp
 from kivy.lang import Builder
 from kivy.clock import Clock
@@ -66,6 +68,7 @@ import time
 import math
 
 from kivy.core.window import Window
+from kivy.utils import platform
 import string
 import sqlite3
 from ui.screens.presets_screen import PresetsScreen
@@ -84,25 +87,29 @@ from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
 
 
 if os.name == "nt" or sys.platform.startswith("win"):
-    Window.size = (280, 280 * (20 / 9))
+    Window.size = (140, 140 * (20 / 9))
+elif platform == "android":
+    full_width, full_height = Window.system_size
+    Window.size = (full_width / 2, full_height / 2)
 
-try:
-    from android import mActivity
-    from jnius import autoclass
+if not TESTING:
+    try:
+        from android import mActivity
+        from jnius import autoclass
 
-    View = autoclass('android.view.View')
-    decorView = mActivity.getWindow().getDecorView()
+        View = autoclass('android.view.View')
+        decorView = mActivity.getWindow().getDecorView()
 
-    decorView.setSystemUiVisibility(
-        View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-        View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-        View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-        View.SYSTEM_UI_FLAG_FULLSCREEN |
-        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-    )
-except Exception as e:
-    print("Immersive mode failed:", e)
+        decorView.setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+            View.SYSTEM_UI_FLAG_FULLSCREEN |
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        )
+    except Exception as e:
+        print("Immersive mode failed:", e)
 
 class Tab(MDBoxLayout, MDTabsBase):
     """A basic tab for use with :class:`~kivymd.uix.tab.MDTabs`."""
