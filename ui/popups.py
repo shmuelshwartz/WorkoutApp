@@ -21,6 +21,10 @@ import sqlite3
 
 import core
 from core import DEFAULT_DB_PATH
+from backend.presets import (
+    find_presets_using_exercise,
+    apply_exercise_changes_to_presets,
+)
 
 # Order of fields for metric editing popups
 METRIC_FIELD_ORDER = [
@@ -707,7 +711,7 @@ class EditMetricPopup(MDDialog):
                 )
                 rows.append(row)
 
-            presets = core.find_presets_using_exercise(
+            presets = find_presets_using_exercise(
                 self.screen.exercise_obj.name, db_path=db_path
             )
             cb_presets = None
@@ -773,7 +777,7 @@ class EditMetricPopup(MDDialog):
                                 db_path=db_path,
                             )
                     if cb_presets and cb_presets.active:
-                        core.apply_exercise_changes_to_presets(
+                        apply_exercise_changes_to_presets(
                             self.screen.exercise_obj,
                             presets,
                             db_path=db_path,

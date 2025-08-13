@@ -5,6 +5,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import core
+from backend.presets import load_workout_presets
 
 
 def create_empty_db(path: Path) -> None:
@@ -109,7 +110,7 @@ def test_get_all_exercises_and_details(sample_db: Path):
 
 
 def test_load_workout_presets(sample_db: Path):
-    presets = core.load_workout_presets(db_path=sample_db)
+    presets = load_workout_presets(db_path=sample_db)
     assert presets == [
         {
             "name": "Push Day",

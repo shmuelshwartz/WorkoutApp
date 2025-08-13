@@ -7,6 +7,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import core
 from backend.exercise import Exercise
 from backend.workout_session import WorkoutSession
+from backend.presets import (
+    load_workout_presets,
+    find_presets_using_exercise,
+    apply_exercise_changes_to_presets,
+)
 
 
 
@@ -69,7 +74,7 @@ def sample_db(tmp_path):
 
 
 def test_load_workout_presets(sample_db):
-    presets = core.load_workout_presets(sample_db)
+    presets = load_workout_presets(sample_db)
     assert core.WORKOUT_PRESETS == presets
     assert presets == [
         {
@@ -277,7 +282,7 @@ def test_delete_metric_type_in_use_by_preset_exercise(sample_db):
 
 
 def test_find_presets_and_apply_changes(sample_db):
-    names = core.find_presets_using_exercise("Push Up", db_path=sample_db)
+    names = find_presets_using_exercise("Push Up", db_path=sample_db)
     assert names == ["Push Day"]
 
     ex = Exercise("Push Up", db_path=sample_db, is_user_created=False)
@@ -305,7 +310,7 @@ def test_find_presets_and_apply_changes(sample_db):
     }
     conn.close()
 
-    core.apply_exercise_changes_to_presets(ex, ["Push Day"], db_path=sample_db)
+    apply_exercise_changes_to_presets(ex, ["Push Day"], db_path=sample_db)
 
     conn = sqlite3.connect(sample_db)
     cur = conn.cursor()

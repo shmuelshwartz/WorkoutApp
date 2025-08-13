@@ -35,6 +35,10 @@ from core import (
     DEFAULT_REST_DURATION,
     DEFAULT_DB_PATH,
 )
+from backend.presets import (
+    find_presets_using_exercise,
+    apply_exercise_changes_to_presets,
+)
 from backend.exercise import Exercise
 
 from .metric_input_screen import MetricInputScreen
@@ -391,7 +395,7 @@ class EditExerciseScreen(MDScreen):
                 if app:
                     app.exercise_library_version += 1
             if (not update_in_preset) and checkbox and checkbox.active and presets:
-                core.apply_exercise_changes_to_presets(
+                apply_exercise_changes_to_presets(
                     self.exercise_obj,
                     presets,
                     db_path=DEFAULT_DB_PATH,
@@ -501,7 +505,7 @@ class EditExerciseScreen(MDScreen):
             checkbox = None
             extra_content = None
             if self.previous_screen == "exercise_library":
-                presets = core.find_presets_using_exercise(self.exercise_obj.name)
+                presets = find_presets_using_exercise(self.exercise_obj.name)
                 if presets:
                     checkbox = MDCheckbox(
                         size_hint=(None, None), height="40dp", width="40dp"

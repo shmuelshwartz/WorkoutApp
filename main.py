@@ -46,8 +46,8 @@ from ui.screens import ExerciseLibraryScreen
 # Import core so we can always reference the up-to-date WORKOUT_PRESETS list
 import core
 from backend.workout_session import WorkoutSession
+from backend.presets import load_workout_presets
 from core import (
-    load_workout_presets,
     get_metrics_for_exercise,
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,

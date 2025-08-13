@@ -28,6 +28,7 @@ import sqlite3
 
 import core
 from core import DEFAULT_DB_PATH
+from backend.presets import load_workout_presets
 
 
 class SectionWidget(MDBoxLayout):
@@ -612,7 +613,7 @@ class EditPresetScreen(MDScreen):
         def do_confirm(*args):
             try:
                 app.preset_editor.save()
-                core.load_workout_presets(app.preset_editor.db_path)
+                load_workout_presets(app.preset_editor.db_path)
                 app.selected_preset = app.preset_editor.preset_name
                 if dialog:
                     dialog.dismiss()
