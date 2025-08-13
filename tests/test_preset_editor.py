@@ -7,7 +7,7 @@ import sys
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from backend import DEFAULT_SETS_PER_EXERCISE, DEFAULT_REST_DURATION
+from core import DEFAULT_SETS_PER_EXERCISE, DEFAULT_REST_DURATION
 from backend.preset_editor import PresetEditor
 
 

@@ -26,7 +26,9 @@ from kivymd.uix.dialog import MDDialog
 import os
 import sqlite3
 
-from backend import exercises, metrics as metrics_lib, presets as presets_lib, DEFAULT_DB_PATH, DEFAULT_SETS_PER_EXERCISE
+import core
+from backend import exercises
+from core import DEFAULT_DB_PATH
 
 
 class SectionWidget(MDBoxLayout):
@@ -325,7 +327,7 @@ class EditPresetScreen(MDScreen):
                 else:
                     results = []
                     description = ""
-                    metric_defs = metrics_lib.get_metrics_for_exercise(
+                    metric_defs = core.get_metrics_for_exercise(
                         ex["name"],
                         db_path=session.db_path,
                         preset_name=session.preset_name,
@@ -333,7 +335,7 @@ class EditPresetScreen(MDScreen):
                 new_exercises.append(
                     {
                         "name": ex.get("name"),
-                        "sets": ex.get("sets") or DEFAULT_SETS_PER_EXERCISE,
+                        "sets": ex.get("sets") or core.DEFAULT_SETS_PER_EXERCISE,
                         "rest": ex.get("rest") or session.rest_duration,
                         "results": results,
                         "library_exercise_id": ex.get("library_id"),
@@ -560,7 +562,7 @@ class EditPresetScreen(MDScreen):
 
         all_defs = {
             m["name"]: m
-            for m in metrics_lib.get_all_metric_types(include_user_created=True)
+            for m in core.get_all_metric_types(include_user_created=True)
         }
 
         rv.data = [
@@ -611,7 +613,7 @@ class EditPresetScreen(MDScreen):
         def do_confirm(*args):
             try:
                 app.preset_editor.save()
-                presets_lib.load_workout_presets(app.preset_editor.db_path)
+                core.load_workout_presets(app.preset_editor.db_path)
                 app.selected_preset = app.preset_editor.preset_name
                 if dialog:
                     dialog.dismiss()
@@ -911,7 +913,7 @@ class AddPresetMetricPopup(MDDialog):
             }
         metrics = [
             m
-            for m in metrics_lib.get_all_metric_types()
+            for m in core.get_all_metric_types()
             if m.get("scope") == "preset" and (
                 m.get("name") not in existing and m.get("metric_name") not in existing
             )
@@ -963,7 +965,7 @@ class AddSessionMetricPopup(MDDialog):
             }
         metrics = [
             m
-            for m in metrics_lib.get_all_metric_types()
+            for m in core.get_all_metric_types()
             if m.get("scope") == "session" and (
                 m.get("name") not in existing and m.get("metric_name") not in existing
             )

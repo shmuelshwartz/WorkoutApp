@@ -3,12 +3,12 @@ import json
 import sqlite3
 from pathlib import Path
 
-from . import (
+from core import (
     DEFAULT_DB_PATH,
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,
 )
-from .utils import _to_db_timing, _from_db_timing
+from backend.utils import _to_db_timing, _from_db_timing
 
 
 class PresetEditor:

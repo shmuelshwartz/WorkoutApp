@@ -1,12 +1,12 @@
+import core
 from backend.workout_session import WorkoutSession
-from backend import presets
 import sqlite3
 import pytest
 
 
 def test_workout_session_flow(sample_db):
-    preset_list = presets.load_workout_presets(sample_db)
-    assert any(p["name"] == "Push Day" for p in preset_list)
+    presets = core.load_workout_presets(sample_db)
+    assert any(p["name"] == "Push Day" for p in presets)
 
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     assert session.next_exercise_display() == "Push-up set 1 of 2"
@@ -104,8 +104,7 @@ def test_mark_set_completed_time_adjustment(sample_db, monkeypatch):
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=30)
     session.exercises[0]["rest"] = 30
     session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})
-    import backend.workout_session as ws
-    monkeypatch.setattr(ws.time, "time", lambda: 165.0)
+    monkeypatch.setattr(core.time, "time", lambda: 165.0)
     session.mark_set_completed(adjust_seconds=-5)
     assert session.last_set_time == pytest.approx(160.0)
     assert session.rest_target_time == pytest.approx(190.0)
@@ -115,12 +114,11 @@ def test_undo_last_set_restores_metrics_and_timer(sample_db, monkeypatch):
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     start = session.current_set_start_time
 
-    import backend.workout_session as ws
-    monkeypatch.setattr(ws.time, "time", lambda: start + 5)
+    monkeypatch.setattr(core.time, "time", lambda: start + 5)
     session.mark_set_completed()
     session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})
 
-    monkeypatch.setattr(ws.time, "time", lambda: start + 6)
+    monkeypatch.setattr(core.time, "time", lambda: start + 6)
     assert session.undo_last_set()
     assert session.current_exercise == 0
     assert session.current_set == 0
@@ -135,8 +133,7 @@ def test_undo_set_start_returns_to_rest(sample_db, monkeypatch):
     start = session.current_set_start_time
 
     # simulate beginning a set 5 seconds later
-    import backend.workout_session as ws
-    monkeypatch.setattr(ws.time, "time", lambda: start + 5)
+    monkeypatch.setattr(core.time, "time", lambda: start + 5)
     session.current_set_start_time = start + 5
 
     session.undo_set_start()

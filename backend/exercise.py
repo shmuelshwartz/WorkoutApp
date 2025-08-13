@@ -1,8 +1,6 @@
 from pathlib import Path
-
-from . import DEFAULT_DB_PATH
-from .metrics import get_metrics_for_exercise
-from .exercises import get_exercise_details
+from core import DEFAULT_DB_PATH, get_metrics_for_exercise
+from backend.exercises import get_exercise_details
 
 
 class Exercise:
