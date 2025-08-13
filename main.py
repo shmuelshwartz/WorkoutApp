@@ -1,4 +1,4 @@
-TESTING = False
+TESTING = True
 HALF_SCREEN = True
 
 from kivymd.app import MDApp
