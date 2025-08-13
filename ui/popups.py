@@ -21,6 +21,7 @@ import sqlite3
 
 import core
 from core import DEFAULT_DB_PATH
+from backend import metrics
 
 # Order of fields for metric editing popups
 METRIC_FIELD_ORDER = [
@@ -75,15 +76,15 @@ class AddMetricPopup(MDDialog):
     # Building widgets for both modes
     # ------------------------------------------------------------------
     def _build_select_widgets(self):
-        metrics = core.get_all_metric_types()
+        metric_types = metrics.get_all_metric_types()
         existing = {m.get("name") for m in self.screen.exercise_obj.metrics}
-        metrics = [
+        metric_types = [
             m
-            for m in metrics
+            for m in metric_types
             if m["name"] not in existing and m.get("scope") in ("set", "exercise")
         ]
         list_view = MDList()
-        for m in metrics:
+        for m in metric_types:
             item = OneLineListItem(text=m["name"])
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
@@ -102,7 +103,7 @@ class AddMetricPopup(MDDialog):
         default_height = dp(48)
         self.input_widgets = {}
 
-        schema = core.get_metric_type_schema()
+        schema = metrics.get_metric_type_schema()
         if not schema:
             schema = [
                 {"name": "name"},
@@ -248,7 +249,7 @@ class AddMetricPopup(MDDialog):
         popup.open()
 
     def add_metric(self, name, *args):
-        metric_defs = core.get_all_metric_types()
+        metric_defs = metrics.get_all_metric_types()
         for m in metric_defs:
             if m["name"] == name:
                 self.screen.exercise_obj.add_metric(m)
@@ -307,7 +308,7 @@ class AddMetricPopup(MDDialog):
 
         db_path = DEFAULT_DB_PATH
         try:
-            core.add_metric_type(
+            metrics.add_metric_type(
                 metric["name"],
                 metric["type"],
                 metric["input_timing"],
@@ -366,7 +367,7 @@ class EditMetricPopup(MDDialog):
         default_height = dp(48)
         self.input_widgets = {}
 
-        schema = core.get_metric_type_schema()
+        schema = metrics.get_metric_type_schema()
         if not schema:
             schema = [
                 {"name": "name"},
@@ -608,7 +609,7 @@ class EditMetricPopup(MDDialog):
             def on_save(*a):
                 metric_saved = self.screen.exercise_obj.had_metric(self.metric["name"])
                 if cb_type.active:
-                    core.update_metric_type(
+                    metrics.update_metric_type(
                         self.metric["name"],
                         mtype=updates.get("type"),
                         input_timing=updates.get("input_timing"),
@@ -619,7 +620,7 @@ class EditMetricPopup(MDDialog):
                         db_path=db_path,
                     )
                     if metric_saved:
-                        core.set_exercise_metric_override(
+                        metrics.set_exercise_metric_override(
                             self.screen.exercise_obj.name,
                             self.metric["name"],
                             is_user_created=self.screen.exercise_obj.is_user_created,
@@ -627,7 +628,7 @@ class EditMetricPopup(MDDialog):
                         )
                 elif cb_ex.active:
                     if metric_saved:
-                        core.set_exercise_metric_override(
+                        metrics.set_exercise_metric_override(
                             self.screen.exercise_obj.name,
                             self.metric["name"],
                             mtype=updates.get("type"),
@@ -640,7 +641,7 @@ class EditMetricPopup(MDDialog):
                         )
                 else:
                     preset_name = app.preset_editor.preset_name if app else ""
-                    core.set_section_exercise_metric_override(
+                    metrics.set_section_exercise_metric_override(
                         preset_name,
                         self.screen.section_index,
                         self.screen.exercise_obj.name,
@@ -681,9 +682,9 @@ class EditMetricPopup(MDDialog):
 
             rows = []
             cb_default = None
-            if core.is_metric_type_user_created(
+            if metrics.is_metric_type_user_created(
                 self.metric["name"], db_path=db_path
-            ) and core.uses_default_metric(
+            ) and metrics.uses_default_metric(
                 self.screen.exercise_obj.name,
                 self.metric["name"],
                 is_user_created=self.screen.exercise_obj.is_user_created,
@@ -742,7 +743,7 @@ class EditMetricPopup(MDDialog):
                         self.metric["name"]
                     )
                     if cb_default and cb_default.active:
-                        core.update_metric_type(
+                        metrics.update_metric_type(
                             self.metric["name"],
                             mtype=updates.get("type"),
                             input_timing=updates.get("input_timing"),
@@ -753,7 +754,7 @@ class EditMetricPopup(MDDialog):
                             db_path=db_path,
                         )
                         if metric_saved:
-                            core.set_exercise_metric_override(
+                            metrics.set_exercise_metric_override(
                                 self.screen.exercise_obj.name,
                                 self.metric["name"],
                                 is_user_created=self.screen.exercise_obj.is_user_created,
@@ -761,7 +762,7 @@ class EditMetricPopup(MDDialog):
                             )
                     else:
                         if metric_saved:
-                            core.set_exercise_metric_override(
+                            metrics.set_exercise_metric_override(
                                 self.screen.exercise_obj.name,
                                 self.metric["name"],
                                 mtype=updates.get("type"),
@@ -802,7 +803,7 @@ class EditMetricPopup(MDDialog):
             else:
                 apply_updates()
 
-        elif core.is_metric_type_user_created(self.metric["name"], db_path=db_path):
+        elif metrics.is_metric_type_user_created(self.metric["name"], db_path=db_path):
             dialog = None
 
             def cancel_action(*a):
@@ -822,7 +823,7 @@ class EditMetricPopup(MDDialog):
             def on_save(*a):
                 metric_saved = self.screen.exercise_obj.had_metric(self.metric["name"])
                 if checkbox.active:
-                    core.update_metric_type(
+                    metrics.update_metric_type(
                         self.metric["name"],
                         mtype=updates.get("type"),
                         input_timing=updates.get("input_timing"),
@@ -833,7 +834,7 @@ class EditMetricPopup(MDDialog):
                         db_path=db_path,
                     )
                     if metric_saved:
-                        core.set_exercise_metric_override(
+                        metrics.set_exercise_metric_override(
                             self.screen.exercise_obj.name,
                             self.metric["name"],
                             is_user_created=self.screen.exercise_obj.is_user_created,
@@ -841,7 +842,7 @@ class EditMetricPopup(MDDialog):
                         )
                 else:
                     if metric_saved:
-                        core.set_exercise_metric_override(
+                        metrics.set_exercise_metric_override(
                             self.screen.exercise_obj.name,
                             self.metric["name"],
                             mtype=updates.get("type"),

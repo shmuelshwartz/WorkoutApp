@@ -30,7 +30,7 @@ import string
 import sqlite3
 
 import core
-from backend import exercises
+from backend import metrics, exercises
 from core import (
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,
@@ -417,7 +417,7 @@ class EditExerciseScreen(MDScreen):
                             metric.get(field) != old.get(field)
                             for field in ("input_timing", "is_required", "scope")
                         ):
-                            core.set_section_exercise_metric_override(
+                            metrics.set_section_exercise_metric_override(
                                 preset_name,
                                 self.section_index,
                                 self.exercise_obj.name,
