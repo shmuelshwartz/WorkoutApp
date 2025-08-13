@@ -404,12 +404,16 @@ ScreenManager:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        AnchorLayout:
+        BoxLayout:
             size_hint_y: None
             height: self.minimum_height
             MDLabel:
                 text: root.session_time_label
-                size_hint_x: .33
+                size_hint_x: None
+                width: self.texture_size[0]
+                size_hint_y: None
+                height: self.texture_size[1]
+                pos_hint: {"center_x": .5}
                 halign: "center"
                 theme_text_color: "Custom"
                 text_color: 0.2, 0.6, 0.86, 1

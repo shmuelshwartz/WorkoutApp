@@ -271,7 +271,9 @@ class MetricInputScreen(MDScreen):
         if duration is not None:
             self.metrics_list.add_widget(self._create_time_row(duration))
 
-        notes_text = self.session.get_set_notes(self.exercise_idx, self.set_idx)
+        notes_text = ""
+        if hasattr(self.session, "get_set_notes"):
+            notes_text = self.session.get_set_notes(self.exercise_idx, self.set_idx)
         notes_row = self._create_notes_row(notes_text)
         self.metrics_list.add_widget(notes_row)
         self._notes_widget = notes_row.input_widget
