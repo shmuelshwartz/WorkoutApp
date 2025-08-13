@@ -1,7 +1,6 @@
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivy.properties import StringProperty, ObjectProperty
-import core
 from ui.expandable_list_item import ExpandableListItem, ExerciseSummaryItem
 
 

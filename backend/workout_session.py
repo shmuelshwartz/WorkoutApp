@@ -2,13 +2,8 @@ import sqlite3
 import time
 from pathlib import Path
 
-from core import (
-    get_metrics_for_exercise,
-    get_metrics_for_preset,
-    DEFAULT_SETS_PER_EXERCISE,
-    DEFAULT_REST_DURATION,
-    DEFAULT_DB_PATH,
-)
+from . import DEFAULT_SETS_PER_EXERCISE, DEFAULT_REST_DURATION, DEFAULT_DB_PATH
+from .metrics import get_metrics_for_exercise, get_metrics_for_preset
 
 
 class WorkoutSession:

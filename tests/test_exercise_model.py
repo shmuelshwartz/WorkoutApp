@@ -1,4 +1,3 @@
-import core
 from backend import exercises
 from backend.exercise import Exercise
 
