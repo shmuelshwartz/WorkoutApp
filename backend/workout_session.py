@@ -91,7 +91,6 @@ class WorkoutSession:
                         "name": name,
                         "sets": sets or DEFAULT_SETS_PER_EXERCISE,
                         "rest": rest or rest_duration,
-                        "results": [],
                         "library_exercise_id": lib_ex_id,
                         "preset_section_exercise_id": se_id,
                         "exercise_description": desc or "",
@@ -104,14 +103,17 @@ class WorkoutSession:
 
             self.exercise_sections = exercise_sections
             
-        self.exercises = exercises
+        self.preset_snapshot = exercises
+        self.session_data = [
+            {"exercise_info": None, "results": []} for _ in self.preset_snapshot
+        ]
         self.session_metric_defs = get_metrics_for_preset(
             preset_name, db_path=self.db_path
         )
 
         # build storage for all exercise metrics
         self.metric_store: dict[tuple[int, int], dict[str, object]] = {}
-        for ex_idx, ex in enumerate(self.exercises):
+        for ex_idx, ex in enumerate(self.preset_snapshot):
             template = {m["name"]: None for m in ex.get("metric_defs", [])}
             for set_idx in range(ex["sets"]):
                 self.metric_store[(ex_idx, set_idx)] = template.copy()
@@ -123,7 +125,7 @@ class WorkoutSession:
         self.current_set_start_time = self.start_time
 
         initial_rest = (
-            self.exercises[0]["rest"] if self.exercises else rest_duration
+            self.preset_snapshot[0]["rest"] if self.preset_snapshot else rest_duration
         )
         self.rest_duration = initial_rest
         self.last_set_time = self.start_time
@@ -140,6 +142,26 @@ class WorkoutSession:
         # indicates the next active screen should resume from previous start
         self.resume_from_last_start: bool = False
 
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _ensure_session_entry(self, exercise_index: int) -> None:
+        """Ensure session data exists for ``exercise_index``."""
+        entry = self.session_data[exercise_index]
+        if entry["exercise_info"] is None:
+            entry["exercise_info"] = self.preset_snapshot[exercise_index].copy()
+
+    @property
+    def exercises(self) -> list[dict]:
+        """Return merged view of preset snapshot and session results."""
+        merged: list[dict] = []
+        for idx, preset in enumerate(self.preset_snapshot):
+            data = self.session_data[idx]
+            info = data["exercise_info"] or preset
+            merged.append({**info, "results": data["results"]})
+        return merged
+
     def mark_set_completed(self, adjust_seconds: int = 0) -> None:
         """Record completion time and update rest timer for the next set.
 
@@ -148,8 +170,8 @@ class WorkoutSession:
         earlier than the current clock time.
         """
         self.last_set_time = time.time() + adjust_seconds
-        if self.current_exercise < len(self.exercises):
-            upcoming = self.exercises[self.current_exercise]
+        if self.current_exercise < len(self.preset_snapshot):
+            upcoming = self.preset_snapshot[self.current_exercise]
             self.rest_duration = upcoming.get("rest", self.rest_duration)
         self.rest_target_time = self.last_set_time + self.rest_duration
         self.awaiting_post_set_metrics = True
@@ -167,40 +189,40 @@ class WorkoutSession:
         self.rest_target_time = self.last_set_time + self.rest_duration
 
     def next_exercise_name(self):
-        if self.current_exercise < len(self.exercises):
-            return self.exercises[self.current_exercise]["name"]
+        if self.current_exercise < len(self.preset_snapshot):
+            return self.preset_snapshot[self.current_exercise]["name"]
         return ""
 
     def next_exercise_display(self):
-        if self.current_exercise < len(self.exercises):
-            ex = self.exercises[self.current_exercise]
+        if self.current_exercise < len(self.preset_snapshot):
+            ex = self.preset_snapshot[self.current_exercise]
             return f"{ex['name']} set {self.current_set + 1} of {ex['sets']}"
         return ""
 
     def upcoming_exercise_name(self):
         """Return the exercise name for the next set to be performed."""
-        if self.current_exercise >= len(self.exercises):
+        if self.current_exercise >= len(self.preset_snapshot):
             return ""
         ex_idx = self.current_exercise
         set_idx = self.current_set + 1
-        if set_idx >= self.exercises[ex_idx]["sets"]:
+        if set_idx >= self.preset_snapshot[ex_idx]["sets"]:
             ex_idx += 1
             set_idx = 0
-        if ex_idx < len(self.exercises):
-            return self.exercises[ex_idx]["name"]
+        if ex_idx < len(self.preset_snapshot):
+            return self.preset_snapshot[ex_idx]["name"]
         return ""
 
     def upcoming_exercise_display(self):
         """Return display string for the next set to be performed."""
-        if self.current_exercise >= len(self.exercises):
+        if self.current_exercise >= len(self.preset_snapshot):
             return ""
         ex_idx = self.current_exercise
         set_idx = self.current_set + 1
-        if set_idx >= self.exercises[ex_idx]["sets"]:
+        if set_idx >= self.preset_snapshot[ex_idx]["sets"]:
             ex_idx += 1
             set_idx = 0
-        if ex_idx < len(self.exercises):
-            ex = self.exercises[ex_idx]
+        if ex_idx < len(self.preset_snapshot):
+            ex = self.preset_snapshot[ex_idx]
             return f"{ex['name']} set {set_idx + 1} of {ex['sets']}"
         return ""
 
@@ -210,9 +232,10 @@ class WorkoutSession:
         If no sets have been completed yet, an empty dict is returned.
         """
 
-        for ex in reversed(self.exercises[: self.current_exercise + 1]):
-            if ex["results"]:
-                return ex["results"][-1]["metrics"]
+        for idx in range(self.current_exercise, -1, -1):
+            data = self.session_data[idx]
+            if data["results"]:
+                return data["results"][-1]["metrics"]
         return {}
 
     # --------------------------------------------------------------
@@ -247,13 +270,13 @@ class WorkoutSession:
     def required_post_set_metric_names(self) -> list[str]:
         """Return names of required post-set metrics for the last set."""
 
-        if self.current_exercise >= len(self.exercises):
-            ex_idx = len(self.exercises) - 1
+        if self.current_exercise >= len(self.preset_snapshot):
+            ex_idx = len(self.preset_snapshot) - 1
         else:
             ex_idx = self.current_exercise
         if ex_idx < 0:
             return []
-        ex_name = self.exercises[ex_idx]["name"]
+        ex_name = self.preset_snapshot[ex_idx]["name"]
         metrics = get_metrics_for_exercise(
             ex_name,
             db_path=self.db_path,
@@ -302,7 +325,7 @@ class WorkoutSession:
         self.session_metrics = metrics.copy()
 
     def record_metrics(self, exercise_index: int, set_index: int, metrics):
-        if exercise_index >= len(self.exercises):
+        if exercise_index >= len(self.preset_snapshot):
             if self.end_time is None:
                 self.end_time = time.time()
             return True
@@ -323,8 +346,8 @@ class WorkoutSession:
 
         end_time = time.time()
 
-        ex = self.exercises[exercise_index]
-        results = ex["results"]
+        self._ensure_session_entry(exercise_index)
+        results = self.session_data[exercise_index]["results"]
         while len(results) <= set_index:
             results.append(None)
         start_time = (
@@ -344,15 +367,33 @@ class WorkoutSession:
             self.current_set += 1
             self.awaiting_post_set_metrics = False
 
-            if self.current_set >= ex["sets"]:
+            if self.current_set >= self.preset_snapshot[exercise_index]["sets"]:
                 self.current_set = 0
                 self.current_exercise += 1
 
-            if self.current_exercise >= len(self.exercises):
+            if self.current_exercise >= len(self.preset_snapshot):
                 self.end_time = end_time
                 return True
 
         return False
+
+    def edit_set_metrics(self, exercise_index: int, set_index: int, metrics: dict) -> None:
+        """Update metrics for a previously completed set."""
+
+        self._ensure_session_entry(exercise_index)
+        if set_index >= len(self.session_data[exercise_index]["results"]):
+            raise IndexError("Set not completed")
+        key = (exercise_index, set_index)
+        store = self.metric_store.get(key)
+        if store is None:
+            raise IndexError("Invalid exercise/set index")
+        for name, value in metrics.items():
+            if name not in store:
+                raise KeyError(
+                    f"Unknown metric '{name}' for exercise {exercise_index}"
+                )
+            store[name] = value
+        self.session_data[exercise_index]["results"][set_index]["metrics"] = store.copy()
 
     def undo_last_set(self) -> bool:
         """Reopen the most recently completed set.
@@ -361,7 +402,11 @@ class WorkoutSession:
         """
 
         # Determine whether any set has been completed yet
-        if self.current_exercise == 0 and self.current_set == 0 and not self.exercises[0]["results"]:
+        if (
+            self.current_exercise == 0
+            and self.current_set == 0
+            and not self.session_data[0]["results"]
+        ):
             return False
 
         # Identify exercise and set index of last completed set
@@ -371,11 +416,11 @@ class WorkoutSession:
             ex_idx -= 1
             if ex_idx < 0:
                 return False
-            set_idx = len(self.exercises[ex_idx]["results"]) - 1
-        ex = self.exercises[ex_idx]
-        if not ex["results"]:
+            set_idx = len(self.session_data[ex_idx]["results"]) - 1
+        data = self.session_data[ex_idx]
+        if not data["results"]:
             return False
-        last = ex["results"].pop()
+        last = data["results"].pop()
 
         # Restore indices to point at the reopened set
         self.current_exercise = ex_idx
@@ -404,9 +449,9 @@ class WorkoutSession:
 
     def has_started_exercise(self, exercise_index: int) -> bool:
         """Return True if the exercise at ``exercise_index`` has begun."""
-        if exercise_index < 0 or exercise_index >= len(self.exercises):
+        if exercise_index < 0 or exercise_index >= len(self.preset_snapshot):
             return False
-        if self.exercises[exercise_index]["results"]:
+        if self.session_data[exercise_index]["results"]:
             return True
         if exercise_index < self.current_exercise:
             return True
@@ -422,7 +467,7 @@ class WorkoutSession:
         end = (
             self.section_starts[section_index + 1]
             if section_index + 1 < len(self.section_starts)
-            else len(self.exercises)
+            else len(self.preset_snapshot)
         )
         for idx in range(start, end):
             if self.has_started_exercise(idx):
@@ -431,19 +476,19 @@ class WorkoutSession:
 
     def apply_edited_preset(self, sections: list[dict]) -> None:
         """Replace remaining exercises with ``sections`` data."""
-        new_exercises: list[dict] = []
+        new_preset: list[dict] = []
+        new_session_data: list[dict] = []
         section_starts: list[int] = []
         section_names: list[str] = []
         exercise_sections: list[int] = []
         for sec_idx, sec in enumerate(sections):
-            section_starts.append(len(new_exercises))
+            section_starts.append(len(new_preset))
             section_names.append(sec.get("name", f"Section {sec_idx + 1}"))
             for ex in sec.get("exercises", []):
                 ex_copy = {
                     "name": ex.get("name", ""),
                     "sets": ex.get("sets", DEFAULT_SETS_PER_EXERCISE),
                     "rest": ex.get("rest", self.rest_duration),
-                    "results": [],
                     "library_exercise_id": ex.get("library_exercise_id"),
                     "preset_section_exercise_id": ex.get(
                         "preset_section_exercise_id"
@@ -453,23 +498,29 @@ class WorkoutSession:
                     "section_index": sec_idx,
                     "section_name": section_names[-1],
                 }
-                new_exercises.append(ex_copy)
+                new_preset.append(ex_copy)
                 exercise_sections.append(sec_idx)
+                new_session_data.append({"exercise_info": None, "results": []})
 
-        if self.current_exercise < len(self.exercises):
-            current_name = self.exercises[self.current_exercise]["name"]
-            for i, ex in enumerate(new_exercises):
-                if ex["name"] == current_name:
-                    self.current_exercise = i
-                    break
-            else:
-                self.current_exercise = min(self.current_exercise, len(new_exercises))
-                self.current_set = 0
-
-        self.exercises = new_exercises
+        self.preset_snapshot = new_preset
+        self.session_data = new_session_data
         self.section_starts = section_starts
         self.section_names = section_names
         self.exercise_sections = exercise_sections
+
+        # current indices reset within bounds
+        if self.preset_snapshot:
+            self.current_exercise = min(self.current_exercise, len(self.preset_snapshot) - 1)
+        else:
+            self.current_exercise = 0
+        self.current_set = 0
+
+        # rebuild metric store
+        self.metric_store = {}
+        for ex_idx, ex in enumerate(self.preset_snapshot):
+            template = {m["name"]: None for m in ex.get("metric_defs", [])}
+            for set_idx in range(ex["sets"]):
+                self.metric_store[(ex_idx, set_idx)] = template.copy()
 
     def adjust_rest_timer(self, seconds: int) -> None:
         """Adjust the target time for the current rest period."""
