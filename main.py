@@ -43,11 +43,12 @@ import json
 
 from ui.screens import ExerciseLibraryScreen
 
+# Import core so we can always reference the up-to-date WORKOUT_PRESETS list
+import core
 from backend.workout_session import WorkoutSession
-from backend import (
-    WORKOUT_PRESETS,
-    presets as presets_lib,
-    metrics as metrics_lib,
+from core import (
+    load_workout_presets,
+    get_metrics_for_exercise,
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,
     DEFAULT_DB_PATH,
@@ -62,7 +63,7 @@ from ui.screens.previous_workouts_screen import PreviousWorkoutsScreen
 
 
 # Load workout presets from the database at startup
-presets_lib.load_workout_presets(DEFAULT_DB_PATH)
+load_workout_presets(DEFAULT_DB_PATH)
 import time
 import math
 
@@ -156,7 +157,7 @@ class EditMetricTypePopup(MDDialog):
     def _build_widgets(self):
         default_height = dp(48)
         self.input_widgets = {}
-        schema = metrics_lib.get_metric_type_schema()
+        schema = core.get_metric_type_schema()
         if not schema:
             schema = [
                 {"name": "name"},
@@ -317,7 +318,7 @@ class EditMetricTypePopup(MDDialog):
             info_widgets.append(MDLabel(text=msg, halign="center"))
 
         if self.metric:
-            affected = metrics_lib.find_exercises_using_metric_type(self.metric_name)
+            affected = core.find_exercises_using_metric_type(self.metric_name)
             if affected:
                 label = MDLabel(
                     text=f"Affects {len(affected)} exercises", halign="center"
@@ -357,7 +358,7 @@ class EditMetricTypePopup(MDDialog):
 
         db_path = DEFAULT_DB_PATH
         if self.metric and self.is_user_created:
-            metrics_lib.update_metric_type(
+            core.update_metric_type(
                 self.metric_name,
                 mtype=data.get("type"),
                 input_timing=data.get("input_timing"),
@@ -370,7 +371,7 @@ class EditMetricTypePopup(MDDialog):
             )
         else:
             try:
-                metrics_lib.add_metric_type(
+                core.add_metric_type(
                     data.get("name"),
                     data.get("type"),
                     data.get("input_timing"),

@@ -16,32 +16,11 @@ if kivy_available:
 
     from kivy.app import App
     from kivy.properties import ObjectProperty
-    import backend as core
+    import core
     from backend import exercises
     from backend.preset_editor import PresetEditor
     from backend.exercise import Exercise
     from backend.workout_session import WorkoutSession
-    from backend import metrics
-
-    # Attach metric helpers to the ``core`` namespace for legacy test hooks
-    core.get_all_metric_types = metrics.get_all_metric_types
-    core.get_metric_type_schema = metrics.get_metric_type_schema
-    core.is_metric_type_user_created = metrics.is_metric_type_user_created
-    core.find_exercises_using_metric_type = (
-        metrics.find_exercises_using_metric_type
-    )
-    core.get_metrics_for_exercise = metrics.get_metrics_for_exercise
-    core.get_metrics_for_preset = metrics.get_metrics_for_preset
-    core.add_metric_type = metrics.add_metric_type
-    core.add_metric_to_exercise = metrics.add_metric_to_exercise
-    core.remove_metric_from_exercise = metrics.remove_metric_from_exercise
-    core.update_metric_type = metrics.update_metric_type
-    core.set_exercise_metric_override = metrics.set_exercise_metric_override
-    core.set_section_exercise_metric_override = (
-        metrics.set_section_exercise_metric_override
-    )
-    core.delete_metric_type = metrics.delete_metric_type
-    core.uses_default_metric = metrics.uses_default_metric
 
     from main import (
         RestScreen,

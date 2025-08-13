@@ -1,81 +1,11 @@
 import sqlite3
 import pytest
-from backend import sessions
+import core
 from backend.workout_session import WorkoutSession
 
 
 def _complete_session(db_path):
     conn = sqlite3.connect(db_path)
-    conn.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS session_sessions (
-            id INTEGER PRIMARY KEY,
-            preset_id INTEGER,
-            preset_name TEXT,
-            started_at REAL,
-            ended_at REAL
-        );
-        CREATE TABLE IF NOT EXISTS session_preset_sections (
-            id INTEGER PRIMARY KEY,
-            session_id INTEGER,
-            preset_name TEXT
-        );
-        CREATE TABLE IF NOT EXISTS session_session_metrics (
-            id INTEGER PRIMARY KEY,
-            session_id INTEGER,
-            library_metric_type_id INTEGER,
-            preset_preset_metric_id INTEGER,
-            metric_name TEXT,
-            metric_description TEXT,
-            type TEXT,
-            input_timing TEXT,
-            scope TEXT,
-            is_required INTEGER,
-            enum_values_json TEXT,
-            value TEXT,
-            position INTEGER
-        );
-        CREATE TABLE IF NOT EXISTS session_section_exercises (
-            id INTEGER PRIMARY KEY,
-            section_id INTEGER,
-            library_exercise_id INTEGER,
-            preset_section_exercise_id INTEGER,
-            exercise_name TEXT,
-            exercise_description TEXT,
-            number_of_sets INTEGER,
-            rest_time INTEGER,
-            position INTEGER
-        );
-        CREATE TABLE IF NOT EXISTS session_exercise_metrics (
-            id INTEGER PRIMARY KEY,
-            session_exercise_id INTEGER,
-            library_metric_type_id INTEGER,
-            preset_exercise_metric_id INTEGER,
-            metric_name TEXT,
-            metric_description TEXT,
-            type TEXT,
-            input_timing TEXT,
-            scope TEXT,
-            is_required INTEGER,
-            enum_values_json TEXT,
-            position INTEGER
-        );
-        CREATE TABLE IF NOT EXISTS session_exercise_sets (
-            id INTEGER PRIMARY KEY,
-            section_exercise_id INTEGER,
-            set_number INTEGER,
-            started_at REAL,
-            ended_at REAL,
-            notes TEXT
-        );
-        CREATE TABLE IF NOT EXISTS session_set_metrics (
-            id INTEGER PRIMARY KEY,
-            exercise_metric_id INTEGER,
-            exercise_set_id INTEGER,
-            value TEXT
-        );
-        """
-    )
     preset_id = conn.execute(
         "SELECT id FROM preset_presets WHERE name='Push Day'"
     ).fetchone()[0]
@@ -108,7 +38,7 @@ def _complete_session(db_path):
 
 def test_save_completed_session(sample_db):
     session = _complete_session(sample_db)
-    sessions.save_completed_session(session, db_path=sample_db)
+    core.save_completed_session(session, db_path=sample_db)
     conn = sqlite3.connect(sample_db)
     cur = conn.cursor()
     cur.execute("SELECT preset_id FROM session_sessions")
@@ -133,4 +63,4 @@ def test_save_completed_session(sample_db):
 def test_save_session_validation(sample_db):
     session = WorkoutSession("Push Day", db_path=sample_db)
     with pytest.raises(ValueError):
-        sessions.save_completed_session(session, db_path=sample_db)
+        core.save_completed_session(session, db_path=sample_db)
