@@ -78,32 +78,24 @@ ScreenManager:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: "Presets – Select a workout from a list of predefined presets. Each preset represents a unique workout routine."
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
         ScrollView:
             MDList:
                 id: preset_list
-        MDLabel:
-            text: "Selected: " + root.selected_preset if root.selected_preset else "Select a preset"
-            halign: "center"
-        MDRaisedButton:
-            id: select_btn
-            text: root.selected_preset if root.selected_preset else "Select Preset"
-            disabled: not root.selected_preset
-            on_release: root.confirm_selection()
-        MDRaisedButton:
-            text: "Edit Preset"
-            disabled: not root.selected_preset
-            on_release: app.root.current = "edit_preset"
-        MDRaisedButton:
-            text: "New Preset"
-            on_release: app.start_new_preset(); app.root.current = "edit_preset"
-        MDRaisedButton:
-            text: "Back to Home"
-            on_release: app.root.current = "home"
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: None
+            height: "48dp"
+            spacing: "10dp"
+            MDIconButton:
+                icon: "arrow-left"
+                on_release: app.root.current = "home"
+            MDIconButton:
+                icon: "pencil"
+                disabled: not root.selected_preset
+                on_release: app.root.current = "edit_preset"
+            MDIconButton:
+                icon: "plus"
+                on_release: app.start_new_preset(); app.root.current = "edit_preset"
 
 <PresetDetailScreen>:
     summary_list: summary_list
