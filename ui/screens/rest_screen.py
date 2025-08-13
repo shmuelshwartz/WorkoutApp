@@ -62,7 +62,9 @@ class RestScreen(MDScreen):
     """Screen shown between exercises with a rest timer."""
 
     timer_label = StringProperty("00:20")
+    session_time_label = StringProperty("00:00")
     target_time = NumericProperty(0)
+    session_start_time = NumericProperty(0)
     next_exercise_name = StringProperty("")
     next_exercise_desc = StringProperty("")
     next_set_info = StringProperty("")
@@ -90,13 +92,16 @@ class RestScreen(MDScreen):
                 and session.current_set == 0
                 and not session.exercises[0]["results"]
             )
+            self.session_start_time = session.start_time
         else:
-            self.target_time = time.time() + DEFAULT_REST_DURATION
+            now = time.time()
+            self.target_time = now + DEFAULT_REST_DURATION
             self.next_exercise_name = ""
             self.next_set_info = ""
             self.rest_time_info = ""
             self.next_exercise_desc = ""
             self.undo_disabled = True
+            self.session_start_time = now
         self.is_ready = False
         self.timer_color = (1, 0, 0, 1)
         self.update_timer(0)
@@ -215,6 +220,10 @@ class RestScreen(MDScreen):
             total_seconds = math.ceil(remaining)
             minutes, seconds = divmod(total_seconds, 60)
             self.timer_label = f"{minutes:02d}:{seconds:02d}"
+
+        elapsed = int(time.time() - (self.session_start_time or time.time()))
+        minutes, seconds = divmod(elapsed, 60)
+        self.session_time_label = f"{minutes:02d}:{seconds:02d}"
 
     def _adjust_step(self) -> int:
         """Return adjustment step based on remaining rest time."""

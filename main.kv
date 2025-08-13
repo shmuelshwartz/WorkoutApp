@@ -404,11 +404,15 @@ ScreenManager:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: "Rest – The main screen shown between exercises. Displays a countdown timer while the user rests before the next exercise begins."
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
+        AnchorLayout:
+            size_hint_y: None
+            height: self.minimum_height
+            MDLabel:
+                text: root.session_time_label
+                size_hint_x: .33
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: 0.2, 0.6, 0.86, 1
         BoxLayout:
             orientation: "horizontal"
             size_hint_y: None
