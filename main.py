@@ -1,4 +1,5 @@
 TESTING = False
+HALF_SCREEN = True
 
 from kivymd.app import MDApp
 from kivy.lang import Builder
@@ -90,7 +91,10 @@ if os.name == "nt" or sys.platform.startswith("win"):
     Window.size = (140, 140 * (20 / 9))
 elif platform == "android":
     full_width, full_height = Window.system_size
-    Window.size = (full_width / 2, full_height / 2)
+    if HALF_SCREEN:
+        Window.size = (full_width / 2, full_height / 2)
+    else:
+        Window.size = (full_width, full_height)
 
 if not TESTING:
     try:
@@ -422,7 +426,7 @@ class WorkoutApp(MDApp):
         return root
 
     def _on_keyboard(self, window, key, scancode, codepoint, modifiers):
-        if key in (27, 1001):
+        if key in (27, 1001) and not TESTING:
             return True
         return False
 
