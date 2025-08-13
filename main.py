@@ -86,8 +86,9 @@ from ui.screens.edit_preset_screen import (
 from ui.screens.workout_summary_screen import WorkoutSummaryScreen
 from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
 
+HALF_SCREEN_X_SCALE = 1.0
+HALF_SCREEN_Y_SCALE = 1.0
 
-HALF_SCREEN_Y_OFFSET = 0
 if os.name == "nt" or sys.platform.startswith("win"):
     base_width, base_height = 140, 140 * (20 / 9)
     if HALF_SCREEN:
@@ -98,15 +99,21 @@ elif platform == "android":
     full_width, full_height = Window.system_size
     if HALF_SCREEN:
         Window.size = (full_width / 2, full_height / 2)
-        HALF_SCREEN_Y_OFFSET = full_height - Window.height
+        HALF_SCREEN_X_SCALE = Window.width / full_width
+        HALF_SCREEN_Y_SCALE = Window.height / full_height
+
     else:
         Window.size = (full_width, full_height)
 
 
 def _adjust_touch(window, touch):
-    if HALF_SCREEN and platform == "android" and HALF_SCREEN_Y_OFFSET:
-        touch.y += HALF_SCREEN_Y_OFFSET
-        touch.oy += HALF_SCREEN_Y_OFFSET
+    if HALF_SCREEN and platform == "android":
+        touch.x *= HALF_SCREEN_X_SCALE
+        touch.ox *= HALF_SCREEN_X_SCALE
+        touch.sx = touch.x / Window.width
+        touch.y *= HALF_SCREEN_Y_SCALE
+        touch.oy *= HALF_SCREEN_Y_SCALE
+
         touch.sy = touch.y / Window.height
     return False
 
