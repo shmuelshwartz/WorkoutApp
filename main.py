@@ -1,4 +1,4 @@
-TESTING = False
+TESTING = True
 HALF_SCREEN = True
 
 from kivymd.app import MDApp
@@ -88,6 +88,7 @@ from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
 
 HALF_SCREEN_X_SCALE = 1.0
 HALF_SCREEN_Y_SCALE = 1.0
+
 if os.name == "nt" or sys.platform.startswith("win"):
     base_width, base_height = 140, 140 * (20 / 9)
     if HALF_SCREEN:
@@ -100,6 +101,7 @@ elif platform == "android":
         Window.size = (full_width / 2, full_height / 2)
         HALF_SCREEN_X_SCALE = Window.width / full_width
         HALF_SCREEN_Y_SCALE = Window.height / full_height
+
     else:
         Window.size = (full_width, full_height)
 
@@ -111,6 +113,7 @@ def _adjust_touch(window, touch):
         touch.sx = touch.x / Window.width
         touch.y *= HALF_SCREEN_Y_SCALE
         touch.oy *= HALF_SCREEN_Y_SCALE
+
         touch.sy = touch.y / Window.height
     return False
 
@@ -453,6 +456,20 @@ class WorkoutApp(MDApp):
         if key in (27, 1001) and not TESTING:
             return True
         return False
+
+    def on_pause(self):
+        """Ensure rest timer isn't marked ready when app is backgrounded."""
+        if self.root and self.root.current == "rest":
+            try:
+                rest_screen = self.root.get_screen("rest")
+            except Exception:
+                rest_screen = None
+            if rest_screen and getattr(rest_screen, "is_ready", False):
+                if hasattr(rest_screen, "unready"):
+                    rest_screen.unready()
+                else:
+                    rest_screen.is_ready = False
+        return True
 
     def init_preset_editor(self, force_reload: bool = False):
         """Create or reload the ``PresetEditor`` for the selected preset."""
