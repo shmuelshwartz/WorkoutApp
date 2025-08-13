@@ -300,69 +300,7 @@ class EditPresetScreen(MDScreen):
         editor = getattr(app, "preset_editor", None)
         if not session or not editor:
             return
-        old_index = session.current_exercise
-        current_id = None
-        if old_index < len(session.exercises):
-            current_id = session.exercises[old_index].get(
-                "preset_section_exercise_id"
-            )
-
-        id_map = {
-            ex.get("preset_section_exercise_id"): ex for ex in session.exercises
-        }
-        new_exercises = []
-        new_section_names = []
-        new_section_starts = []
-        new_exercise_sections = []
-        for s_idx, sec in enumerate(editor.sections):
-            new_section_names.append(sec["name"])
-            new_section_starts.append(len(new_exercises))
-            for ex in sec.get("exercises", []):
-                old = id_map.get(ex.get("id"))
-                if old:
-                    results = old.get("results", [])
-                    description = old.get("exercise_description", "")
-                    metric_defs = old.get("metric_defs")
-                else:
-                    results = []
-                    description = ""
-                    metric_defs = core.get_metrics_for_exercise(
-                        ex["name"],
-                        db_path=session.db_path,
-                        preset_name=session.preset_name,
-                    )
-                new_exercises.append(
-                    {
-                        "name": ex.get("name"),
-                        "sets": ex.get("sets") or core.DEFAULT_SETS_PER_EXERCISE,
-                        "rest": ex.get("rest") or session.rest_duration,
-                        "results": results,
-                        "library_exercise_id": ex.get("library_id"),
-                        "preset_section_exercise_id": ex.get("id"),
-                        "exercise_description": description,
-                        "metric_defs": metric_defs,
-                        "section_index": s_idx,
-                        "section_name": sec.get("name"),
-                    }
-                )
-                new_exercise_sections.append(s_idx)
-
-        session.exercises = new_exercises
-        session.section_names = new_section_names
-        session.section_starts = new_section_starts
-        session.exercise_sections = new_exercise_sections
-
-        new_idx = None
-        if current_id is not None:
-            for idx, ex in enumerate(session.exercises):
-                if ex.get("preset_section_exercise_id") == current_id:
-                    new_idx = idx
-                    break
-
-        if new_idx is not None:
-            session.current_exercise = min(old_index, new_idx)
-        else:
-            session.current_exercise = min(old_index, len(session.exercises) - 1)
+        session.apply_edited_preset(editor.sections)
 
     def refresh_sections(self):
         """Repopulate the section widgets from the preset editor."""

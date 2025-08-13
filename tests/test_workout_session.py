@@ -102,7 +102,7 @@ def test_required_post_set_metrics(sample_db):
 
 def test_mark_set_completed_time_adjustment(sample_db, monkeypatch):
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=30)
-    session.exercises[0]["rest"] = 30
+    session.preset_snapshot[0]["rest"] = 30
     session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})
     monkeypatch.setattr(core.time, "time", lambda: 165.0)
     session.mark_set_completed(adjust_seconds=-5)
@@ -149,7 +149,7 @@ def test_edit_set_overwrites_in_place(sample_db):
     session.mark_set_completed()
     session.record_metrics(session.current_exercise, session.current_set, {"Reps": 8})
 
-    session.record_metrics(0, 0, {"Reps": 12})
+    session.edit_set_metrics(0, 0, {"Reps": 12})
     ex = session.exercises[0]
     assert len(ex["results"]) == 2
     assert ex["results"][0]["metrics"]["Reps"] == 12
