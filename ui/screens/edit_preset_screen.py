@@ -26,8 +26,9 @@ from kivymd.uix.dialog import MDDialog
 import os
 import sqlite3
 
-import core
-from core import DEFAULT_DB_PATH
+from backend import metrics, exercises
+from backend.presets import load_workout_presets
+from core import DEFAULT_DB_PATH, DEFAULT_SETS_PER_EXERCISE
 
 
 class SectionWidget(MDBoxLayout):
@@ -302,6 +303,7 @@ class EditPresetScreen(MDScreen):
             return
         session.apply_edited_preset(editor.sections)
 
+
     def refresh_sections(self):
         """Repopulate the section widgets from the preset editor."""
         app = MDApp.get_running_app()
@@ -499,7 +501,7 @@ class EditPresetScreen(MDScreen):
 
         all_defs = {
             m["name"]: m
-            for m in core.get_all_metric_types(include_user_created=True)
+            for m in metrics.get_all_metric_types(include_user_created=True)
         }
 
         rv.data = [
@@ -550,7 +552,7 @@ class EditPresetScreen(MDScreen):
         def do_confirm(*args):
             try:
                 app.preset_editor.save()
-                core.load_workout_presets(app.preset_editor.db_path)
+                load_workout_presets(app.preset_editor.db_path)
                 app.selected_preset = app.preset_editor.preset_name
                 if dialog:
                     dialog.dismiss()
@@ -745,7 +747,7 @@ class ExerciseSelectionPanel(MDBoxLayout):
             app and self.cache_version != getattr(app, "exercise_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(
+            self.all_exercises = exercises.get_all_exercises(
                 db_path, include_user_created=True
             )
             if app:
@@ -850,7 +852,7 @@ class AddPresetMetricPopup(MDDialog):
             }
         metrics = [
             m
-            for m in core.get_all_metric_types()
+            for m in metrics.get_all_metric_types()
             if m.get("scope") == "preset" and (
                 m.get("name") not in existing and m.get("metric_name") not in existing
             )
@@ -902,7 +904,7 @@ class AddSessionMetricPopup(MDDialog):
             }
         metrics = [
             m
-            for m in core.get_all_metric_types()
+            for m in metrics.get_all_metric_types()
             if m.get("scope") == "session" and (
                 m.get("name") not in existing and m.get("metric_name") not in existing
             )

@@ -43,16 +43,14 @@ import json
 
 from ui.screens import ExerciseLibraryScreen
 
-# Import core so we can always reference the up-to-date WORKOUT_PRESETS list
-import core
+from backend.presets import load_workout_presets
 from backend.workout_session import WorkoutSession
 from core import (
-    load_workout_presets,
-    get_metrics_for_exercise,
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,
     DEFAULT_DB_PATH,
 )
+from backend import metrics
 from backend.preset_editor import PresetEditor
 from ui.screens.metric_input_screen import MetricInputScreen
 from ui.screens.edit_exercise_screen import EditExerciseScreen
@@ -157,7 +155,7 @@ class EditMetricTypePopup(MDDialog):
     def _build_widgets(self):
         default_height = dp(48)
         self.input_widgets = {}
-        schema = core.get_metric_type_schema()
+        schema = metrics.get_metric_type_schema()
         if not schema:
             schema = [
                 {"name": "name"},
@@ -318,7 +316,7 @@ class EditMetricTypePopup(MDDialog):
             info_widgets.append(MDLabel(text=msg, halign="center"))
 
         if self.metric:
-            affected = core.find_exercises_using_metric_type(self.metric_name)
+            affected = metrics.find_exercises_using_metric_type(self.metric_name)
             if affected:
                 label = MDLabel(
                     text=f"Affects {len(affected)} exercises", halign="center"
@@ -358,7 +356,7 @@ class EditMetricTypePopup(MDDialog):
 
         db_path = DEFAULT_DB_PATH
         if self.metric and self.is_user_created:
-            core.update_metric_type(
+            metrics.update_metric_type(
                 self.metric_name,
                 mtype=data.get("type"),
                 input_timing=data.get("input_timing"),
@@ -371,7 +369,7 @@ class EditMetricTypePopup(MDDialog):
             )
         else:
             try:
-                core.add_metric_type(
+                metrics.add_metric_type(
                     data.get("name"),
                     data.get("type"),
                     data.get("input_timing"),

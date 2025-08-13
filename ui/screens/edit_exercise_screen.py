@@ -29,7 +29,8 @@ import os
 import string
 import sqlite3
 
-import core
+from backend import metrics, exercises
+from backend.presets import find_presets_using_exercise, apply_exercise_changes_to_presets
 from core import (
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,
@@ -387,11 +388,11 @@ class EditExerciseScreen(MDScreen):
         def do_save(*args):
             update_library = (not update_in_preset) or (checkbox and checkbox.active)
             if update_library:
-                core.save_exercise(self.exercise_obj)
+                exercises.save_exercise(self.exercise_obj)
                 if app:
                     app.exercise_library_version += 1
             if (not update_in_preset) and checkbox and checkbox.active and presets:
-                core.apply_exercise_changes_to_presets(
+                apply_exercise_changes_to_presets(
                     self.exercise_obj,
                     presets,
                     db_path=DEFAULT_DB_PATH,
@@ -416,7 +417,7 @@ class EditExerciseScreen(MDScreen):
                             metric.get(field) != old.get(field)
                             for field in ("input_timing", "is_required", "scope")
                         ):
-                            core.set_section_exercise_metric_override(
+                            metrics.set_section_exercise_metric_override(
                                 preset_name,
                                 self.section_index,
                                 self.exercise_obj.name,
@@ -501,7 +502,7 @@ class EditExerciseScreen(MDScreen):
             checkbox = None
             extra_content = None
             if self.previous_screen == "exercise_library":
-                presets = core.find_presets_using_exercise(self.exercise_obj.name)
+                presets = find_presets_using_exercise(self.exercise_obj.name)
                 if presets:
                     checkbox = MDCheckbox(
                         size_hint=(None, None), height="40dp", width="40dp"

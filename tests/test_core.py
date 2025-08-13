@@ -5,6 +5,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import core
+from backend import presets
+from backend import metrics, exercises
 from backend.exercise import Exercise
 from backend.workout_session import WorkoutSession
 
@@ -69,9 +71,9 @@ def sample_db(tmp_path):
 
 
 def test_load_workout_presets(sample_db):
-    presets = core.load_workout_presets(sample_db)
-    assert core.WORKOUT_PRESETS == presets
-    assert presets == [
+    loaded = presets.load_workout_presets(sample_db)
+    assert presets.WORKOUT_PRESETS == loaded
+    assert loaded == [
         {
             "name": "Push Day",
             "exercises": [
@@ -83,15 +85,15 @@ def test_load_workout_presets(sample_db):
 
 
 def test_get_all_exercises(sample_db):
-    names = core.get_all_exercises(sample_db)
+    names = exercises.get_all_exercises(sample_db)
     assert names == ["Bench Press", "Push Up"]
-    names_flags = core.get_all_exercises(sample_db, include_user_created=True)
+    names_flags = exercises.get_all_exercises(sample_db, include_user_created=True)
     assert names_flags == [("Bench Press", False), ("Push Up", False)]
 
 
 def test_get_metrics_with_override(sample_db):
     # apply override before fetching
-    core.set_section_exercise_metric_override(
+    metrics.set_section_exercise_metric_override(
         "Push Day",
         0,
         "Bench Press",
@@ -101,16 +103,16 @@ def test_get_metrics_with_override(sample_db):
         scope="set",
         db_path=sample_db,
     )
-    metrics = core.get_metrics_for_exercise(
+    metric_list = metrics.get_metrics_for_exercise(
         "Bench Press", db_path=sample_db, preset_name="Push Day"
     )
-    override = next(m for m in metrics if m["name"] == "Weight")
+    override = next(m for m in metric_list if m["name"] == "Weight")
     assert override["input_timing"] == "pre_set"
     assert override["is_required"] is True
 
 
 def test_add_and_remove_metric(sample_db):
-    metric_id = core.add_metric_type(
+    metric_id = metrics.add_metric_type(
         name="Tempo",
         mtype="int",
         input_timing="post_set",
@@ -118,16 +120,16 @@ def test_add_and_remove_metric(sample_db):
         db_path=sample_db,
     )
     assert isinstance(metric_id, int)
-    core.add_metric_to_exercise("Push Up", "Tempo", db_path=sample_db)
-    metrics = [
-        m["name"] for m in core.get_metrics_for_exercise("Push Up", db_path=sample_db)
+    metrics.add_metric_to_exercise("Push Up", "Tempo", db_path=sample_db)
+    names = [
+        m["name"] for m in metrics.get_metrics_for_exercise("Push Up", db_path=sample_db)
     ]
-    assert "Tempo" in metrics
-    core.remove_metric_from_exercise("Push Up", "Tempo", db_path=sample_db)
-    metrics = [
-        m["name"] for m in core.get_metrics_for_exercise("Push Up", db_path=sample_db)
+    assert "Tempo" in names
+    metrics.remove_metric_from_exercise("Push Up", "Tempo", db_path=sample_db)
+    names = [
+        m["name"] for m in metrics.get_metrics_for_exercise("Push Up", db_path=sample_db)
     ]
-    assert "Tempo" not in metrics
+    assert "Tempo" not in names
 
 
 def test_workout_session_progress(sample_db, monkeypatch):
@@ -152,7 +154,7 @@ def test_workout_session_progress(sample_db, monkeypatch):
 
 
 def test_exercise_metric_override_table(sample_db):
-    core.set_exercise_metric_override(
+    metrics.set_exercise_metric_override(
         "Bench Press",
         "Weight",
         input_timing="pre_session",
@@ -160,33 +162,33 @@ def test_exercise_metric_override_table(sample_db):
         scope="exercise",
         db_path=sample_db,
     )
-    metrics = core.get_metrics_for_exercise("Bench Press", db_path=sample_db)
-    override = next(m for m in metrics if m["name"] == "Weight")
+    metric_list = metrics.get_metrics_for_exercise("Bench Press", db_path=sample_db)
+    override = next(m for m in metric_list if m["name"] == "Weight")
     assert override["input_timing"] == "pre_session"
     assert override["is_required"] is True
 
-    core.set_exercise_metric_override("Bench Press", "Weight", db_path=sample_db)
-    metrics = core.get_metrics_for_exercise("Bench Press", db_path=sample_db)
-    default = next(m for m in metrics if m["name"] == "Weight")
+    metrics.set_exercise_metric_override("Bench Press", "Weight", db_path=sample_db)
+    metric_list = metrics.get_metrics_for_exercise("Bench Press", db_path=sample_db)
+    default = next(m for m in metric_list if m["name"] == "Weight")
     assert default["input_timing"] == "post_set"
     assert default["is_required"] is False
 
 
 def test_global_update_removes_override(sample_db):
-    core.set_exercise_metric_override(
+    metrics.set_exercise_metric_override(
         "Bench Press",
         "Weight",
         input_timing="pre_session",
         db_path=sample_db,
     )
-    core.update_metric_type("Weight", input_timing="post_session", db_path=sample_db)
-    metrics = core.get_metrics_for_exercise("Bench Press", db_path=sample_db)
-    override = next(m for m in metrics if m["name"] == "Weight")
+    metrics.update_metric_type("Weight", input_timing="post_session", db_path=sample_db)
+    metric_list = metrics.get_metrics_for_exercise("Bench Press", db_path=sample_db)
+    override = next(m for m in metric_list if m["name"] == "Weight")
     assert override["input_timing"] == "pre_session"
 
-    core.set_exercise_metric_override("Bench Press", "Weight", db_path=sample_db)
-    metrics = core.get_metrics_for_exercise("Bench Press", db_path=sample_db)
-    updated = next(m for m in metrics if m["name"] == "Weight")
+    metrics.set_exercise_metric_override("Bench Press", "Weight", db_path=sample_db)
+    metric_list = metrics.get_metrics_for_exercise("Bench Press", db_path=sample_db)
+    updated = next(m for m in metric_list if m["name"] == "Weight")
     assert updated["input_timing"] == "post_session"
 
 
@@ -208,7 +210,7 @@ def test_override_with_user_flag(sample_db):
     conn.commit()
     conn.close()
 
-    core.set_exercise_metric_override(
+    metrics.set_exercise_metric_override(
         "Bench Press",
         "Weight",
         input_timing="pre_session",
@@ -216,13 +218,13 @@ def test_override_with_user_flag(sample_db):
         db_path=sample_db,
     )
 
-    metrics_user = core.get_metrics_for_exercise(
+    metrics_user = metrics.get_metrics_for_exercise(
         "Bench Press", db_path=sample_db, is_user_created=True
     )
     user_override = next(m for m in metrics_user if m["name"] == "Weight")
     assert user_override["input_timing"] == "pre_session"
 
-    metrics_default = core.get_metrics_for_exercise(
+    metrics_default = metrics.get_metrics_for_exercise(
         "Bench Press", db_path=sample_db, is_user_created=False
     )
     default_metric = next(m for m in metrics_default if m["name"] == "Weight")
@@ -230,7 +232,7 @@ def test_override_with_user_flag(sample_db):
 
 
 def test_delete_metric_type(sample_db):
-    metric_id = core.add_metric_type(
+    metric_id = metrics.add_metric_type(
         name="Tempo",
         mtype="int",
         input_timing="post_set",
@@ -238,17 +240,17 @@ def test_delete_metric_type(sample_db):
         db_path=sample_db,
     )
     assert isinstance(metric_id, int)
-    assert core.delete_metric_type("Tempo", db_path=sample_db, is_user_created=True)
-    metrics = core.get_all_metric_types(sample_db, include_user_created=True)
-    assert all(m["name"] != "Tempo" for m in metrics)
+    assert metrics.delete_metric_type("Tempo", db_path=sample_db, is_user_created=True)
+    metric_list = metrics.get_all_metric_types(sample_db, include_user_created=True)
+    assert all(m["name"] != "Tempo" for m in metric_list)
     assert (
-        core.delete_metric_type("Tempo", db_path=sample_db, is_user_created=True)
+        metrics.delete_metric_type("Tempo", db_path=sample_db, is_user_created=True)
         is False
     )
 
 
 def test_delete_metric_type_in_use_by_preset_exercise(sample_db):
-    mt_id = core.add_metric_type(
+    mt_id = metrics.add_metric_type(
         name="Velocity",
         mtype="float",
         input_timing="post_set",
@@ -273,11 +275,11 @@ def test_delete_metric_type_in_use_by_preset_exercise(sample_db):
     conn.close()
 
     with pytest.raises(ValueError):
-        core.delete_metric_type("Velocity", db_path=sample_db, is_user_created=True)
+        metrics.delete_metric_type("Velocity", db_path=sample_db, is_user_created=True)
 
 
 def test_find_presets_and_apply_changes(sample_db):
-    names = core.find_presets_using_exercise("Push Up", db_path=sample_db)
+    names = presets.find_presets_using_exercise("Push Up", db_path=sample_db)
     assert names == ["Push Day"]
 
     ex = Exercise("Push Up", db_path=sample_db, is_user_created=False)
@@ -290,7 +292,7 @@ def test_find_presets_and_apply_changes(sample_db):
             "scope": "set",
         }
     )
-    core.add_metric_to_exercise("Push Up", "Weight", db_path=sample_db)
+    metrics.add_metric_to_exercise("Push Up", "Weight", db_path=sample_db)
 
     conn = sqlite3.connect(sample_db)
     before = {
@@ -305,7 +307,7 @@ def test_find_presets_and_apply_changes(sample_db):
     }
     conn.close()
 
-    core.apply_exercise_changes_to_presets(ex, ["Push Day"], db_path=sample_db)
+    presets.apply_exercise_changes_to_presets(ex, ["Push Day"], db_path=sample_db)
 
     conn = sqlite3.connect(sample_db)
     cur = conn.cursor()

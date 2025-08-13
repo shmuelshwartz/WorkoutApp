@@ -18,7 +18,7 @@ from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDRaisedButton
 
 import os
-import core
+from backend import metrics, exercises
 from core import DEFAULT_DB_PATH
 
 
@@ -54,7 +54,7 @@ class ExerciseLibraryScreen(MDScreen):
             app and self.cache_version != getattr(app, "exercise_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(
+            self.all_exercises = exercises.get_all_exercises(
                 db_path, include_user_created=True
             )
             if app:
@@ -65,7 +65,7 @@ class ExerciseLibraryScreen(MDScreen):
             and self.metric_cache_version != getattr(app, "metric_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_metrics = core.get_all_metric_types(
+            self.all_metrics = metrics.get_all_metric_types(
                 db_path, include_user_created=True
             )
             if app:
@@ -104,7 +104,7 @@ class ExerciseLibraryScreen(MDScreen):
             app and self.cache_version != getattr(app, "exercise_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(
+            self.all_exercises = exercises.get_all_exercises(
                 db_path, include_user_created=True
             )
             if app:
@@ -148,7 +148,7 @@ class ExerciseLibraryScreen(MDScreen):
             and self.metric_cache_version != getattr(app, "metric_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_metrics = core.get_all_metric_types(
+            self.all_metrics = metrics.get_all_metric_types(
                 db_path, include_user_created=True
             )
             if app:
@@ -255,7 +255,7 @@ class ExerciseLibraryScreen(MDScreen):
         def do_delete(*args):
             db_path = DEFAULT_DB_PATH
             try:
-                core.delete_exercise(
+                exercises.delete_exercise(
                     exercise_name, db_path=db_path, is_user_created=True
                 )
                 app = MDApp.get_running_app()
@@ -284,7 +284,7 @@ class ExerciseLibraryScreen(MDScreen):
         def do_delete(*args):
             db_path = DEFAULT_DB_PATH
             try:
-                core.delete_metric_type(
+                metrics.delete_metric_type(
                     metric_name, db_path=db_path, is_user_created=True
                 )
                 app = MDApp.get_running_app()
