@@ -2,7 +2,7 @@ from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivy.properties import ObjectProperty, StringProperty, ListProperty
 from kivymd.uix.list import OneLineListItem
-import core
+from backend import presets
 
 
 class PresetsScreen(MDScreen):
@@ -57,7 +57,7 @@ class PresetsScreen(MDScreen):
         if not self.preset_list:
             return
         self.preset_list.clear_widgets()
-        for preset in core.WORKOUT_PRESETS:
+        for preset in presets.WORKOUT_PRESETS:
             item = OneLineListItem(text=preset["name"])
             item.bind(
                 on_release=lambda inst, name=preset["name"]: self.select_preset(
@@ -84,7 +84,7 @@ class PresetsScreen(MDScreen):
         self.selected_item.md_bg_color = self._selected_color
         self.selected_item.theme_text_color = "Custom"
         self.selected_item.text_color = self._selected_text_color
-        if any(p["name"] == name for p in core.WORKOUT_PRESETS):
+        if any(p["name"] == name for p in presets.WORKOUT_PRESETS):
             self.selected_preset = name
             MDApp.get_running_app().selected_preset = name
 
