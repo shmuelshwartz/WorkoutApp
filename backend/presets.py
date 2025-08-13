@@ -14,8 +14,12 @@ from . import (
 from .exercise import Exercise
 
 
-def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
-    """Load workout presets from the SQLite database into ``WORKOUT_PRESETS``."""
+def load_workout_presets(db_path: Path = DEFAULT_DB_PATH) -> list[dict]:
+    """Load workout presets from the SQLite database into ``WORKOUT_PRESETS``.
+
+    Any exercise missing set or rest information falls back to the default
+    values defined in :mod:`backend`.
+    """
 
     global WORKOUT_PRESETS
 
@@ -39,8 +43,8 @@ def load_workout_presets(db_path: Path = DEFAULT_DB_PATH):
             exercises = [
                 {
                     "name": row[0],
-                    "sets": row[1],
-                    "rest": row[2],
+                    "sets": row[1] or DEFAULT_SETS_PER_EXERCISE,
+                    "rest": row[2] or DEFAULT_REST_DURATION,
                 }
                 for row in cursor.fetchall()
             ]
