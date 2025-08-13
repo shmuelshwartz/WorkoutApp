@@ -1,12 +1,14 @@
-from kivy.uix.screenmanager import Screen
+from kivymd.uix.screen import MDScreen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.label import Label
+from ui.colors import PINK_BG
 
 
-class HistoryComparisonScreen(Screen):
+class HistoryComparisonScreen(MDScreen):
     """Screen displaying a 2D scrollable comparison of exercise sessions."""
+    md_bg_color = PINK_BG
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
