@@ -259,6 +259,64 @@ def test_slider_row_updates_label():
     slider.value = 0.72
     slider._binding(slider, slider.value)
     assert value_label.text == "0.72"
+
+
+def test_text_input_updates_session_store():
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [{"name": "Bench", "sets": 1, "results": []}]
+            self.metric_store = {(0, 0): {"Reps": None}}
+            self.pending_pre_set_metrics = {}
+
+        def set_pre_set_metrics(self, metrics, exercise_index=None, set_index=None):
+            self.pending_pre_set_metrics[(exercise_index, set_index)] = metrics.copy()
+
+        def edit_set_metrics(self, exercise_index, set_index, metrics):
+            raise AssertionError("edit_set_metrics should not be called")
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(workout_session=dummy_session)
+    metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
+
+    screen.session = dummy_session
+    screen.exercise_idx = 0
+    screen.set_idx = 0
+    row = screen._create_row({"name": "Reps", "type": "int"})
+    row.input_widget.text = "10"
+    screen._on_metric_change(row)
+
+    assert dummy_session.pending_pre_set_metrics[(0, 0)] == {"Reps": 10}
+
+
+def test_edit_completed_set_updates_store():
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [{"name": "Bench", "sets": 1, "results": [{"metrics": {}}]}]
+            self.metric_store = {(0, 0): {"Reps": None}}
+            self.edited = None
+
+        def set_pre_set_metrics(self, *args, **kwargs):
+            raise AssertionError("set_pre_set_metrics should not be called")
+
+        def edit_set_metrics(self, exercise_index, set_index, metrics):
+            self.edited = (exercise_index, set_index, metrics)
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(workout_session=dummy_session)
+    metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
+
+    screen.session = dummy_session
+    screen.exercise_idx = 0
+    screen.set_idx = 0
+    row = screen._create_row({"name": "Reps", "type": "int"})
+    row.input_widget.text = "5"
+    screen._on_metric_change(row)
+
+    assert dummy_session.edited == (0, 0, {"Reps": 5})
    
 def test_save_future_metrics_returns_to_rest():
     screen = MetricInputScreen()

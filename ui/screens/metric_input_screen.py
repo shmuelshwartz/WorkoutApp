@@ -289,6 +289,44 @@ class MetricInputScreen(MDScreen):
             scroll.do_scroll_y = True
         return False
 
+    def _on_metric_change(self, row):
+        app = MDApp.get_running_app()
+        session = getattr(app, "workout_session", None)
+        if not session:
+            return
+        widget = getattr(row, "input_widget", None)
+        mtype = getattr(row, "type", "str")
+        name = getattr(row, "metric_name", "")
+        if widget is None or not name:
+            return
+        value = None
+        if isinstance(widget, MDTextField):
+            value = widget.text
+        elif isinstance(widget, MDSlider):
+            value = widget.value
+        elif isinstance(widget, Spinner):
+            value = widget.text
+        elif isinstance(widget, MDCheckbox):
+            value = widget.active
+        if value in (None, ""):
+            value = 0 if mtype in ("int", "float", "slider") else ""
+        if mtype == "int":
+            try:
+                value = int(value)
+            except ValueError:
+                value = 0
+        elif mtype in ("float", "slider"):
+            try:
+                value = float(value)
+            except ValueError:
+                value = 0.0
+        exercise = session.exercises[self.exercise_idx]
+        results = exercise.get("results", [])
+        if self.set_idx < len(results):
+            session.edit_set_metrics(self.exercise_idx, self.set_idx, {name: value})
+        else:
+            session.set_pre_set_metrics({name: value}, self.exercise_idx, self.set_idx)
+
     def _create_row(self, metric, value=None):
         if isinstance(metric, str):
             name = metric
@@ -310,8 +348,11 @@ class MetricInputScreen(MDScreen):
             value_label = MDLabel(
                 text=f"{widget.value:.2f}", size_hint_x=0.2
             )
+            def _slider_val(_w, val, row=row):
+                value_label.text = f"{val:.2f}"
+                self._on_metric_change(row)
             widget.bind(
-                value=lambda _w, val: setattr(value_label, "text", f"{val:.2f}"),
+                value=_slider_val,
                 on_touch_down=self.on_slider_touch_down,
                 on_touch_up=self.on_slider_touch_up,
             )
@@ -320,8 +361,12 @@ class MetricInputScreen(MDScreen):
                 text=str(value) if value not in (None, "") else "",
                 values=values,
             )
+            if hasattr(widget, "bind"):
+                widget.bind(text=lambda _w, _val, row=row: self._on_metric_change(row))
         elif mtype == "bool":
             widget = MDCheckbox(active=bool(value))
+            if hasattr(widget, "bind"):
+                widget.bind(active=lambda _w, _val, row=row: self._on_metric_change(row))
         else:  # manual_text
             input_filter = None
             if mtype == "int":
@@ -334,6 +379,8 @@ class MetricInputScreen(MDScreen):
                 input_filter=input_filter,
                 text=str(value) if value not in (None, "") else "",
             )
+            if hasattr(widget, "bind"):
+                widget.bind(text=lambda _w, _val, row=row: self._on_metric_change(row))
 
         row.input_widget = widget
         row.add_widget(widget)
