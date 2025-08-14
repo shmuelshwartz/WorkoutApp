@@ -548,53 +548,94 @@ class WorkoutSession:
         return True
 
     def apply_edited_preset(self, sections: list[dict]) -> None:
-        """Replace remaining exercises with ``sections`` data."""
+        """Merge edited ``sections`` back into the active session."""
+
+        # Map existing exercises by their preset_section_exercise_id to
+        # preserve recorded results when possible.
+        existing_index: dict[object, int] = {}
+        for idx, ex in enumerate(self.preset_snapshot):
+            ex_id = ex.get("preset_section_exercise_id")
+            if ex_id is not None:
+                existing_index[ex_id] = idx
+
         new_preset: list[dict] = []
         new_session_data: list[dict] = []
+        new_metric_store: dict[tuple[int, int], dict[str, object]] = {}
+        new_set_notes: dict[tuple[int, int], str] = {}
         section_starts: list[int] = []
         section_names: list[str] = []
         exercise_sections: list[int] = []
+
+        new_ex_idx = 0
         for sec_idx, sec in enumerate(sections):
             section_starts.append(len(new_preset))
-            section_names.append(sec.get("name", f"Section {sec_idx + 1}"))
+            sec_name = sec.get("name", f"Section {sec_idx + 1}")
+            section_names.append(sec_name)
             for ex in sec.get("exercises", []):
+                ex_name = ex.get("name", "")
+                ex_sets = ex.get("sets", DEFAULT_SETS_PER_EXERCISE)
+                ex_rest = ex.get("rest", self.rest_duration)
+                ex_lib_id = ex.get("library_id") or ex.get("library_exercise_id")
+                ex_id = ex.get("id") or ex.get("preset_section_exercise_id")
+                metric_defs = get_metrics_for_exercise(
+                    ex_name, db_path=self.db_path, preset_name=self.preset_name
+                )
                 ex_copy = {
-                    "name": ex.get("name", ""),
-                    "sets": ex.get("sets", DEFAULT_SETS_PER_EXERCISE),
-                    "rest": ex.get("rest", self.rest_duration),
-                    "library_exercise_id": ex.get("library_exercise_id"),
-                    "preset_section_exercise_id": ex.get(
-                        "preset_section_exercise_id"
-                    ),
+                    "name": ex_name,
+                    "sets": ex_sets,
+                    "rest": ex_rest,
+                    "library_exercise_id": ex_lib_id,
+                    "preset_section_exercise_id": ex_id,
                     "exercise_description": ex.get("exercise_description", ""),
-                    "metric_defs": ex.get("metric_defs", []),
+                    "metric_defs": metric_defs,
                     "section_index": sec_idx,
-                    "section_name": section_names[-1],
+                    "section_name": sec_name,
                 }
                 new_preset.append(ex_copy)
                 exercise_sections.append(sec_idx)
-                new_session_data.append({"exercise_info": None, "results": []})
+
+                if ex_id in existing_index:
+                    old_idx = existing_index[ex_id]
+                    data = self.session_data[old_idx]
+                    results = data.get("results", [])[:ex_sets]
+                    new_session_data.append(
+                        {"exercise_info": data.get("exercise_info"), "results": results}
+                    )
+                    for set_idx in range(ex_sets):
+                        key_old = (old_idx, set_idx)
+                        key_new = (new_ex_idx, set_idx)
+                        if key_old in self.metric_store:
+                            new_metric_store[key_new] = self.metric_store[key_old].copy()
+                        else:
+                            new_metric_store[key_new] = {
+                                m["name"]: None for m in metric_defs
+                            }
+                        if key_old in self.set_notes:
+                            new_set_notes[key_new] = self.set_notes[key_old]
+                else:
+                    new_session_data.append({"exercise_info": None, "results": []})
+                    template = {m["name"]: None for m in metric_defs}
+                    for set_idx in range(ex_sets):
+                        new_metric_store[(new_ex_idx, set_idx)] = template.copy()
+
+                new_ex_idx += 1
 
         self.preset_snapshot = new_preset
         self.session_data = new_session_data
+        self.metric_store = new_metric_store
+        self.set_notes = new_set_notes
         self.section_starts = section_starts
         self.section_names = section_names
         self.exercise_sections = exercise_sections
 
-        # current indices reset within bounds
-        if self.preset_snapshot:
-            self.current_exercise = min(self.current_exercise, len(self.preset_snapshot) - 1)
+        # Ensure current indices remain within bounds
+        if self.current_exercise >= len(self.preset_snapshot):
+            self.current_exercise = max(0, len(self.preset_snapshot) - 1)
+            self.current_set = 0
         else:
-            self.current_exercise = 0
-        self.current_set = 0
-
-        # rebuild metric store
-        self.metric_store = {}
-        for ex_idx, ex in enumerate(self.preset_snapshot):
-            template = {m["name"]: None for m in ex.get("metric_defs", [])}
-            for set_idx in range(ex["sets"]):
-                self.metric_store[(ex_idx, set_idx)] = template.copy()
-        self.set_notes = {}
+            max_sets = self.preset_snapshot[self.current_exercise].get("sets", 0)
+            if self.current_set >= max_sets:
+                self.current_set = 0
 
     def adjust_rest_timer(self, seconds: int) -> None:
         """Adjust the target time for the current rest period."""

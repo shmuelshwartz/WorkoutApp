@@ -165,3 +165,47 @@ def test_edit_set_overwrites_in_place(sample_db):
     assert len(ex["results"]) == 2
     assert ex["results"][0]["metrics"]["Reps"] == 12
     assert ex["results"][1]["metrics"]["Reps"] == 8
+
+
+def test_apply_edited_preset_preserves_metrics(sample_db):
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    # record first set of Push-up
+    session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})
+    session.mark_set_completed()
+
+    # build sections from current session and swap first two exercises
+    sections = []
+    for s_idx, name in enumerate(session.section_names):
+        start = session.section_starts[s_idx]
+        end = (
+            session.section_starts[s_idx + 1]
+            if s_idx + 1 < len(session.section_starts)
+            else len(session.preset_snapshot)
+        )
+        ex_list = []
+        for ex in session.preset_snapshot[start:end]:
+            ex_list.append(
+                {
+                    "name": ex["name"],
+                    "sets": ex["sets"],
+                    "rest": ex["rest"],
+                    "library_id": ex.get("library_exercise_id"),
+                    "id": ex.get("preset_section_exercise_id"),
+                }
+            )
+        sections.append({"name": name, "exercises": ex_list})
+
+    # swap first two exercises
+    sections[0]["exercises"][0], sections[0]["exercises"][1] = (
+        sections[0]["exercises"][1],
+        sections[0]["exercises"][0],
+    )
+    session.apply_edited_preset(sections)
+
+    # Push-up moved to second position with its recorded metrics intact
+    assert session.exercises[1]["name"] == "Push-up"
+    assert session.exercises[1]["results"][0]["metrics"]["Reps"] == 10
+    # Bench Press remains first with its metric definitions
+    assert session.exercises[0]["name"] == "Bench Press"
+    metric_names = [m["name"] for m in session.exercises[0]["metric_defs"]]
+    assert "Reps" in metric_names
