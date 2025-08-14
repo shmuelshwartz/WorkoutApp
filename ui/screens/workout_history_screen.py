@@ -23,6 +23,6 @@ class WorkoutHistoryScreen(MDScreen):
             dt = datetime.fromtimestamp(entry["started_at"])
             item = TwoLineListItem(
                 text=entry["preset_name"],
-                secondary_text=dt.strftime("%H:%M %d/%m/%y"),
+                secondary_text=dt.strftime("%H:%M %a %d/%m/%Y"),
             )
             lst.add_widget(item)
