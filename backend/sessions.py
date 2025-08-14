@@ -14,10 +14,33 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from backend.utils import _to_db_timing
+from core import DEFAULT_DB_PATH
 
 if TYPE_CHECKING:  # pragma: no cover - for type checkers only
     from backend.workout_session import WorkoutSession
 
+
+def get_session_history(limit: int | None = None, db_path: Path = DEFAULT_DB_PATH) -> list[dict]:
+    """Return past workout sessions.
+
+    Results are ordered with the most recent session first. Each item in the
+    returned list contains ``preset_name`` and ``started_at`` keys. When
+    ``limit`` is provided only that many newest sessions are returned.
+    """
+
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        query = (
+            "SELECT preset_name, started_at FROM session_sessions "
+            "WHERE deleted = 0 AND ended_at IS NOT NULL "
+            "ORDER BY started_at DESC"
+        )
+        if limit is not None:
+            cursor.execute(query + " LIMIT ?", (limit,))
+        else:
+            cursor.execute(query)
+        rows = cursor.fetchall()
+    return [{"preset_name": name, "started_at": ts} for name, ts in rows]
 
 def validate_workout_session(session: "WorkoutSession") -> list[str]:
     """Return a list of validation errors for ``session``.

@@ -341,17 +341,16 @@ RootUI:
             text: "Back to Home"
             on_release: app.root.current = "home"
 
-<WorkoutHistoryScreen@MDScreen>:
+<WorkoutHistoryScreen>:
     md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: "Workout History - review past workouts"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
+        ScrollView:
+            do_scroll_x: False
+            MDList:
+                id: history_list
         MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"
