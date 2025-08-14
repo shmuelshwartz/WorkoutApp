@@ -11,6 +11,7 @@ from .rest_screen import RestScreen
 from .workout_active_screen import WorkoutActiveScreen
 from .workout_summary_screen import WorkoutSummaryScreen
 from .previous_workouts_screen import PreviousWorkoutsScreen
+from .workout_history_screen import WorkoutHistoryScreen
 
 
 __all__ = [
@@ -25,5 +26,6 @@ __all__ = [
     "WorkoutActiveScreen",
     "WorkoutSummaryScreen",
     "PreviousWorkoutsScreen",
+    "WorkoutHistoryScreen",
 
 ]
