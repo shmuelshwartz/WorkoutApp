@@ -1,5 +1,6 @@
 TESTING = True
-HALF_SCREEN = True
+# Feature flag: when True the UI is displayed in one quarter of the screen.
+half_screen = False
 
 from kivymd.app import MDApp
 from kivy.lang import Builder
@@ -35,12 +36,13 @@ try:
 except Exception:  # pragma: no cover - fallback for tests without kivymd
     from kivy.uix.spinner import Spinner as MDSpinner
 from kivymd.uix.button import MDRaisedButton
-from kivy.uix.screenmanager import NoTransition
+from kivy.uix.screenmanager import NoTransition, ScreenManager
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.widget import Widget
 from ui.screens.preset_detail_screen import PresetDetailScreen
 from ui.screens.preset_overview_screen import PresetOverviewScreen
 from pathlib import Path
 import os
-import sys
 import re
 import json
 
@@ -69,7 +71,6 @@ import time
 import math
 
 from kivy.core.window import Window
-from kivy.utils import platform
 import string
 import sqlite3
 from ui.screens.presets_screen import PresetsScreen
@@ -86,44 +87,28 @@ from ui.screens.edit_preset_screen import (
 from ui.screens.workout_summary_screen import WorkoutSummaryScreen
 from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
 
-HALF_SCREEN_X_SCALE = 1.0
-HALF_SCREEN_Y_SCALE = 1.0
-HALF_SCREEN_X_OFFSET = 0.0
-HALF_SCREEN_Y_OFFSET = 0.0
-
-if os.name == "nt" or sys.platform.startswith("win"):
+# Set a consistent window size on desktop for predictable layout.
+if os.name == "nt":
     base_width, base_height = 140, 140 * (20 / 9)
-    if HALF_SCREEN:
-        Window.size = (base_width / 2, base_height / 2)
-    else:
-        Window.size = (base_width, base_height)
-elif platform == "android":
-    full_width, full_height = Window.system_size
-    if HALF_SCREEN:
-        Window.size = (full_width / 2, full_height / 2)
-        HALF_SCREEN_X_SCALE = Window.width / full_width
-        HALF_SCREEN_Y_SCALE = Window.height / full_height
-        HALF_SCREEN_X_OFFSET = 0.0
-        HALF_SCREEN_Y_OFFSET = 0.0
-
-    else:
-        Window.size = (full_width, full_height)
+    Window.size = (base_width, base_height)
 
 
-def _adjust_touch(window, touch):
-    if HALF_SCREEN and platform == "android":
-        touch.x *= HALF_SCREEN_X_SCALE
-        touch.ox *= HALF_SCREEN_X_SCALE
-        touch.x -= HALF_SCREEN_X_OFFSET
-        touch.ox -= HALF_SCREEN_X_OFFSET
-        touch.sx = touch.x / Window.width
+class RootUI(ScreenManager):
+    """Screen manager serving as the app's primary widget tree."""
 
-        touch.y *= HALF_SCREEN_Y_SCALE
-        touch.oy *= HALF_SCREEN_Y_SCALE
-        touch.y -= HALF_SCREEN_Y_OFFSET
-        touch.oy -= HALF_SCREEN_Y_OFFSET
-        touch.sy = touch.y / Window.height
-    return False
+
+def make_half_screen_wrapper(inner_widget, cell_index: int = 3):
+    """Wrap ``inner_widget`` in a 2x2 grid so it occupies one cell.
+
+    Other cells are empty placeholders. ``cell_index`` uses row-major order
+    starting from the top-left cell.
+    """
+    grid = GridLayout(cols=2, rows=2, size_hint=(1, 1))
+    cells = [Widget(), Widget(), Widget(), Widget()]
+    cells[cell_index] = inner_widget
+    for c in cells:
+        grid.add_widget(c)
+    return grid
 
 if not TESTING:
     try:
@@ -452,13 +437,18 @@ class WorkoutApp(MDApp):
     def build(self):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
         Window.bind(on_keyboard=self._on_keyboard)
-        Window.bind(
-            on_touch_down=_adjust_touch,
-            on_touch_move=_adjust_touch,
-            on_touch_up=_adjust_touch,
-        )
-
         return root
+
+    def on_start(self):
+        super().on_start()
+        if half_screen:
+            wrapper = make_half_screen_wrapper(self.root, cell_index=3)
+            Window.add_widget(wrapper)
+            try:
+                # Ensure dialogs and other overlays stay within the quarter cell.
+                self.root_window = self.root
+            except Exception:
+                pass
 
     def _on_keyboard(self, window, key, scancode, codepoint, modifiers):
         if key in (27, 1001) and not TESTING:
