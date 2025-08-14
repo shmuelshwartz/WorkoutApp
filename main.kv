@@ -453,7 +453,7 @@ RootUI:
             size_hint_y: None
             height: "20dp"
         MDGridLayout:
-            cols: 6
+            cols: 7
             spacing: "10dp"
             size_hint_y: None
             height: self.minimum_height
@@ -462,6 +462,10 @@ RootUI:
                 text: "Undo"
                 disabled: root.undo_disabled
                 on_release: root.show_undo_confirmation()
+            IconTextButton:
+                icon: "skip-next"
+                text: "skip"
+                on_release: root.show_skip_confirmation()
             IconTextButton:
                 id: record_btn
                 icon: "clipboard"
@@ -511,6 +515,9 @@ RootUI:
             MDRaisedButton:
                 text: "Undo"
                 on_release: root.show_undo_confirmation()
+            MDRaisedButton:
+                text: "Skip"
+                on_release: root.show_skip_confirmation()
             MDRaisedButton:
                 text: "Finish"
                 on_release:

@@ -209,3 +209,25 @@ def test_apply_edited_preset_preserves_metrics(sample_db):
     assert session.exercises[0]["name"] == "Bench Press"
     metric_names = [m["name"] for m in session.exercises[0]["metric_defs"]]
     assert "Reps" in metric_names
+
+
+def test_skip_exercise_and_undo(sample_db):
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    # complete first set of first exercise
+    session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})
+    session.mark_set_completed()
+    assert session.current_exercise == 0 and session.current_set == 1
+
+    # skip remaining sets of current exercise
+    assert session.skip_exercise()
+    assert session.current_exercise == 1 and session.current_set == 0
+
+    # undo the skip
+    assert session.undo_last_set()
+    assert session.current_exercise == 0 and session.current_set == 1
+
+
+def test_skip_last_exercise_noop(sample_db):
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    assert session.skip_exercise()
+    assert not session.skip_exercise()
