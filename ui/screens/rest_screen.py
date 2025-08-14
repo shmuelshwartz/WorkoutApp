@@ -3,6 +3,7 @@ try:  # pragma: no cover - fallback for environments without Kivy
     from kivymd.uix.screen import MDScreen
     from kivymd.uix.dialog import MDDialog
     from kivymd.uix.button import MDFlatButton, MDRaisedButton
+    from kivymd.toast import toast
     from kivy.clock import Clock
     from kivy.properties import (
         NumericProperty,
@@ -51,6 +52,9 @@ except Exception:  # pragma: no cover - simple stubs
 
     def ListProperty(value=None):
         return value
+
+    def toast(*a, **k):
+        pass
 
 import time
 import math
@@ -186,6 +190,33 @@ class RestScreen(MDScreen):
         if session and session.undo_last_set():
             if self.manager:
                 self.manager.current = "workout_active"
+
+    def show_skip_confirmation(self):
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
+        if session and session.current_exercise >= len(session.preset_snapshot) - 1:
+            toast("No next exercise")
+            return
+        if not hasattr(self, "_skip_dialog") or not self._skip_dialog:
+            self._skip_dialog = MDDialog(
+                text="Skip this exercise and move to the next?",
+                buttons=[
+                    MDFlatButton(text="Cancel", on_release=lambda *_: self._skip_dialog.dismiss()),
+                    MDFlatButton(text="Confirm", on_release=self._perform_skip),
+                ],
+            )
+        self._skip_dialog.open()
+
+    def _perform_skip(self, *args):
+        if hasattr(self, "_skip_dialog") and self._skip_dialog:
+            self._skip_dialog.dismiss()
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
+        if session and session.skip_exercise():
+            if self.manager:
+                self.manager.current = "workout_active"
+        else:
+            toast("No next exercise")
                 
     def confirm_finish(self):
         dialog = None

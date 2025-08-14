@@ -143,6 +143,10 @@ class WorkoutSession:
         self.saved: bool = False
         # indicates the next active screen should resume from previous start
         self.resume_from_last_start: bool = False
+        # stack of skipped exercises to support undo
+        self._skip_history: list[tuple[int, int, float, float, float, int]] = []
+        # flag to indicate the most recent action was a skip
+        self._skip_pending: bool = False
 
     # ------------------------------------------------------------------
     # Helpers
@@ -171,6 +175,7 @@ class WorkoutSession:
         specified number of seconds.  Negative values indicate the set finished
         earlier than the current clock time.
         """
+        self._skip_pending = False
         self.last_set_time = time.time() + adjust_seconds
         if self.current_exercise < len(self.preset_snapshot):
             upcoming = self.preset_snapshot[self.current_exercise]
@@ -189,6 +194,46 @@ class WorkoutSession:
         self.awaiting_post_set_metrics = False
         # Restore rest timer based on the last completed set
         self.rest_target_time = self.last_set_time + self.rest_duration
+        self._skip_pending = False
+
+    def skip_exercise(self) -> bool:
+        """Skip the current exercise and jump to the next.
+
+        Returns ``True`` if a subsequent exercise exists, otherwise ``False``.
+        """
+
+        if self.current_exercise >= len(self.preset_snapshot) - 1:
+            return False
+
+        state = (
+            self.current_exercise,
+            self.current_set,
+            self.current_set_start_time,
+            self.last_set_time,
+            self.rest_target_time,
+            self.rest_duration,
+        )
+        self._skip_history.append(state)
+
+        self.current_exercise += 1
+        self.current_set = 0
+        now = time.time()
+        self.current_set_start_time = now
+        self.last_set_time = now
+        upcoming = self.preset_snapshot[self.current_exercise]
+        self.rest_duration = upcoming.get("rest", self.rest_duration)
+        self.rest_target_time = now + self.rest_duration
+        self.awaiting_post_set_metrics = False
+        self.resume_from_last_start = False
+        self.end_time = None
+        self._skip_pending = True
+
+        return True
+
+    def last_action_was_skip(self) -> bool:
+        """Return ``True`` if the most recent action was a skip."""
+
+        return self._skip_pending
 
     def next_exercise_name(self):
         if self.current_exercise < len(self.preset_snapshot):
@@ -472,6 +517,20 @@ class WorkoutSession:
 
         Returns ``True`` if a set was restored, ``False`` otherwise.
         """
+        if self._skip_history:
+            (
+                self.current_exercise,
+                self.current_set,
+                self.current_set_start_time,
+                self.last_set_time,
+                self.rest_target_time,
+                self.rest_duration,
+            ) = self._skip_history.pop()
+            self.awaiting_post_set_metrics = False
+            self.resume_from_last_start = True
+            self._skip_pending = False
+            self.end_time = None
+            return True
 
         # Determine whether any set has been completed yet
         if (
