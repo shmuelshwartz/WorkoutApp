@@ -38,7 +38,7 @@ from core import (
 )
 from backend.exercise import Exercise
 
-from .metric_input_screen import MetricInputScreen
+from ..session.metric_input_screen import MetricInputScreen
 
 
 class EditExerciseScreen(MDScreen):

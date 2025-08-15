@@ -87,7 +87,7 @@ def test_optional_metrics_populated():
 def test_populate_blank_for_new_set(monkeypatch):
     from kivy.lang import Builder
     from pathlib import Path
-    import ui.screens.metric_input_screen as mis
+    import ui.screens.session.metric_input_screen as mis
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
@@ -150,7 +150,7 @@ def test_populate_blank_for_new_set(monkeypatch):
 def test_prev_metrics_use_last_set(monkeypatch):
     from kivy.lang import Builder
     from pathlib import Path
-    import ui.screens.metric_input_screen as mis
+    import ui.screens.session.metric_input_screen as mis
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
@@ -224,7 +224,7 @@ def test_prev_metrics_use_last_set(monkeypatch):
 def test_save_metrics_clears_next_metrics(monkeypatch):
     from kivy.lang import Builder
     from pathlib import Path
-    import ui.screens.metric_input_screen as mis
+    import ui.screens.session.metric_input_screen as mis
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
@@ -486,7 +486,7 @@ def test_confirm_finish_opens_dialog(monkeypatch):
     import pytest
 
     try:
-        rest_screen_module = importlib.import_module("ui.screens.rest_screen")
+        rest_screen_module = importlib.import_module("ui.screens.session.rest_screen")
     except ModuleNotFoundError:
         pytest.skip("RestScreen module not available")
     monkeypatch.setattr(rest_screen_module, "MDDialog", DummyDialog)

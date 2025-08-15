@@ -42,14 +42,14 @@ from kivy.uix.scatter import Scatter
 from kivy.uix.gridlayout import GridLayout
 from kivy.graphics import Color, Rectangle
 from kivy.utils import platform
-from ui.screens.preset_detail_screen import PresetDetailScreen
-from ui.screens.preset_overview_screen import PresetOverviewScreen
+from ui.screens.general.preset_detail_screen import PresetDetailScreen
+from ui.screens.general.preset_overview_screen import PresetOverviewScreen
 from pathlib import Path
 import os
 import re
 import json
 
-from ui.screens import ExerciseLibraryScreen
+from ui.screens.general.exercise_library import ExerciseLibraryScreen
 
 from backend.presets import load_workout_presets
 from backend.workout_session import WorkoutSession
@@ -60,13 +60,13 @@ from core import (
 )
 from backend import metrics
 from backend.preset_editor import PresetEditor
-from ui.screens.metric_input_screen import MetricInputScreen
-from ui.screens.edit_exercise_screen import EditExerciseScreen
+from ui.screens.session.metric_input_screen import MetricInputScreen
+from ui.screens.general.edit_exercise_screen import EditExerciseScreen
 
-from ui.screens.rest_screen import RestScreen
-from ui.screens.previous_workouts_screen import PreviousWorkoutsScreen
-from ui.screens.workout_history_screen import WorkoutHistoryScreen
-from ui.screens.view_previous_workout_screen import ViewPreviousWorkoutScreen
+from ui.screens.session.rest_screen import RestScreen
+from ui.screens.general.previous_workouts_screen import PreviousWorkoutsScreen
+from ui.screens.general.workout_history_screen import WorkoutHistoryScreen
+from ui.screens.general.view_previous_workout_screen import ViewPreviousWorkoutScreen
 
 
 
@@ -78,9 +78,9 @@ import math
 from kivy.core.window import Window
 import string
 import sqlite3
-from ui.screens.presets_screen import PresetsScreen
-from ui.screens.workout_active_screen import WorkoutActiveScreen
-from ui.screens.edit_preset_screen import (
+from ui.screens.general.presets_screen import PresetsScreen
+from ui.screens.session.workout_active_screen import WorkoutActiveScreen
+from ui.screens.general.edit_preset_screen import (
     EditPresetScreen,
     SectionWidget,
     SelectedExerciseItem,
@@ -89,7 +89,7 @@ from ui.screens.edit_preset_screen import (
     AddSessionMetricPopup,
 )
 
-from ui.screens.workout_summary_screen import WorkoutSummaryScreen
+from ui.screens.session.workout_summary_screen import WorkoutSummaryScreen
 from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
 
 # Set a consistent window size on desktop for predictable layout.
