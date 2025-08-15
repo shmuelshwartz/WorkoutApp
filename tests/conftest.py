@@ -9,7 +9,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 # Provide a lightweight RestScreen when Kivy isn't available so tests can run
 if importlib.util.find_spec("kivy") is None or importlib.util.find_spec("kivymd") is None:
-    stub = types.ModuleType("ui.screens.rest_screen")
+    stub = types.ModuleType("ui.screens.session.rest_screen")
 
     class RestScreen:
         def confirm_finish(self):
@@ -29,7 +29,7 @@ if importlib.util.find_spec("kivy") is None or importlib.util.find_spec("kivymd"
     stub.RestScreen = RestScreen
     stub.MDDialog = DummyDialog
     stub.MDRaisedButton = lambda *a, **k: None
-    sys.modules["ui.screens.rest_screen"] = stub
+    sys.modules["ui.screens.session.rest_screen"] = stub
     import builtins
     builtins.RestScreen = RestScreen
 

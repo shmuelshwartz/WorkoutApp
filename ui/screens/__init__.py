@@ -1,19 +1,22 @@
 """UI screen modules for WorkoutApp."""
 
-from .edit_exercise_screen import EditExerciseScreen
-from .edit_preset_screen import EditPresetScreen
-from .exercise_library import ExerciseLibraryScreen
-from .metric_input_screen import MetricInputScreen
-from .preset_detail_screen import PresetDetailScreen
-from .preset_overview_screen import PresetOverviewScreen
-from .presets_screen import PresetsScreen
-from .rest_screen import RestScreen
-from .workout_active_screen import WorkoutActiveScreen
-from .workout_summary_screen import WorkoutSummaryScreen
-from .previous_workouts_screen import PreviousWorkoutsScreen
-from .workout_history_screen import WorkoutHistoryScreen
-from .view_previous_workout_screen import ViewPreviousWorkoutScreen
-
+from .session import (
+    MetricInputScreen,
+    RestScreen,
+    WorkoutActiveScreen,
+    WorkoutSummaryScreen,
+)
+from .general import (
+    EditExerciseScreen,
+    EditPresetScreen,
+    ExerciseLibraryScreen,
+    PresetDetailScreen,
+    PresetOverviewScreen,
+    PresetsScreen,
+    PreviousWorkoutsScreen,
+    WorkoutHistoryScreen,
+    ViewPreviousWorkoutScreen,
+)
 
 __all__ = [
     "EditExerciseScreen",
@@ -29,5 +32,4 @@ __all__ = [
     "PreviousWorkoutsScreen",
     "WorkoutHistoryScreen",
     "ViewPreviousWorkoutScreen",
-
 ]

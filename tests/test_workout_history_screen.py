@@ -14,8 +14,8 @@ if kivy_available:
     from kivy.properties import ObjectProperty
     from kivy.lang import Builder
     from pathlib import Path
-    from ui.screens.workout_history_screen import WorkoutHistoryScreen
-    import ui.screens.workout_history_screen as w
+    from ui.screens.general.workout_history_screen import WorkoutHistoryScreen
+    import ui.screens.general.workout_history_screen as w
 
     class _DummyApp:
         theme_cls = object()

@@ -94,7 +94,7 @@ for name, module in kivymd_modules.items():
 
 spec = importlib.util.spec_from_file_location(
     "metric_input_screen",
-    Path(__file__).resolve().parents[1] / "ui" / "screens" / "metric_input_screen.py",
+    Path(__file__).resolve().parents[1] / "ui" / "screens" / "session" / "metric_input_screen.py",
 )
 metric_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(metric_module)
