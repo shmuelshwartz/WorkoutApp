@@ -2,6 +2,7 @@ from datetime import datetime
 
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.list import TwoLineListItem
+from kivy.app import App
 
 from backend.sessions import get_session_history
 
@@ -24,5 +25,11 @@ class WorkoutHistoryScreen(MDScreen):
             item = TwoLineListItem(
                 text=entry["preset_name"],
                 secondary_text=dt.strftime("%H:%M %a %d/%m/%Y"),
+                on_release=lambda _, ts=entry["started_at"]: self.open_session(ts),
             )
             lst.add_widget(item)
+
+    def open_session(self, started_at: float) -> None:
+        app = App.get_running_app()
+        screen = app.root.get_screen("view_previous_workout")
+        screen.show_session(started_at)

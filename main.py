@@ -66,6 +66,7 @@ from ui.screens.edit_exercise_screen import EditExerciseScreen
 from ui.screens.rest_screen import RestScreen
 from ui.screens.previous_workouts_screen import PreviousWorkoutsScreen
 from ui.screens.workout_history_screen import WorkoutHistoryScreen
+from ui.screens.view_previous_workout_screen import ViewPreviousWorkoutScreen
 
 
 
