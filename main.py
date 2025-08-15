@@ -1,5 +1,5 @@
 TESTING = True
-# Feature flag: when True the UI is displayed in one quarter of the screen.
+# Feature flag: when True the UI is scaled to half size while staying centered.
 half_screen = False
 
 from kivymd.app import MDApp
@@ -37,8 +37,8 @@ except Exception:  # pragma: no cover - fallback for tests without kivymd
     from kivy.uix.spinner import Spinner as MDSpinner
 from kivymd.uix.button import MDRaisedButton
 from kivy.uix.screenmanager import NoTransition, ScreenManager
-from kivy.uix.gridlayout import GridLayout
 from kivy.uix.widget import Widget
+from kivy.uix.scatter import Scatter
 from ui.screens.preset_detail_screen import PresetDetailScreen
 from ui.screens.preset_overview_screen import PresetOverviewScreen
 from pathlib import Path
@@ -97,19 +97,53 @@ if os.name == "nt":
 class RootUI(ScreenManager):
     """Screen manager serving as the app's primary widget tree."""
 
+class HalfScreenWrapper(Widget):
+    """Scale a :class:`~kivy.uix.screenmanager.ScreenManager` to half size.
 
-def make_half_screen_wrapper(inner_widget, cell_index: int = 3):
-    """Wrap ``inner_widget`` in a 2x2 grid so it occupies one cell.
-
-    Other cells are empty placeholders. ``cell_index`` uses row-major order
-    starting from the top-left cell.
+    The wrapper keeps the window at full resolution but applies a uniform
+    0.5 scale transform to the inner screen manager so the UI appears at half
+    size centered on screen. Touch coordinates are mapped through the scaling
+    so interactive widgets remain accurate. The wrapper proxies common
+    ``ScreenManager`` attributes (``current``, ``get_screen``) so existing
+    bindings like ``app.root.current`` continue to work.
     """
-    grid = GridLayout(cols=2, rows=2, size_hint=(1, 1))
-    cells = [Widget(), Widget(), Widget(), Widget()]
-    cells[cell_index] = inner_widget
-    for c in cells:
-        grid.add_widget(c)
-    return grid
+
+    def __init__(self, inner_manager: ScreenManager, **kwargs):
+        super().__init__(**kwargs)
+        self._manager = inner_manager
+        self._scatter = Scatter(
+            scale=0.5,
+            do_translation=False,
+            do_rotation=False,
+            do_scale=False,
+            size=Window.size,
+        )
+        inner_manager.size_hint = (None, None)
+        inner_manager.size = Window.size
+        self._scatter.add_widget(inner_manager)
+        self.add_widget(self._scatter)
+        self.bind(size=self._update_scatter, pos=self._update_scatter)
+        Window.bind(size=self._update_scatter)
+
+    def _update_scatter(self, *args):
+        self._scatter.center = self.center
+        self._scatter.size = self.size
+        self._manager.size = self.size
+
+    # Proxy commonly used ScreenManager attributes
+    @property
+    def current(self):  # pragma: no cover - simple delegation
+        return self._manager.current
+
+    @current.setter
+    def current(self, value):  # pragma: no cover - simple delegation
+        self._manager.current = value
+
+    def get_screen(self, name):  # pragma: no cover - simple delegation
+        return self._manager.get_screen(name)
+
+    def __getattr__(self, attr):  # pragma: no cover - delegation
+        return getattr(self._manager, attr)
 
 if not TESTING:
     try:
@@ -439,9 +473,9 @@ class WorkoutApp(MDApp):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
         Window.bind(on_keyboard=self._on_keyboard)
         if half_screen:
-            wrapper = make_half_screen_wrapper(root, cell_index=3)
+            wrapper = HalfScreenWrapper(root)
             try:
-                # Ensure dialogs and other overlays stay within the quarter cell.
+                # Ensure dialogs and other overlays participate in scaling.
                 self.root_window = root
             except Exception:
                 pass
