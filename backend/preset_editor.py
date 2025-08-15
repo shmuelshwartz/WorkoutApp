@@ -18,11 +18,18 @@ class PresetEditor:
         self,
         preset_name: str | None = None,
         db_path: Path = DEFAULT_DB_PATH,
+        *,
+        read_only: bool = False,
     ):
         """Create the editor and optionally load an existing preset."""
 
         self.db_path = Path(db_path)
-        self.conn = sqlite3.connect(str(self.db_path))
+        self.read_only = read_only
+        if read_only:
+            uri = f"file:{self.db_path}?mode=ro"
+            self.conn = sqlite3.connect(uri, uri=True)
+        else:
+            self.conn = sqlite3.connect(str(self.db_path))
 
         self.preset_name: str = preset_name or ""
         self.sections: list[dict] = []
@@ -403,6 +410,9 @@ class PresetEditor:
 
     def save(self) -> None:
         """Write the current preset to the database. Assumes validation has been performed."""
+
+        if self.read_only:
+            raise RuntimeError("Cannot save using read-only PresetEditor")
 
         cursor = self.conn.cursor()
 

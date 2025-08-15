@@ -513,7 +513,7 @@ class WorkoutApp(MDApp):
         """Open the preset editor for the active workout session."""
         if not self.workout_session or not self.root:
             return
-        editor = PresetEditor(db_path=DEFAULT_DB_PATH)
+        editor = PresetEditor(db_path=DEFAULT_DB_PATH, read_only=True)
         editor.preset_name = self.workout_session.preset_name
         editor.sections = []
         for s_idx, name in enumerate(self.workout_session.section_names):

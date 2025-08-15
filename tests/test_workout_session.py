@@ -1,6 +1,7 @@
 import core
 from backend import presets
 from backend.workout_session import WorkoutSession
+from backend.preset_editor import PresetEditor
 import sqlite3
 import pytest
 
@@ -209,3 +210,44 @@ def test_apply_edited_preset_preserves_metrics(sample_db):
     assert session.exercises[0]["name"] == "Bench Press"
     metric_names = [m["name"] for m in session.exercises[0]["metric_defs"]]
     assert "Reps" in metric_names
+
+
+def test_add_exercise_in_session_does_not_touch_db(sample_db):
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    conn = sqlite3.connect(sample_db)
+    before = conn.execute("SELECT COUNT(*) FROM preset_section_exercises").fetchone()[0]
+    conn.close()
+
+    editor = PresetEditor(db_path=sample_db, read_only=True)
+    editor.preset_name = session.preset_name
+    editor.sections = []
+    for s_idx, name in enumerate(session.section_names):
+        start = session.section_starts[s_idx]
+        end = (
+            session.section_starts[s_idx + 1]
+            if s_idx + 1 < len(session.section_starts)
+            else len(session.exercises)
+        )
+        exercises = []
+        for ex in session.exercises[start:end]:
+            exercises.append(
+                {
+                    "name": ex["name"],
+                    "sets": ex["sets"],
+                    "rest": ex["rest"],
+                    "library_id": ex["library_exercise_id"],
+                    "id": ex["preset_section_exercise_id"],
+                }
+            )
+        editor.sections.append({"name": name, "exercises": exercises})
+    editor.mark_saved()
+
+    editor.add_exercise(0, "Bench Press")
+    session.apply_edited_preset(editor.sections)
+
+    assert any(ex["name"] == "Bench Press" for ex in session.exercises)
+
+    conn = sqlite3.connect(sample_db)
+    after = conn.execute("SELECT COUNT(*) FROM preset_section_exercises").fetchone()[0]
+    conn.close()
+    assert before == after

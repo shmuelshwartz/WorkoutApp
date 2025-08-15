@@ -776,7 +776,21 @@ class ExerciseSelectionPanel(MDBoxLayout):
         app = MDApp.get_running_app()
         idx = app.editing_section_index
         if app.preset_editor and 0 <= idx < len(app.preset_editor.sections):
-            app.preset_editor.add_exercise(idx, name)
+            try:
+                app.preset_editor.add_exercise(idx, name)
+            except Exception as err:
+                err_dialog = MDDialog(
+                    title="Error",
+                    text=str(err),
+                    buttons=[
+                        MDRaisedButton(
+                            text="OK",
+                            on_release=lambda *a: err_dialog.dismiss(),
+                        )
+                    ],
+                )
+                err_dialog.open()
+                return
             ex_idx = len(app.preset_editor.sections[idx]["exercises"]) - 1
             edit = app.root.get_screen("edit_preset")
             for widget in edit.sections_box.children:
