@@ -97,19 +97,37 @@ if os.name == "nt":
 class RootUI(ScreenManager):
     """Screen manager serving as the app's primary widget tree."""
 
+class HalfScreenWrapper(GridLayout):
+    """GridLayout that proxies a :class:`~kivy.uix.screenmanager.ScreenManager`.
 
-def make_half_screen_wrapper(inner_widget, cell_index: int = 3):
-    """Wrap ``inner_widget`` in a 2x2 grid so it occupies one cell.
-
-    Other cells are empty placeholders. ``cell_index`` uses row-major order
-    starting from the top-left cell.
+    The screen manager is placed in a single cell of a 2x2 grid so the app
+    can render within a quadrant of the display while still exposing the
+    screen manager interface (``current`` attribute, ``get_screen`` method,
+    etc.) to external callers.
     """
-    grid = GridLayout(cols=2, rows=2, size_hint=(1, 1))
-    cells = [Widget(), Widget(), Widget(), Widget()]
-    cells[cell_index] = inner_widget
-    for c in cells:
-        grid.add_widget(c)
-    return grid
+
+    def __init__(self, inner_manager: ScreenManager, cell_index: int = 3, **kwargs):
+        super().__init__(cols=2, rows=2, size_hint=(1, 1), **kwargs)
+        self._manager = inner_manager
+        cells = [Widget(), Widget(), Widget(), Widget()]
+        cells[cell_index] = inner_manager
+        for cell in cells:
+            self.add_widget(cell)
+
+    # Proxy commonly used ScreenManager attributes
+    @property
+    def current(self):  # pragma: no cover - simple delegation
+        return self._manager.current
+
+    @current.setter
+    def current(self, value):  # pragma: no cover - simple delegation
+        self._manager.current = value
+
+    def get_screen(self, name):  # pragma: no cover - simple delegation
+        return self._manager.get_screen(name)
+
+    def __getattr__(self, attr):  # pragma: no cover - delegation
+        return getattr(self._manager, attr)
 
 if not TESTING:
     try:
@@ -439,7 +457,7 @@ class WorkoutApp(MDApp):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
         Window.bind(on_keyboard=self._on_keyboard)
         if half_screen:
-            wrapper = make_half_screen_wrapper(root, cell_index=3)
+            wrapper = HalfScreenWrapper(root, cell_index=3)
             try:
                 # Ensure dialogs and other overlays stay within the quarter cell.
                 self.root_window = root
