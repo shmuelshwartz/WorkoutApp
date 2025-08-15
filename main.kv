@@ -17,6 +17,8 @@ RootUI:
         name: "progress"
     WorkoutHistoryScreen:
         name: "workout_history"
+    ViewPreviousWorkoutScreen:
+        name: "view_previous_workout"
     SettingsScreen:
         name: "settings"
     RestScreen:
@@ -354,6 +356,20 @@ RootUI:
         MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"
+
+<ViewPreviousWorkoutScreen>:
+    md_bg_color: PINK_BG
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        ScrollView:
+            do_scroll_x: False
+            MDList:
+                id: details_list
+        MDRaisedButton:
+            text: "Back"
+            on_release: app.root.current = "workout_history"
 
 <SettingsScreen@MDScreen>:
     md_bg_color: PINK_BG

@@ -42,6 +42,101 @@ def get_session_history(limit: int | None = None, db_path: Path = DEFAULT_DB_PAT
         rows = cursor.fetchall()
     return [{"preset_name": name, "started_at": ts} for name, ts in rows]
 
+
+def get_session_details(started_at: float, db_path: Path = DEFAULT_DB_PATH) -> dict:
+    """Return full details for the session that started at ``started_at``.
+
+    The returned mapping contains ``preset_name``, ``started_at``,
+    ``ended_at`` along with lists of ``metrics`` and ``exercises``.
+    Each exercise includes its ``name`` and a list of ``sets``.  Every set
+    entry exposes ``number``, ``metrics`` (name/value pairs), ``duration`` in
+    seconds and ``rest`` time since the previous set.
+    """
+
+    with sqlite3.connect(str(db_path)) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, preset_name, started_at, ended_at
+            FROM session_sessions
+            WHERE started_at = ? AND deleted = 0
+            """,
+            (started_at,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return {}
+        session_id, preset_name, started, ended = row
+
+        # session level metrics
+        cur.execute(
+            """
+            SELECT metric_name, value
+            FROM session_session_metrics
+            WHERE session_id = ? AND deleted = 0
+            ORDER BY position
+            """,
+            (session_id,),
+        )
+        metrics = [{"name": n, "value": v} for n, v in cur.fetchall()]
+
+        # gather exercises
+        cur.execute(
+            """
+            SELECT e.id, e.exercise_name
+            FROM session_section_exercises e
+            JOIN session_session_sections s ON e.section_id = s.id
+            WHERE s.session_id = ? AND e.deleted = 0 AND s.deleted = 0
+            ORDER BY s.position, e.position
+            """,
+            (session_id,),
+        )
+        exercises: list[dict] = []
+        for ex_id, ex_name in cur.fetchall():
+            cur.execute(
+                """
+                SELECT id, set_number, started_at, ended_at
+                FROM session_exercise_sets
+                WHERE section_exercise_id = ? AND deleted = 0
+                ORDER BY set_number
+                """,
+                (ex_id,),
+            )
+            sets: list[dict] = []
+            prev_end: float | None = None
+            for set_id, num, s_start, s_end in cur.fetchall():
+                duration = (s_end - s_start) if s_start is not None and s_end is not None else None
+                rest = (s_start - prev_end) if prev_end and s_start else None
+                prev_end = s_end if s_end is not None else prev_end
+                cur.execute(
+                    """
+                    SELECT m.metric_name, sm.value
+                    FROM session_set_metrics sm
+                    JOIN session_exercise_metrics m ON sm.exercise_metric_id = m.id
+                    WHERE sm.exercise_set_id = ? AND sm.deleted = 0 AND m.deleted = 0
+                    ORDER BY m.position
+                    """,
+                    (set_id,),
+                )
+                set_metrics = [{"name": n, "value": v} for n, v in cur.fetchall()]
+                sets.append(
+                    {
+                        "number": num,
+                        "metrics": set_metrics,
+                        "duration": duration,
+                        "rest": rest,
+                    }
+                )
+            exercises.append({"name": ex_name, "sets": sets})
+
+    return {
+        "preset_name": preset_name,
+        "started_at": started,
+        "ended_at": ended,
+        "metrics": metrics,
+        "exercises": exercises,
+    }
+
 def validate_workout_session(session: "WorkoutSession") -> list[str]:
     """Return a list of validation errors for ``session``.
 
