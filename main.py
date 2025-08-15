@@ -109,8 +109,8 @@ class HalfScreenWrapper(Widget):
     """
 
     def __init__(self, inner_manager: ScreenManager, **kwargs):
-        super().__init__(**kwargs)
         self._manager = inner_manager
+        super().__init__(**kwargs)
         self._scatter = Scatter(
             scale=0.5,
             do_translation=False,
@@ -143,7 +143,10 @@ class HalfScreenWrapper(Widget):
         return self._manager.get_screen(name)
 
     def __getattr__(self, attr):  # pragma: no cover - delegation
-        return getattr(self._manager, attr)
+        manager = self.__dict__.get("_manager")
+        if manager is not None:
+            return getattr(manager, attr)
+        raise AttributeError(attr)
 
 if not TESTING:
     try:
