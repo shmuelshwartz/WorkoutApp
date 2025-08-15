@@ -39,6 +39,9 @@ from kivymd.uix.button import MDRaisedButton
 from kivy.uix.screenmanager import NoTransition, ScreenManager
 from kivy.uix.widget import Widget
 from kivy.uix.scatter import Scatter
+from kivy.uix.gridlayout import GridLayout
+from kivy.graphics import Color, Rectangle
+from kivy.utils import platform
 from ui.screens.preset_detail_screen import PresetDetailScreen
 from ui.screens.preset_overview_screen import PresetOverviewScreen
 from pathlib import Path
@@ -97,56 +100,130 @@ if os.name == "nt":
 class RootUI(ScreenManager):
     """Screen manager serving as the app's primary widget tree."""
 
-class HalfScreenWrapper(Widget):
-    """Scale a :class:`~kivy.uix.screenmanager.ScreenManager` to half size.
+class HalfScreenWrapper(GridLayout):
+    """Container that can visually shrink content while preserving layout.
 
-    The wrapper keeps the window at full resolution but applies a uniform
-    0.5 scale transform to the inner screen manager so the UI appears at half
-    size centered on screen. Touch coordinates are mapped through the scaling
-    so interactive widgets remain accurate. The wrapper proxies common
-    ``ScreenManager`` attributes (``current``, ``get_screen``) so existing
-    bindings like ``app.root.current`` continue to work.
+    The wrapper keeps its child ``ScreenManager`` at the real window size so
+    all layouts and size hints behave as though the app were full screen. When
+    ``enabled`` is ``True`` the content is scaled by ``scale_factor`` and
+    centered with optional letterboxing; touch input remains aligned because
+    the transform is applied via a non-interactive :class:`~kivy.uix.scatter.Scatter`.
     """
 
+    enabled = BooleanProperty(False)
+    scale_factor = NumericProperty(0.5)
+    background_color = ListProperty([0, 0, 0, 1])
+
     def __init__(self, inner_manager: ScreenManager, **kwargs):
+        super().__init__(cols=1, rows=1, **kwargs)
         self._manager = inner_manager
-        super().__init__(**kwargs)
+        self._adding_internal = True
         self._scatter = Scatter(
-            scale=0.5,
             do_translation=False,
             do_rotation=False,
             do_scale=False,
-            size=Window.size,
         )
-        inner_manager.size_hint = (None, None)
-        inner_manager.size = Window.size
+        super().add_widget(self._scatter)
+        self._adding_internal = False
         self._scatter.add_widget(inner_manager)
-        self.add_widget(self._scatter)
-        self.bind(size=self._update_scatter, pos=self._update_scatter)
-        Window.bind(size=self._update_scatter)
+        inner_manager.size_hint = (None, None)
+        Window.bind(size=self.apply_layout)
+        self.bind(enabled=self.apply_layout)
 
-    def _update_scatter(self, *args):
+        with self.canvas.before:
+            self._bg_color = Color(0, 0, 0, 0)
+            self._bg_rect = Rectangle(size=self.size, pos=self.pos)
+
+        self.apply_layout()
+
+    def apply_layout(self, *args):
+        """Recompute scatter transform and background."""
+        self.size = Window.size
+        self._manager.size = Window.size
+        self._scatter.scale = self.scale_factor if self.enabled else 1.0
         self._scatter.center = self.center
         self._scatter.size = self.size
-        self._manager.size = self.size
+        self._bg_rect.size = self.size
+        self._bg_rect.pos = self.pos
+        self._bg_color.rgba = self.background_color if self.enabled else (0, 0, 0, 0)
 
-    # Proxy commonly used ScreenManager attributes
+    # --- ScreenManager pass-throughs ---
     @property
-    def current(self):  # pragma: no cover - simple delegation
+    def current(self):
         return self._manager.current
 
     @current.setter
-    def current(self, value):  # pragma: no cover - simple delegation
+    def current(self, value):
         self._manager.current = value
 
-    def get_screen(self, name):  # pragma: no cover - simple delegation
+    @property
+    def transition(self):
+        return self._manager.transition
+
+    @transition.setter
+    def transition(self, value):
+        self._manager.transition = value
+
+    def add_widget(self, widget, *args, **kwargs):  # delegate new screens
+        if getattr(self, "_adding_internal", False):
+            return super().add_widget(widget, *args, **kwargs)
+        return self._manager.add_widget(widget, *args, **kwargs)
+
+    def remove_widget(self, widget, *args, **kwargs):
+        if widget is self._scatter:
+            return super().remove_widget(widget, *args, **kwargs)
+        return self._manager.remove_widget(widget, *args, **kwargs)
+
+    def get_screen(self, name):
         return self._manager.get_screen(name)
 
-    def __getattr__(self, attr):  # pragma: no cover - delegation
-        manager = self.__dict__.get("_manager")
-        if manager is not None:
-            return getattr(manager, attr)
-        raise AttributeError(attr)
+    def has_screen(self, name):
+        return self._manager.has_screen(name)
+
+    def switch_to(self, screen, **options):
+        return self._manager.switch_to(screen, **options)
+
+
+def apply_half_screen(enabled: bool):
+    """Toggle half-screen mode.
+
+    Call ``apply_half_screen(True/False)`` when the user flips the feature.
+    Wrap your root ``ScreenManager`` in :class:`HalfScreenWrapper` on mobile to
+    participate in the scaling. On mobile the window stays full screen; on
+    desktop the window is resized.
+    """
+
+    from kivy.utils import platform
+    app = MDApp.get_running_app()
+
+    if platform in ("android", "ios"):
+        root = app.root
+        if isinstance(root, HalfScreenWrapper):
+            root.enabled = enabled
+            root.apply_layout()
+    else:
+        state = getattr(apply_half_screen, "_restore", None)
+        if enabled:
+            if state is None:
+                apply_half_screen._restore = {
+                    "size": Window.size,
+                    "left": Window.left,
+                    "top": Window.top,
+                    "fullscreen": Window.fullscreen,
+                }
+            if Window.fullscreen:
+                Window.fullscreen = False
+            sw, sh = Window.system_size
+            new_w, new_h = sw / 2, sh / 2
+            Window.size = (new_w, new_h)
+            Window.left = (sw - new_w) / 2
+            Window.top = (sh - new_h) / 2
+        elif state is not None:
+            Window.size = state["size"]
+            Window.left = state["left"]
+            Window.top = state["top"]
+            Window.fullscreen = state["fullscreen"]
+            apply_half_screen._restore = None
 
 if not TESTING:
     try:
@@ -475,14 +552,9 @@ class WorkoutApp(MDApp):
     def build(self):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
         Window.bind(on_keyboard=self._on_keyboard)
-        if half_screen:
-            wrapper = HalfScreenWrapper(root)
-            try:
-                # Ensure dialogs and other overlays participate in scaling.
-                self.root_window = root
-            except Exception:
-                pass
-            return wrapper
+        if platform in ("android", "ios"):
+            root = HalfScreenWrapper(root)
+        Clock.schedule_once(lambda dt: apply_half_screen(half_screen))
         return root
 
     def _on_keyboard(self, window, key, scancode, codepoint, modifiers):
