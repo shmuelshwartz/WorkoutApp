@@ -213,8 +213,24 @@ class RestScreen(MDScreen):
         app = MDApp.get_running_app()
         session = app.workout_session if app else None
         if session and session.skip_exercise():
-            if self.manager:
-                self.manager.current = "workout_active"
+            self.next_exercise_name = session.next_exercise_name()
+            self.next_set_info = (
+                f"set {session.current_set + 1} of {session.exercises[session.current_exercise]['sets']}"
+                if session.current_exercise < len(session.exercises)
+                else ""
+            )
+            self.rest_time_info = f"{session.rest_duration} seconds rest time"
+            details = get_exercise_details(
+                self.next_exercise_name, db_path=session.db_path
+            )
+            self.next_exercise_desc = details.get("description", "") if details else ""
+            self.target_time = session.rest_target_time
+            self.undo_disabled = (
+                session.current_exercise == 0
+                and session.current_set == 0
+                and not session.exercises[0]["results"]
+            )
+            self.update_timer(0)
         else:
             toast("No next exercise")
                 

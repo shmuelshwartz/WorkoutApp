@@ -197,13 +197,14 @@ class WorkoutSession:
         self._skip_pending = False
 
     def skip_exercise(self) -> bool:
-        """Skip the current exercise and jump to the next.
-
-        Returns ``True`` if a subsequent exercise exists, otherwise ``False``.
-        """
+        """Skip the remaining sets of the current exercise."""
 
         if self.current_exercise >= len(self.preset_snapshot) - 1:
             return False
+
+        ex_idx = self.current_exercise
+        original_sets = self.preset_snapshot[ex_idx]["sets"]
+        skipped_count = max(0, original_sets - self.current_set)
 
         state = (
             self.current_exercise,
@@ -212,8 +213,16 @@ class WorkoutSession:
             self.last_set_time,
             self.rest_target_time,
             self.rest_duration,
+            original_sets,
+            self.session_data[ex_idx].get("skipped_sets", 0),
         )
         self._skip_history.append(state)
+
+        if skipped_count:
+            self.session_data[ex_idx]["skipped_sets"] = skipped_count
+            for set_idx in range(self.current_set, original_sets):
+                self.metric_store.pop((ex_idx, set_idx), None)
+            self.preset_snapshot[ex_idx]["sets"] = self.current_set
 
         self.current_exercise += 1
         self.current_set = 0
@@ -525,7 +534,21 @@ class WorkoutSession:
                 self.last_set_time,
                 self.rest_target_time,
                 self.rest_duration,
+                original_sets,
+                prev_skipped,
             ) = self._skip_history.pop()
+            self.preset_snapshot[self.current_exercise]["sets"] = original_sets
+            data = self.session_data[self.current_exercise]
+            if prev_skipped:
+                data["skipped_sets"] = prev_skipped
+            else:
+                data.pop("skipped_sets", None)
+            template = {
+                m["name"]: None
+                for m in self.preset_snapshot[self.current_exercise].get("metric_defs", [])
+            }
+            for set_idx in range(self.current_set, original_sets):
+                self.metric_store[(self.current_exercise, set_idx)] = template.copy()
             self.awaiting_post_set_metrics = False
             self.resume_from_last_start = True
             self._skip_pending = False
