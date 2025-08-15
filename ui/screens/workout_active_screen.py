@@ -4,7 +4,6 @@ from kivy.clock import Clock
 from kivymd.app import MDApp
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton
-from kivymd.toast import toast
 import time
 
 
@@ -73,30 +72,3 @@ class WorkoutActiveScreen(MDScreen):
         self.stop_timer()
         if self.manager:
             self.manager.current = "rest"
-
-    def show_skip_confirmation(self):
-        app = MDApp.get_running_app()
-        session = app.workout_session if app else None
-        if session and session.current_exercise >= len(session.preset_snapshot) - 1:
-            toast("No next exercise")
-            return
-        if not hasattr(self, "_skip_dialog") or not self._skip_dialog:
-            self._skip_dialog = MDDialog(
-                text="Skip this exercise and move to the next?",
-                buttons=[
-                    MDFlatButton(text="Cancel", on_release=lambda *_: self._skip_dialog.dismiss()),
-                    MDFlatButton(text="Confirm", on_release=self._perform_skip),
-                ],
-            )
-        self._skip_dialog.open()
-
-    def _perform_skip(self, *args):
-        if hasattr(self, "_skip_dialog") and self._skip_dialog:
-            self._skip_dialog.dismiss()
-        app = MDApp.get_running_app()
-        session = app.workout_session if app else None
-        if session and session.skip_exercise():
-            self.exercise_name = session.next_exercise_display()
-            self.start_timer()
-        else:
-            toast("No next exercise")

@@ -213,18 +213,18 @@ def test_apply_edited_preset_preserves_metrics(sample_db):
 
 def test_skip_exercise_and_undo(sample_db):
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
-    # complete first set of first exercise
+    original_sets = session.preset_snapshot[0]["sets"]
     session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})
     session.mark_set_completed()
     assert session.current_exercise == 0 and session.current_set == 1
-
-    # skip remaining sets of current exercise
     assert session.skip_exercise()
     assert session.current_exercise == 1 and session.current_set == 0
-
-    # undo the skip
+    assert session.preset_snapshot[0]["sets"] == 1
+    assert session.session_data[0]["skipped_sets"] == original_sets - 1
     assert session.undo_last_set()
     assert session.current_exercise == 0 and session.current_set == 1
+    assert session.preset_snapshot[0]["sets"] == original_sets
+    assert "skipped_sets" not in session.session_data[0]
 
 
 def test_skip_last_exercise_noop(sample_db):
