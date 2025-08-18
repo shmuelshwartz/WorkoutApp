@@ -239,6 +239,10 @@ class RestScreen(MDScreen):
 
         def do_finish(*_args):
             app = MDApp.get_running_app()
+            if app:
+                session = getattr(app, "workout_session", None)
+                if session and session.end_time is None:
+                    session.end_time = time.time()
             if app and app.root:
                 app.root.current = "workout_summary"
             if dialog:

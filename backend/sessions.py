@@ -140,23 +140,15 @@ def get_session_details(started_at: float, db_path: Path = DEFAULT_DB_PATH) -> d
 def validate_workout_session(session: "WorkoutSession") -> list[str]:
     """Return a list of validation errors for ``session``.
 
-    A session is considered valid when it has an ``end_time`` and each
-    exercise contains results for the expected number of sets.  The function
-    returns a list of human-readable error messages.  An empty list means the
-    session passed validation.
+    Previously every exercise had to contain results for all planned sets
+    before a session could be saved, which caused partially completed
+    workouts to raise errors.  Validation now only ensures an ``end_time``
+    exists so that sessions can be saved even when some sets were skipped.
     """
 
-    errors: list[str] = []
     if session.end_time is None:
-        errors.append("Session has not been completed")
-    for ex in session.exercises:
-        expected = ex.get("sets", 0)
-        actual = len(ex.get("results", []))
-        if actual != expected:
-            errors.append(
-                f"Exercise '{ex.get('name')}' has {actual} recorded sets but expected {expected}"
-            )
-    return errors
+        return ["Session has not been completed"]
+    return []
 
 
 def save_completed_session(session: "WorkoutSession", db_path: Path | None = None) -> None:
@@ -320,4 +312,5 @@ def save_completed_session(session: "WorkoutSession", db_path: Path | None = Non
                         """,
                         (set_id, metric_id, str(value)),
                     )
+    session.saved = True
 

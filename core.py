@@ -734,19 +734,15 @@ def set_exercise_metric_override(
 
 
 def validate_workout_session(session: "WorkoutSession") -> list[str]:
-    """Return a list of validation errors for ``session``."""
+    """Return a list of validation errors for ``session``.
 
-    errors: list[str] = []
+    Only the presence of an ``end_time`` is required, allowing partially
+    completed workouts to be saved without error.
+    """
+
     if session.end_time is None:
-        errors.append("Session has not been completed")
-    for ex in session.exercises:
-        expected = ex.get("sets", 0)
-        actual = len(ex.get("results", []))
-        if actual != expected:
-            errors.append(
-                f"Exercise '{ex.get('name')}' has {actual} recorded sets but expected {expected}"
-            )
-    return errors
+        return ["Session has not been completed"]
+    return []
 
 
 def save_completed_session(
@@ -909,7 +905,7 @@ def save_completed_session(
                         """,
                         (set_id, metric_id, str(value)),
                     )
-
+    session.saved = True
 
 def delete_metric_type(
     name: str,
@@ -1040,5 +1036,7 @@ def find_exercises_using_metric_type(
             (mt_id,),
         )
         return [r[0] for r in cur.fetchall()]
+
+
 
 
