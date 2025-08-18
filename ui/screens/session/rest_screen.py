@@ -172,14 +172,24 @@ class RestScreen(MDScreen):
     def show_undo_confirmation(self):
         if self.undo_disabled:
             return
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
+        was_skip = session.last_action_was_skip() if session else False
+        text = (
+            "Undo skipped exercise?"
+            if was_skip
+            else "Are you sure you want to undo the last set and resume it?"
+        )
         if not hasattr(self, "_undo_dialog") or not self._undo_dialog:
             self._undo_dialog = MDDialog(
-                text="Are you sure you want to undo the last set and resume it?",
+                text=text,
                 buttons=[
                     MDFlatButton(text="Cancel", on_release=lambda *_: self._undo_dialog.dismiss()),
                     MDFlatButton(text="Confirm", on_release=self._perform_undo),
                 ],
             )
+        else:
+            self._undo_dialog.text = text
         self._undo_dialog.open()
 
     def _perform_undo(self, *args):
@@ -187,9 +197,30 @@ class RestScreen(MDScreen):
             self._undo_dialog.dismiss()
         app = MDApp.get_running_app()
         session = app.workout_session if app else None
-        if session and session.undo_last_set():
-            if self.manager:
-                self.manager.current = "workout_active"
+        if session:
+            was_skip = session.last_action_was_skip()
+            if session.undo_last_set():
+                if was_skip:
+                    self.next_exercise_name = session.next_exercise_name()
+                    self.next_set_info = (
+                        f"set {session.current_set + 1} of {session.exercises[session.current_exercise]['sets']}"
+                        if session.current_exercise < len(session.exercises)
+                        else ""
+                    )
+                    self.rest_time_info = f"{session.rest_duration} seconds rest time"
+                    details = get_exercise_details(
+                        self.next_exercise_name, db_path=session.db_path
+                    )
+                    self.next_exercise_desc = details.get("description", "") if details else ""
+                    self.target_time = session.rest_target_time
+                    self.undo_disabled = (
+                        session.current_exercise == 0
+                        and session.current_set == 0
+                        and not session.exercises[0]["results"]
+                    )
+                    self.update_timer(0)
+                elif self.manager:
+                    self.manager.current = "workout_active"
 
     def show_skip_confirmation(self):
         app = MDApp.get_running_app()

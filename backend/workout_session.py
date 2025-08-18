@@ -550,7 +550,9 @@ class WorkoutSession:
             for set_idx in range(self.current_set, original_sets):
                 self.metric_store[(self.current_exercise, set_idx)] = template.copy()
             self.awaiting_post_set_metrics = False
-            self.resume_from_last_start = True
+            # Undoing a skipped exercise should return to the rest state
+            # without resuming an active set.
+            self.resume_from_last_start = False
             self._skip_pending = False
             self.end_time = None
             return True

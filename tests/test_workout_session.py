@@ -225,6 +225,7 @@ def test_skip_exercise_and_undo(sample_db):
     assert session.current_exercise == 0 and session.current_set == 1
     assert session.preset_snapshot[0]["sets"] == original_sets
     assert "skipped_sets" not in session.session_data[0]
+    assert session.resume_from_last_start is False
 
 
 def test_skip_last_exercise_noop(sample_db):
