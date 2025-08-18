@@ -266,13 +266,17 @@ class EditPresetScreen(MDScreen):
         if section_index >= len(session.section_starts):
             return False
         start = session.section_starts[section_index]
+        has_next = section_index + 1 < len(session.section_starts)
         end = (
             session.section_starts[section_index + 1]
-            if section_index + 1 < len(session.section_starts)
+            if has_next
             else len(session.exercises)
         )
-        if session.current_exercise >= end:
+        if session.current_exercise > end:
             return True
+        if session.current_exercise == end:
+            if not has_next or session.current_set > 0:
+                return True
         if start <= session.current_exercise < end and session.current_set > 0:
             return True
         return False
