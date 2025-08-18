@@ -1540,6 +1540,22 @@ def test_session_edit_locking(monkeypatch, sample_db):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_previous_section_unlocked_until_next_started(monkeypatch, sample_db):
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    app = _DummyApp()
+    app.workout_session = session
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+    screen = EditPresetScreen(mode="session")
+    next_start = session.section_starts[1]
+    session.current_exercise = next_start
+    session.current_set = 0
+    assert not screen._is_section_locked(0)
+    assert screen._is_exercise_locked(0, 0)
+    session.current_set = 1
+    assert screen._is_section_locked(0)
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_reordering_current_exercise_updates_index(monkeypatch, sample_db):
     editor = PresetEditor("Push Day", db_path=sample_db)
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
