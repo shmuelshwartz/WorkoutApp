@@ -454,6 +454,45 @@ def test_open_metric_input_prefers_pre_set(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_undo_skip_stays_on_rest(monkeypatch, sample_db):
+    import importlib
+
+    try:
+        rest_screen_module = importlib.import_module("ui.screens.session.rest_screen")
+    except ModuleNotFoundError:
+        pytest.skip("RestScreen module not available")
+
+    class DummyDialog:
+        def __init__(self, text="", buttons=None):
+            self.text = text
+        def open(self):
+            pass
+        def dismiss(self):
+            pass
+
+    monkeypatch.setattr(rest_screen_module, "MDDialog", DummyDialog)
+    monkeypatch.setattr(rest_screen_module, "MDFlatButton", lambda *a, **k: None)
+
+    screen = rest_screen_module.RestScreen()
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})
+    session.mark_set_completed()
+    session.skip_exercise()
+
+    dummy_app = _DummyApp()
+    dummy_app.workout_session = session
+    dummy_manager = type("M", (), {"current": "rest"})()
+    screen.manager = dummy_manager
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+
+    screen.show_undo_confirmation()
+    assert screen._undo_dialog.text == "Undo skipped exercise?"
+    screen._perform_undo()
+    assert dummy_manager.current == "rest"
+    assert session.current_exercise == 0
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_active_screen_resumes_from_session(monkeypatch, sample_db):
     screen = WorkoutActiveScreen()
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
