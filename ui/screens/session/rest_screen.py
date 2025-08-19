@@ -109,6 +109,7 @@ class RestScreen(MDScreen):
         self.is_ready = False
         self.timer_color = (1, 0, 0, 1)
         self._last_second = None
+        self._start_played = False
         self.update_timer(0)
         self._ensure_clock_event()
         self.update_record_button_color()
@@ -139,8 +140,9 @@ class RestScreen(MDScreen):
         self.timer_color = (0, 1, 0, 1) if self.is_ready else (1, 0, 0, 1)
         self._last_second = None
         if self.is_ready and self.target_time <= time.time() and self.manager:
-            if app and hasattr(app, "sound"):
+            if not getattr(self, "_start_played", False) and app and hasattr(app, "sound"):
                 app.sound.play("start")
+                self._start_played = True
             self.manager.current = "workout_active"
 
     def unready(self):
@@ -310,9 +312,12 @@ class RestScreen(MDScreen):
         if remaining <= 0:
             self.timer_label = "00:00"
             if self.is_ready and self.manager:
-                if app and hasattr(app, "sound"):
+                if not getattr(self, "_start_played", False) and app and hasattr(app, "sound"):
                     app.sound.play("start")
+                    self._start_played = True
                 self.manager.current = "workout_active"
+            else:
+                self._start_played = False
             self._last_second = 0
         else:
             total_seconds = math.ceil(remaining)
