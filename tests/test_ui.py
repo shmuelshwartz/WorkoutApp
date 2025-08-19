@@ -63,6 +63,31 @@ def test_switch_tab_updates_current_tab():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_welcome_screen_triggers_recovery(monkeypatch):
+    from ui.screens.general.welcome_screen import WelcomeScreen
+    from backend.workout_session import WorkoutSession
+
+    dummy_session = object()
+    monkeypatch.setattr(
+        WorkoutSession,
+        "load_from_recovery",
+        classmethod(lambda cls: dummy_session),
+    )
+
+    called = {}
+
+    def fake_dialog(self, session):
+        called["session"] = session
+
+    monkeypatch.setattr(WelcomeScreen, "_show_recovery_dialog", fake_dialog)
+
+    screen = WelcomeScreen()
+    screen.on_enter()
+
+    assert called.get("session") is dummy_session
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_optional_metrics_populated():
     from kivy.lang import Builder
     from pathlib import Path

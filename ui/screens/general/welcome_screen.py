@@ -30,14 +30,14 @@ from backend.workout_session import WorkoutSession
 class WelcomeScreen(MDScreen):
     """Initial screen that checks for recoverable workout sessions."""
 
-    def on_pre_enter(self, *args):
+    def on_enter(self, *args):
         if getattr(self, "_checked_recovery", False):
-            return super().on_pre_enter(*args)
+            return super().on_enter(*args)
         self._checked_recovery = True
         session = WorkoutSession.load_from_recovery()
         if session:
             self._show_recovery_dialog(session)
-        return super().on_pre_enter(*args)
+        return super().on_enter(*args)
 
     def _show_recovery_dialog(self, session: WorkoutSession) -> None:
         app = MDApp.get_running_app()
