@@ -313,4 +313,5 @@ def save_completed_session(session: "WorkoutSession", db_path: Path | None = Non
                         (set_id, metric_id, str(value)),
                     )
     session.saved = True
+    session.clear_recovery_files()
 

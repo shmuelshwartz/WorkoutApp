@@ -1,5 +1,6 @@
 import sqlite3
 import time
+import json
 from pathlib import Path
 
 from backend.metrics import (
@@ -11,6 +12,10 @@ from core import (
     DEFAULT_REST_DURATION,
     DEFAULT_DB_PATH,
 )
+
+
+RECOVERY_FILE_1 = Path(__file__).resolve().parents[1] / "data" / "session_recovery_1.json"
+RECOVERY_FILE_2 = Path(__file__).resolve().parents[1] / "data" / "session_recovery_2.json"
 
 
 class WorkoutSession:
@@ -148,6 +153,8 @@ class WorkoutSession:
         # flag to indicate the most recent action was a skip
         self._skip_pending: bool = False
 
+        self.save_recovery_state()
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
@@ -182,6 +189,7 @@ class WorkoutSession:
             self.rest_duration = upcoming.get("rest", self.rest_duration)
         self.rest_target_time = self.last_set_time + self.rest_duration
         self.awaiting_post_set_metrics = True
+        self.save_recovery_state()
 
     def undo_set_start(self) -> None:
         """Revert state to before the current set began."""
@@ -195,6 +203,7 @@ class WorkoutSession:
         # Restore rest timer based on the last completed set
         self.rest_target_time = self.last_set_time + self.rest_duration
         self._skip_pending = False
+        self.save_recovery_state()
 
     def skip_exercise(self) -> bool:
         """Skip the remaining sets of the current exercise."""
@@ -236,6 +245,7 @@ class WorkoutSession:
         self.resume_from_last_start = False
         self.end_time = None
         self._skip_pending = True
+        self.save_recovery_state()
 
         return True
 
@@ -415,6 +425,7 @@ class WorkoutSession:
                 raise KeyError(f"Unknown metric '{name}' for exercise {ex}")
             store[name] = value
             pending[name] = value
+        self.save_recovery_state()
 
     def get_set_notes(self, ex_idx: int, set_idx: int) -> str:
         """Return stored notes for the specified set."""
@@ -434,16 +445,19 @@ class WorkoutSession:
             results = self.session_data[ex_idx]["results"]
             if 0 <= set_idx < len(results) and results[set_idx]:
                 results[set_idx]["notes"] = text
+        self.save_recovery_state()
 
     def set_session_metrics(self, metrics: dict) -> None:
         """Store metrics that apply to the entire session."""
 
         self.session_metrics = metrics.copy()
+        self.save_recovery_state()
 
     def record_metrics(self, exercise_index: int, set_index: int, metrics):
         if exercise_index >= len(self.preset_snapshot):
             if self.end_time is None:
                 self.end_time = time.time()
+            self.save_recovery_state()
             return True
 
         key = (exercise_index, set_index)
@@ -487,7 +501,6 @@ class WorkoutSession:
             "notes": notes,
         }
         self.set_notes[key] = notes
-
         if exercise_index == self.current_exercise and set_index == self.current_set:
             self.current_set_start_time = end_time
             self.current_set += 1
@@ -499,8 +512,10 @@ class WorkoutSession:
 
             if self.current_exercise >= len(self.preset_snapshot):
                 self.end_time = end_time
+                self.save_recovery_state()
                 return True
 
+        self.save_recovery_state()
         return False
 
     def edit_set_metrics(self, exercise_index: int, set_index: int, metrics: dict) -> None:
@@ -520,6 +535,7 @@ class WorkoutSession:
                 )
             store[name] = value
         self.session_data[exercise_index]["results"][set_index]["metrics"] = store.copy()
+        self.save_recovery_state()
 
     def undo_last_set(self) -> bool:
         """Reopen the most recently completed set.
@@ -555,6 +571,7 @@ class WorkoutSession:
             self.resume_from_last_start = False
             self._skip_pending = False
             self.end_time = None
+            self.save_recovery_state()
             return True
 
         # Determine whether any set has been completed yet
@@ -602,6 +619,7 @@ class WorkoutSession:
         # Flag for WorkoutActiveScreen to resume from stored start time
         self.resume_from_last_start = True
 
+        self.save_recovery_state()
         return True
 
     def has_started_exercise(self, exercise_index: int) -> bool:
@@ -720,6 +738,7 @@ class WorkoutSession:
             max_sets = self.preset_snapshot[self.current_exercise].get("sets", 0)
             if self.current_set >= max_sets:
                 self.current_set = 0
+        self.save_recovery_state()
 
     def adjust_rest_timer(self, seconds: int) -> None:
         """Adjust the target time for the current rest period."""
@@ -729,6 +748,7 @@ class WorkoutSession:
         self.rest_target_time += seconds
         if self.rest_target_time <= now:
             self.rest_target_time = now
+        self.save_recovery_state()
 
     def rest_remaining(self) -> float:
         """Return seconds remaining in the current rest period."""
@@ -754,4 +774,133 @@ class WorkoutSession:
                 )
                 lines.append(f"  Set {idx}: {metrics_text}")
         return "\n".join(lines)
+
+    # --------------------------------------------------------------
+    # Persistence helpers
+    # --------------------------------------------------------------
+
+    def to_dict(self) -> dict:
+        """Return a JSON-serialisable representation of the session."""
+
+        return {
+            "preset_name": self.preset_name,
+            "db_path": str(self.db_path),
+            "preset_id": self.preset_id,
+            "preset_snapshot": self.preset_snapshot,
+            "session_data": self.session_data,
+            "session_metric_defs": self.session_metric_defs,
+            "metric_store": {
+                f"{k[0]},{k[1]}": v for k, v in self.metric_store.items()
+            },
+            "set_notes": {f"{k[0]},{k[1]}": v for k, v in self.set_notes.items()},
+            "current_exercise": self.current_exercise,
+            "current_set": self.current_set,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "current_set_start_time": self.current_set_start_time,
+            "rest_duration": self.rest_duration,
+            "last_set_time": self.last_set_time,
+            "rest_target_time": self.rest_target_time,
+            "session_metrics": self.session_metrics,
+            "pending_pre_set_metrics": {
+                f"{k[0]},{k[1]}": v
+                for k, v in self.pending_pre_set_metrics.items()
+            },
+            "awaiting_post_set_metrics": self.awaiting_post_set_metrics,
+            "saved": self.saved,
+            "resume_from_last_start": self.resume_from_last_start,
+            "_skip_history": self._skip_history,
+            "_skip_pending": self._skip_pending,
+            "section_starts": self.section_starts,
+            "section_names": self.section_names,
+            "exercise_sections": self.exercise_sections,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "WorkoutSession":
+        """Reconstruct a :class:`WorkoutSession` from ``data``."""
+
+        obj = cls.__new__(cls)
+        obj.preset_name = data["preset_name"]
+        obj.db_path = Path(data["db_path"])
+        obj.preset_id = data["preset_id"]
+        obj.preset_snapshot = data["preset_snapshot"]
+        obj.session_data = data["session_data"]
+        obj.session_metric_defs = data.get("session_metric_defs", [])
+        obj.metric_store = {
+            tuple(map(int, k.split(","))): v
+            for k, v in data.get("metric_store", {}).items()
+        }
+        obj.set_notes = {
+            tuple(map(int, k.split(","))): v
+            for k, v in data.get("set_notes", {}).items()
+        }
+        obj.current_exercise = data["current_exercise"]
+        obj.current_set = data["current_set"]
+        obj.start_time = data["start_time"]
+        obj.end_time = data["end_time"]
+        obj.current_set_start_time = data["current_set_start_time"]
+        obj.rest_duration = data["rest_duration"]
+        obj.last_set_time = data["last_set_time"]
+        obj.rest_target_time = data["rest_target_time"]
+        obj.session_metrics = data.get("session_metrics", {})
+        obj.pending_pre_set_metrics = {
+            tuple(map(int, k.split(","))): v
+            for k, v in data.get("pending_pre_set_metrics", {}).items()
+        }
+        obj.awaiting_post_set_metrics = data.get("awaiting_post_set_metrics", False)
+        obj.saved = data.get("saved", False)
+        obj.resume_from_last_start = data.get("resume_from_last_start", False)
+        obj._skip_history = [tuple(item) for item in data.get("_skip_history", [])]
+        obj._skip_pending = data.get("_skip_pending", False)
+        obj.section_starts = data.get("section_starts", [])
+        obj.section_names = data.get("section_names", [])
+        obj.exercise_sections = data.get("exercise_sections", [])
+        return obj
+
+    def save_recovery_state(self) -> None:
+        """Persist the current session state to recovery files."""
+
+        payload = json.dumps(self.to_dict())
+        try:
+            RECOVERY_FILE_1.write_text(payload)
+            RECOVERY_FILE_2.write_text(payload)
+        except Exception:
+            pass
+
+    @staticmethod
+    def clear_recovery_files() -> None:
+        """Remove any existing recovery files."""
+
+        for path in (RECOVERY_FILE_1, RECOVERY_FILE_2):
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
+
+    @classmethod
+    def load_from_recovery(cls) -> "WorkoutSession | None":
+        """Return a recovered session if available."""
+
+        for path in (RECOVERY_FILE_1, RECOVERY_FILE_2):
+            try:
+                if not path.exists():
+                    continue
+                text = path.read_text().strip()
+                if not text:
+                    continue
+                data = json.loads(text)
+                return cls.from_dict(data)
+            except Exception:
+                continue
+        return None
+
+    def is_set_active(self) -> bool:
+        """Return ``True`` if a set is currently in progress."""
+
+        return (
+            not self.awaiting_post_set_metrics
+            and self.current_set_start_time > self.last_set_time
+            and self.current_exercise < len(self.preset_snapshot)
+        )
 
