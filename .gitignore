@@ -20,6 +20,3 @@ Thumbs.db
 
 # Ignore SQLiteStudio project files (user-specific workspace data)
 *.sqbpro
-
-# Runtime session recovery files
-backups/session_recovery_*.json

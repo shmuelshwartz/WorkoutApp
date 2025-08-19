@@ -1,6 +1,5 @@
 import sqlite3
 import time
-import json
 from pathlib import Path
 
 from backend.metrics import (
@@ -29,13 +28,11 @@ class WorkoutSession:
         preset_name: str,
         db_path: Path = DEFAULT_DB_PATH,
         rest_duration: int = DEFAULT_REST_DURATION,
-        recovery_base: Path | None = None,
     ):
         """Load ``preset_name`` from ``db_path`` and prepare the session."""
 
         self.preset_name = preset_name
         self.db_path = Path(db_path)
-        self.recovery_base = Path(recovery_base or Path("backups/session_recovery"))
 
         with sqlite3.connect(str(self.db_path)) as conn:
             cursor = conn.cursor()
@@ -151,142 +148,6 @@ class WorkoutSession:
         # flag to indicate the most recent action was a skip
         self._skip_pending: bool = False
 
-        # write initial recovery state
-        self.write_recovery_state()
-
-    # ------------------------------------------------------------------
-    # Persistence helpers
-    # ------------------------------------------------------------------
-
-    def export_state(self) -> dict:
-        """Return a JSON-serialisable mapping of the full session state."""
-
-        return {
-            "preset_name": self.preset_name,
-            "db_path": str(self.db_path),
-            "recovery_base": str(self.recovery_base),
-            "preset_id": self.preset_id,
-            "preset_snapshot": self.preset_snapshot,
-            "session_data": self.session_data,
-            "session_metric_defs": self.session_metric_defs,
-            "metric_store": [
-                [ex, st, metrics]
-                for (ex, st), metrics in self.metric_store.items()
-            ],
-            "set_notes": [
-                [ex, st, note]
-                for (ex, st), note in self.set_notes.items()
-            ],
-            "current_exercise": self.current_exercise,
-            "current_set": self.current_set,
-            "start_time": self.start_time,
-            "end_time": self.end_time,
-            "current_set_start_time": self.current_set_start_time,
-            "rest_duration": self.rest_duration,
-            "last_set_time": self.last_set_time,
-            "rest_target_time": self.rest_target_time,
-            "session_metrics": self.session_metrics,
-            "pending_pre_set_metrics": [
-                [ex, st, metrics]
-                for (ex, st), metrics in self.pending_pre_set_metrics.items()
-            ],
-            "awaiting_post_set_metrics": self.awaiting_post_set_metrics,
-            "saved": self.saved,
-            "resume_from_last_start": self.resume_from_last_start,
-            "_skip_history": [list(item) for item in self._skip_history],
-            "_skip_pending": self._skip_pending,
-            "section_starts": self.section_starts,
-            "section_names": self.section_names,
-            "exercise_sections": self.exercise_sections,
-        }
-
-    @classmethod
-    def from_state(cls, data: dict) -> "WorkoutSession":
-        """Recreate a session from ``data`` produced by :meth:`export_state`."""
-
-        obj = cls.__new__(cls)
-        obj.preset_name = data.get("preset_name", "")
-        obj.db_path = Path(data.get("db_path", DEFAULT_DB_PATH))
-        obj.recovery_base = Path(data.get("recovery_base", "backups/session_recovery"))
-        obj.preset_id = data.get("preset_id")
-        obj.preset_snapshot = data.get("preset_snapshot", [])
-        obj.session_data = data.get("session_data", [])
-        obj.session_metric_defs = data.get("session_metric_defs", [])
-        obj.metric_store = {
-            (ex, st): metrics for ex, st, metrics in data.get("metric_store", [])
-        }
-        obj.set_notes = {
-            (ex, st): note for ex, st, note in data.get("set_notes", [])
-        }
-        obj.current_exercise = data.get("current_exercise", 0)
-        obj.current_set = data.get("current_set", 0)
-        obj.start_time = data.get("start_time")
-        obj.end_time = data.get("end_time")
-        obj.current_set_start_time = data.get("current_set_start_time", obj.start_time)
-        obj.rest_duration = data.get("rest_duration", DEFAULT_REST_DURATION)
-        obj.last_set_time = data.get("last_set_time", obj.start_time)
-        obj.rest_target_time = data.get("rest_target_time", obj.last_set_time)
-        obj.session_metrics = data.get("session_metrics", {})
-        obj.pending_pre_set_metrics = {
-            (ex, st): metrics
-            for ex, st, metrics in data.get("pending_pre_set_metrics", [])
-        }
-        obj.awaiting_post_set_metrics = data.get("awaiting_post_set_metrics", False)
-        obj.saved = data.get("saved", False)
-        obj.resume_from_last_start = data.get("resume_from_last_start", False)
-        obj._skip_history = [tuple(item) for item in data.get("_skip_history", [])]
-        obj._skip_pending = data.get("_skip_pending", False)
-        obj.section_starts = data.get("section_starts", [])
-        obj.section_names = data.get("section_names", [])
-        obj.exercise_sections = data.get("exercise_sections", [])
-        return obj
-
-    def _recovery_files(self) -> tuple[Path, Path]:
-        base = self.recovery_base
-        return (
-            base.with_name(base.name + "_1.json"),
-            base.with_name(base.name + "_2.json"),
-        )
-
-    def write_recovery_state(self) -> None:
-        """Write the session state to both recovery files."""
-
-        data = json.dumps(self.export_state(), separators=(",", ":"))
-        file1, file2 = self._recovery_files()
-        file1.parent.mkdir(parents=True, exist_ok=True)
-        file1.write_text(data)
-        file2.write_text(data)
-
-    @classmethod
-    def load_recovery_state(cls, recovery_base: Path | None = None) -> dict | None:
-        """Return recovery data from ``recovery_base`` if available."""
-
-        base = Path(recovery_base or Path("backups/session_recovery"))
-        files = [base.with_name(base.name + "_1.json"), base.with_name(base.name + "_2.json")]
-        for f in files:
-            try:
-                if not f.exists():
-                    continue
-                content = f.read_text().strip()
-                if not content:
-                    continue
-                return json.loads(content)
-            except Exception:
-                continue
-        return None
-
-    @classmethod
-    def clear_recovery_state(cls, recovery_base: Path | None = None) -> None:
-        """Remove recovery files for ``recovery_base`` or default path."""
-
-        base = Path(recovery_base or Path("backups/session_recovery"))
-        files = [base.with_name(base.name + "_1.json"), base.with_name(base.name + "_2.json")]
-        for f in files:
-            try:
-                f.unlink()
-            except FileNotFoundError:
-                pass
-
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
@@ -322,8 +183,6 @@ class WorkoutSession:
         self.rest_target_time = self.last_set_time + self.rest_duration
         self.awaiting_post_set_metrics = True
 
-        self.write_recovery_state()
-
     def undo_set_start(self) -> None:
         """Revert state to before the current set began."""
 
@@ -336,8 +195,6 @@ class WorkoutSession:
         # Restore rest timer based on the last completed set
         self.rest_target_time = self.last_set_time + self.rest_duration
         self._skip_pending = False
-
-        self.write_recovery_state()
 
     def skip_exercise(self) -> bool:
         """Skip the remaining sets of the current exercise."""
@@ -379,7 +236,6 @@ class WorkoutSession:
         self.resume_from_last_start = False
         self.end_time = None
         self._skip_pending = True
-        self.write_recovery_state()
 
         return True
 
@@ -473,7 +329,6 @@ class WorkoutSession:
         ):
             self.last_set_time = self.current_set_start_time + duration
             self.rest_target_time = self.last_set_time + self.rest_duration
-            self.write_recovery_state()
             return
 
         self._ensure_session_entry(exercise_index)
@@ -482,7 +337,6 @@ class WorkoutSession:
             start = results[set_index].get("started_at")
             if start is not None:
                 results[set_index]["ended_at"] = start + duration
-                self.write_recovery_state()
 
     # --------------------------------------------------------------
     # Pre-set metric helpers
@@ -562,8 +416,6 @@ class WorkoutSession:
             store[name] = value
             pending[name] = value
 
-        self.write_recovery_state()
-
     def get_set_notes(self, ex_idx: int, set_idx: int) -> str:
         """Return stored notes for the specified set."""
 
@@ -583,20 +435,15 @@ class WorkoutSession:
             if 0 <= set_idx < len(results) and results[set_idx]:
                 results[set_idx]["notes"] = text
 
-        self.write_recovery_state()
-
     def set_session_metrics(self, metrics: dict) -> None:
         """Store metrics that apply to the entire session."""
 
         self.session_metrics = metrics.copy()
 
-        self.write_recovery_state()
-
     def record_metrics(self, exercise_index: int, set_index: int, metrics):
         if exercise_index >= len(self.preset_snapshot):
             if self.end_time is None:
                 self.end_time = time.time()
-            self.write_recovery_state()
             return True
 
         key = (exercise_index, set_index)
@@ -641,7 +488,6 @@ class WorkoutSession:
         }
         self.set_notes[key] = notes
 
-        finished = False
         if exercise_index == self.current_exercise and set_index == self.current_set:
             self.current_set_start_time = end_time
             self.current_set += 1
@@ -653,10 +499,9 @@ class WorkoutSession:
 
             if self.current_exercise >= len(self.preset_snapshot):
                 self.end_time = end_time
-                finished = True
+                return True
 
-        self.write_recovery_state()
-        return finished
+        return False
 
     def edit_set_metrics(self, exercise_index: int, set_index: int, metrics: dict) -> None:
         """Update metrics for a previously completed set."""
@@ -675,8 +520,6 @@ class WorkoutSession:
                 )
             store[name] = value
         self.session_data[exercise_index]["results"][set_index]["metrics"] = store.copy()
-
-        self.write_recovery_state()
 
     def undo_last_set(self) -> bool:
         """Reopen the most recently completed set.
@@ -712,7 +555,6 @@ class WorkoutSession:
             self.resume_from_last_start = False
             self._skip_pending = False
             self.end_time = None
-            self.write_recovery_state()
             return True
 
         # Determine whether any set has been completed yet
@@ -759,7 +601,6 @@ class WorkoutSession:
 
         # Flag for WorkoutActiveScreen to resume from stored start time
         self.resume_from_last_start = True
-        self.write_recovery_state()
 
         return True
 
@@ -880,8 +721,6 @@ class WorkoutSession:
             if self.current_set >= max_sets:
                 self.current_set = 0
 
-        self.write_recovery_state()
-
     def adjust_rest_timer(self, seconds: int) -> None:
         """Adjust the target time for the current rest period."""
         now = time.time()
@@ -890,7 +729,6 @@ class WorkoutSession:
         self.rest_target_time += seconds
         if self.rest_target_time <= now:
             self.rest_target_time = now
-        self.write_recovery_state()
 
     def rest_remaining(self) -> float:
         """Return seconds remaining in the current rest period."""
