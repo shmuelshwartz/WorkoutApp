@@ -388,9 +388,10 @@ RootUI:
     text_color: 0, 0, 0, 1
     md_bg_color: 0, 0, 0, 0
     padding: "8dp"
-    size_hint_x: 1
+    size_hint_x: None
+    width: "90dp"
     size_hint_y: None
-    height: "72dp"
+    height: "90dp"
 
     MDBoxLayout:
         orientation: "vertical"
@@ -401,7 +402,7 @@ RootUI:
 
         MDIcon:
             icon: root.icon
-            font_size: "24sp"
+            font_size: "32sp"
             size_hint: None, None
             size: self.texture_size
             pos_hint: {"center_x": 0.5}
@@ -410,7 +411,7 @@ RootUI:
 
         MDLabel:
             text: root.text
-            font_size: "7sp"
+            font_size: "10sp"
             halign: "center"
             text_size: None, None
             size_hint_y: None
@@ -468,34 +469,42 @@ RootUI:
         Widget:
             size_hint_y: None
             height: "20dp"
-        MDGridLayout:
-            cols: 7
-            spacing: "10dp"
+        ScrollView:
             size_hint_y: None
-            height: self.minimum_height
-            IconTextButton:
-                icon: "undo"
-                disabled: root.undo_disabled
-                on_release: root.show_undo_confirmation()
-            IconTextButton:
-                icon: "skip-next"
-                on_release: root.show_skip_confirmation()
-            IconTextButton:
-                id: record_btn
-                icon: "clipboard"
-                on_release: root.open_metric_input()
-            IconTextButton:
-                icon: "pencil"
-                on_release: app.edit_active_preset()
-            IconTextButton:
-                icon: "cog"
-                on_release: app.root.current = "workout_settings"
-            IconTextButton:
-                icon: "book"
-                on_release: app.root.current = "previous_workouts"
-            IconTextButton:
-                icon: "flag-checkered"
-                on_release: root.confirm_finish()
+            height: "100dp"
+            bar_width: 0
+            do_scroll_y: False
+            do_scroll_x: True
+            MDBoxLayout:
+                orientation: "horizontal"
+                spacing: "10dp"
+                size_hint_y: None
+                height: self.minimum_height
+                size_hint_x: None
+                width: self.minimum_width
+                IconTextButton:
+                    icon: "undo"
+                    disabled: root.undo_disabled
+                    on_release: root.show_undo_confirmation()
+                IconTextButton:
+                    icon: "skip-next"
+                    on_release: root.show_skip_confirmation()
+                IconTextButton:
+                    id: record_btn
+                    icon: "clipboard"
+                    on_release: root.open_metric_input()
+                IconTextButton:
+                    icon: "pencil"
+                    on_release: app.edit_active_preset()
+                IconTextButton:
+                    icon: "cog"
+                    on_release: app.root.current = "workout_settings"
+                IconTextButton:
+                    icon: "book"
+                    on_release: app.root.current = "previous_workouts"
+                IconTextButton:
+                    icon: "flag-checkered"
+                    on_release: root.confirm_finish()
 
 <WorkoutActiveScreen>:
     on_leave: root.stop_timer()
