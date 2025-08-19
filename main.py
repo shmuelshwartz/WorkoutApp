@@ -25,7 +25,7 @@ from kivymd.uix.list import (
     MDList,
 )
 from kivymd.uix.selectioncontrol import MDCheckbox
-from kivymd.uix.button import MDIconButton
+from kivymd.uix.button import MDIconButton, MDFlatButton
 from kivymd.uix.card import MDSeparator
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.floatlayout import MDFloatLayout
@@ -557,6 +557,44 @@ class WorkoutApp(MDApp):
             root = HalfScreenWrapper(root)
         Clock.schedule_once(lambda dt: apply_half_screen(half_screen))
         return root
+
+    def on_start(self):
+        state = WorkoutSession.load_recovery_state()
+        if state and not TESTING:
+            self._recovery_state = state
+            self._recovery_dialog = MDDialog(
+                text="Recover previous workout?",
+                buttons=[
+                    MDFlatButton(
+                        text="No",
+                        on_release=lambda *_: self._handle_recovery(False),
+                    ),
+                    MDFlatButton(
+                        text="Yes",
+                        on_release=lambda *_: self._handle_recovery(True),
+                    ),
+                ],
+            )
+            self._recovery_dialog.open()
+
+    def _handle_recovery(self, accept):
+        if hasattr(self, "_recovery_dialog") and self._recovery_dialog:
+            self._recovery_dialog.dismiss()
+        if accept:
+            self.workout_session = WorkoutSession.from_state(self._recovery_state)
+            if (
+                self.workout_session.current_set_start_time
+                > self.workout_session.last_set_time
+            ):
+                self.workout_session.resume_from_last_start = True
+                if self.root:
+                    self.root.current = "workout_active"
+            else:
+                if self.root:
+                    self.root.current = "rest"
+        else:
+            base = self._recovery_state.get("recovery_base") if hasattr(self, "_recovery_state") else None
+            WorkoutSession.clear_recovery_state(base)
 
     def _on_keyboard(self, window, key, scancode, codepoint, modifiers):
         if key in (27, 1001) and not TESTING:
