@@ -14,8 +14,12 @@ from core import (
 )
 
 
-RECOVERY_FILE_1 = Path(__file__).resolve().parents[1] / "data" / "session_recovery_1.json"
-RECOVERY_FILE_2 = Path(__file__).resolve().parents[1] / "data" / "session_recovery_2.json"
+# Directory for persisting in-progress session state.  This lives within the
+# repository's ``data`` folder so the files are part of the code base and will
+# survive across app restarts.
+RECOVERY_DIR = Path(__file__).resolve().parents[1] / "data"
+RECOVERY_FILE_1 = RECOVERY_DIR / "session_recovery_1.json"
+RECOVERY_FILE_2 = RECOVERY_DIR / "session_recovery_2.json"
 
 
 class WorkoutSession:
@@ -863,6 +867,7 @@ class WorkoutSession:
 
         payload = json.dumps(self.to_dict())
         try:
+            RECOVERY_DIR.mkdir(parents=True, exist_ok=True)
             RECOVERY_FILE_1.write_text(payload)
             RECOVERY_FILE_2.write_text(payload)
         except Exception:
