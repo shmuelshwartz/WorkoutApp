@@ -1,10 +1,11 @@
 """Utility helpers used across backend modules."""
 
-# Map legacy session-level ``input_timing`` values to the canonical ones
-# expected by the ``preset_preset_metrics`` table.
+# Map ``input_timing`` values to the canonical ones expected by the
+# ``preset_preset_metrics`` table. Legacy aliases have been removed so the
+# mapping is now identity based.
 _TIMING_TO_DB = {
-    "pre_session": "pre_workout",
-    "post_session": "post_workout",
+    "pre_session": "pre_session",
+    "post_session": "post_session",
 }
 _TIMING_FROM_DB = {v: k for k, v in _TIMING_TO_DB.items()}
 
