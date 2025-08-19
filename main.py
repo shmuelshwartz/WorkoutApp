@@ -45,6 +45,7 @@ from kivy.utils import platform
 from ui.screens.general.preset_detail_screen import PresetDetailScreen
 from ui.screens.general.preset_overview_screen import PresetOverviewScreen
 from ui.screens.general.welcome_screen import WelcomeScreen
+from ui.screens.general.home_screen import HomeScreen
 from pathlib import Path
 import os
 import re
