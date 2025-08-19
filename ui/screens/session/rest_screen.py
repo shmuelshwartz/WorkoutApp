@@ -119,11 +119,12 @@ class RestScreen(MDScreen):
     def on_leave(self, *args):
         if hasattr(self, "_event") and self._event:
             self._event.cancel()
+            self._event = None
         return super().on_leave(*args)
 
     def _ensure_clock_event(self):
         """Ensure the timer update event is running."""
-        if not hasattr(self, "_event") or not self._event:
+        if not getattr(getattr(self, "_event", None), "is_triggered", False):
             self._event = Clock.schedule_interval(self.update_timer, 0.1)
 
     def toggle_ready(self):
