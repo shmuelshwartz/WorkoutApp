@@ -29,7 +29,7 @@ class SoundSystem:
     def _load(self, name: str):
         snd = self._cache.get(name)
         if snd is None:
-            path = self._base / f"{name}.mp3"
+            path = self._base / f"{name}.wav"
             snd = SoundLoader.load(str(path))
             self._cache[name] = snd
         return snd
