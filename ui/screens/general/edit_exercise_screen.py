@@ -167,10 +167,10 @@ class EditExerciseScreen(MDScreen):
             if app.preset_editor and self.section_index < len(
                 app.preset_editor.sections
             ):
-                exercises = app.preset_editor.sections[self.section_index]["exercises"]
-                self.section_length = len(exercises)
-                if self.exercise_index < len(exercises):
-                    ex = exercises[self.exercise_index]
+                section_exercises = app.preset_editor.sections[self.section_index]["exercises"]
+                self.section_length = len(section_exercises)
+                if self.exercise_index < len(section_exercises):
+                    ex = section_exercises[self.exercise_index]
                     self.exercise_sets = ex.get("sets", DEFAULT_SETS_PER_EXERCISE)
                     self.exercise_rest = ex.get("rest", DEFAULT_REST_DURATION)
             else:
