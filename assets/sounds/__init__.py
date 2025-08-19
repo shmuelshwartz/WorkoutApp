@@ -22,6 +22,9 @@ class SoundSystem:
         self._durations: list[int] = []
         self._index = 0
         self._next_time = 0.0
+        # Preload frequently used sounds to avoid first-play latency.
+        for name in ("start", "tick"):
+            self._load(name)
 
     # ------------------------------------------------------------------
     # Core helpers
@@ -55,14 +58,16 @@ class SoundSystem:
         self._mode = None
 
     def _schedule_update(self) -> None:
-        if not self._event:
-            self._event = Clock.schedule_interval(self._update, 0.1)
+        if self._event:
+            self._event.cancel()
+        delay = max(0, self._next_time - time.time())
+        self._event = Clock.schedule_once(self._update, delay)
 
     def start_ticks(self) -> None:
         """Play the tick sound once per second until stopped."""
         self.stop()
         self._mode = "ticks"
-        self._next_time = int(time.time()) + 1
+        self._next_time = time.time() + 1
         self._schedule_update()
 
     def start_tempo(self, tempo: str | None, *, skip_start: bool = False) -> None:
@@ -104,8 +109,11 @@ class SoundSystem:
     # Internal logic
     # ------------------------------------------------------------------
     def _update(self, dt) -> None:
+        if self._mode is None:
+            return
         now = time.time()
-        if now < self._next_time or self._mode is None:
+        if now < self._next_time:
+            self._schedule_update()
             return
         if self._mode == "ticks":
             self.play("tick")
@@ -116,3 +124,4 @@ class SoundSystem:
             dur = self._durations[self._index]
             self._index = (self._index + 1) % len(self._sequence)
             self._next_time += dur
+        self._schedule_update()
