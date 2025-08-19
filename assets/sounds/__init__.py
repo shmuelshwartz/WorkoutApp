@@ -1,6 +1,7 @@
 from pathlib import Path
 from kivy.core.audio import SoundLoader
 from kivy.clock import Clock
+import time
 
 
 class SoundSystem:
@@ -14,8 +15,13 @@ class SoundSystem:
     def __init__(self):
         self._base = Path(__file__).resolve().parent
         self._cache: dict[str, object] = {}
-        self._events: list = []
-        self._tick_event = None
+        self._event = None
+        self._start_event = None
+        self._mode = None
+        self._sequence: list[str] = []
+        self._durations: list[int] = []
+        self._index = 0
+        self._next_time = 0.0
 
     # ------------------------------------------------------------------
     # Core helpers
@@ -40,23 +46,30 @@ class SoundSystem:
     # ------------------------------------------------------------------
     def stop(self) -> None:
         """Cancel any scheduled playback."""
-        for ev in self._events:
-            ev.cancel()
-        self._events.clear()
-        if self._tick_event:
-            self._tick_event.cancel()
-            self._tick_event = None
+        if self._event:
+            self._event.cancel()
+            self._event = None
+        if self._start_event:
+            self._start_event.cancel()
+            self._start_event = None
+        self._mode = None
+
+    def _schedule_update(self) -> None:
+        if not self._event:
+            self._event = Clock.schedule_interval(self._update, 0.1)
 
     def start_ticks(self) -> None:
         """Play the tick sound once per second until stopped."""
         self.stop()
-        self._tick_event = Clock.schedule_interval(lambda dt: self.play("tick"), 1)
+        self._mode = "ticks"
+        self._next_time = int(time.time()) + 1
+        self._schedule_update()
 
     def start_tempo(self, tempo: str | None, *, skip_start: bool = False) -> None:
         """Begin tempo-driven playback.
 
-        ``tempo`` must be a four digit string.  The digits are rotated and used
-        as phase durations.  If ``tempo`` is invalid, the system falls back to
+        ``tempo`` must be a four digit string. The digits are rotated and used
+        as phase durations. If ``tempo`` is invalid, the system falls back to
         tick-based playback.
         """
         if not (tempo and tempo.isdigit() and len(tempo) == 4):
@@ -64,27 +77,42 @@ class SoundSystem:
             return
 
         rotated = tempo[2:] + tempo[:2]
-        durations = [int(d) for d in rotated]
-        sequence = ["start", "hold", "release", "end"]
+        self._durations = [int(d) for d in rotated]
+        self._sequence = ["start", "hold", "release", "end"]
         self.stop()
-        total = sum(durations)
-
-        delay = 0
-        phases = sequence
-        durs = durations
         if skip_start:
-            delay = durs[0]
-            phases = sequence[1:]
-            durs = durations[1:]
+            base = int(time.time())
+            self._mode = "tempo"
+            self._index = 1
+            self._next_time = base + self._durations[0]
+            self._schedule_update()
         else:
-            self._events.append(Clock.schedule_once(lambda dt: self.play("start"), 0))
-            delay = durs[0]
-            phases = sequence[1:]
-            durs = durations[1:]
+            delay = 1 - (time.time() % 1)
 
-        for name, dur in zip(phases, durs):
-            self._events.append(Clock.schedule_once(lambda dt, n=name: self.play(n), delay))
-            delay += dur
+            def _begin(dt):
+                self.play("start")
+                base = int(time.time())
+                self._mode = "tempo"
+                self._index = 1
+                self._next_time = base + self._durations[0]
+                self._schedule_update()
+                self._start_event = None
 
-        # restart the cycle with start sound
-        self._events.append(Clock.schedule_once(lambda dt: self.start_tempo(tempo), total))
+            self._start_event = Clock.schedule_once(_begin, delay)
+
+    # ------------------------------------------------------------------
+    # Internal logic
+    # ------------------------------------------------------------------
+    def _update(self, dt) -> None:
+        now = time.time()
+        if now < self._next_time or self._mode is None:
+            return
+        if self._mode == "ticks":
+            self.play("tick")
+            self._next_time += 1
+        elif self._mode == "tempo":
+            name = self._sequence[self._index]
+            self.play(name)
+            dur = self._durations[self._index]
+            self._index = (self._index + 1) % len(self._sequence)
+            self._next_time += dur
