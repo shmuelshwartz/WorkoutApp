@@ -495,9 +495,9 @@ class EditPresetScreen(MDScreen):
             return
 
         app = MDApp.get_running_app()
-        metrics = []
+        session_metrics = []
         if app and app.preset_editor:
-            metrics = [
+            session_metrics = [
                 m
                 for m in app.preset_editor.preset_metrics
                 if m.get("scope") == "session"
@@ -515,12 +515,10 @@ class EditPresetScreen(MDScreen):
                 "is_user_created": all_defs.get(
                     m.get("metric_name") or m.get("name"),
                     {},
-                ).get(
-                    "is_user_created", False
-                ),
+                ).get("is_user_created", False),
                 "locked": self.mode == "session",
             }
-            for m in metrics
+            for m in session_metrics
         ]
 
     def open_add_preset_metric_popup(self):
@@ -854,7 +852,7 @@ class AddPresetMetricPopup(MDDialog):
                 m.get("metric_name") or m.get("name")
                 for m in app.preset_editor.preset_metrics
             }
-        metrics = [
+        available_metrics = [
             m
             for m in metrics.get_all_metric_types()
             if m.get("scope") == "preset" and (
@@ -863,7 +861,7 @@ class AddPresetMetricPopup(MDDialog):
         ]
 
         list_view = MDList()
-        for m in metrics:
+        for m in available_metrics:
             item = OneLineListItem(text=m["name"])
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
@@ -906,7 +904,7 @@ class AddSessionMetricPopup(MDDialog):
                 m.get("metric_name") or m.get("name")
                 for m in app.preset_editor.preset_metrics
             }
-        metrics = [
+        available_metrics = [
             m
             for m in metrics.get_all_metric_types()
             if m.get("scope") == "session" and (
@@ -915,7 +913,7 @@ class AddSessionMetricPopup(MDDialog):
         ]
 
         list_view = MDList()
-        for m in metrics:
+        for m in available_metrics:
             item = OneLineListItem(text=m["name"])
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
