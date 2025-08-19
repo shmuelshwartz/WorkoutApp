@@ -397,32 +397,37 @@ RootUI:
     text: ""
     text_color: 0, 0, 0, 1
     md_bg_color: 0, 0, 0, 0
-    orientation: "vertical"
-    spacing: "4dp"
     padding: "8dp"
     size_hint_x: 1
     size_hint_y: None
     height: "72dp"
 
-    MDIcon:
-        icon: root.icon
-        font_size: "24sp"
-        size_hint_y: None
-        size_hint_x: None
-        size: self.texture_size
-        pos_hint: {"center_x": 0.5}
-        theme_text_color: "Custom"
-        text_color: root.text_color
+    MDBoxLayout:
+        orientation: "vertical"
+        spacing: "4dp" if root.text else 0
+        size_hint: 1, None
+        height: self.minimum_height
+        pos_hint: {"center_y": 0.5}
 
-    MDLabel:
-        text: root.text
-        font_size: "7sp"
-        halign: "center"
-        text_size: None, None
-        size_hint_y: None
-        height: self.texture_size[1]
-        theme_text_color: "Custom"
-        text_color: root.text_color
+        MDIcon:
+            icon: root.icon
+            font_size: "24sp"
+            size_hint: None, None
+            size: self.texture_size
+            pos_hint: {"center_x": 0.5}
+            theme_text_color: "Custom"
+            text_color: root.text_color
+
+        MDLabel:
+            text: root.text
+            font_size: "7sp"
+            halign: "center"
+            text_size: None, None
+            size_hint_y: None
+            height: self.texture_size[1] if root.text else 0
+            opacity: 1 if root.text else 0
+            theme_text_color: "Custom"
+            text_color: root.text_color
 
 <RestScreen>:
     md_bg_color: PURPLE_BG
@@ -480,33 +485,26 @@ RootUI:
             height: self.minimum_height
             IconTextButton:
                 icon: "undo"
-                text: "Undo"
                 disabled: root.undo_disabled
                 on_release: root.show_undo_confirmation()
             IconTextButton:
                 icon: "skip-next"
-                text: "skip"
                 on_release: root.show_skip_confirmation()
             IconTextButton:
                 id: record_btn
                 icon: "clipboard"
-                text: "metrics"
                 on_release: root.open_metric_input()
             IconTextButton:
                 icon: "pencil"
-                text: "edit"
                 on_release: app.edit_active_preset()
             IconTextButton:
                 icon: "cog"
-                text: "settings"
                 on_release: app.root.current = "workout_settings"
             IconTextButton:
                 icon: "book"
-                text: "history"
                 on_release: app.root.current = "previous_workouts"
             IconTextButton:
                 icon: "flag-checkered"
-                text: "finish"
                 on_release: root.confirm_finish()
 
 <WorkoutActiveScreen>:
