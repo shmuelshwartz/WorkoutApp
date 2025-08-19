@@ -1018,7 +1018,6 @@ def test_preset_overview_screen_populate(monkeypatch):
     screen = PresetOverviewScreen()
     screen.details_list = DummyList()
     screen.workout_list = DummyList()
-    screen.preset_label = type("L", (), {"text": ""})()
 
     class DummyApp:
         selected_preset = "Test"
@@ -1082,7 +1081,6 @@ def test_pre_session_metrics_prompt_before_start(monkeypatch):
     screen = PresetOverviewScreen()
     screen.details_list = DummyList()
     screen.workout_list = DummyList()
-    screen.preset_label = type("L", (), {"text": ""})()
     screen.manager = type("M", (), {"current": ""})()
 
     class DummyApp:
