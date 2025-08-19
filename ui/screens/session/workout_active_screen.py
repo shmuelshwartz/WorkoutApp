@@ -35,13 +35,15 @@ class WorkoutActiveScreen(MDScreen):
     def on_pre_enter(self, *args):
         app = MDApp.get_running_app()
         session = app.workout_session if app else None
+        tempo = None
         if session and session.current_exercise < len(session.exercises):
             self.exercise_name = session.next_exercise_display()
-            tempo = session.exercises[session.current_exercise].get("tempo")
-        else:
-            tempo = None
+            tempo = session.tempo_for_set(session.current_exercise, session.current_set)
         if app and hasattr(app, "sound"):
-            app.sound.start_tempo(tempo, skip_start=True)
+            if tempo:
+                app.sound.start_tempo(tempo, skip_start=True)
+            else:
+                app.sound.start_ticks()
         self.start_timer()
         return super().on_pre_enter(*args)
 
