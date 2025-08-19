@@ -7,6 +7,7 @@ from .session import (
     WorkoutSummaryScreen,
 )
 from .general import (
+    WelcomeScreen,
     EditExerciseScreen,
     EditPresetScreen,
     ExerciseLibraryScreen,
@@ -32,4 +33,5 @@ __all__ = [
     "PreviousWorkoutsScreen",
     "WorkoutHistoryScreen",
     "ViewPreviousWorkoutScreen",
+    "WelcomeScreen",
 ]

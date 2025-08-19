@@ -27,6 +27,8 @@ class WorkoutActiveScreen(MDScreen):
             self.start_time = time.time()
             if session:
                 session.current_set_start_time = self.start_time
+        if session:
+            session.save_recovery_state()
         self._event = Clock.schedule_interval(self._update_elapsed, 0.1)
         self._update_elapsed(0)
 

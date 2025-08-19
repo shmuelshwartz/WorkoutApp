@@ -44,6 +44,7 @@ from kivy.graphics import Color, Rectangle
 from kivy.utils import platform
 from ui.screens.general.preset_detail_screen import PresetDetailScreen
 from ui.screens.general.preset_overview_screen import PresetOverviewScreen
+from ui.screens.general.welcome_screen import WelcomeScreen
 from pathlib import Path
 import os
 import re
@@ -615,6 +616,7 @@ class WorkoutApp(MDApp):
             self.workout_session = WorkoutSession(preset_name, db_path=DEFAULT_DB_PATH)
         else:
             self.workout_session = None
+            WorkoutSession.clear_recovery_files()
 
         # ensure metric input doesn't accidentally advance sets
         self.record_new_set = False
