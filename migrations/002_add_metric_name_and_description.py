@@ -33,7 +33,7 @@ def main():
                 metric_name TEXT NOT NULL,
                 metric_description TEXT,
                 type TEXT NOT NULL CHECK(type IN ('int','float','str','bool','enum','slider')),
-                input_timing TEXT NOT NULL CHECK(input_timing IN ('library','preset','pre_workout','post_workout')),
+                input_timing TEXT NOT NULL CHECK(input_timing IN ('library','preset','pre_session','post_session')),
                 scope TEXT NOT NULL CHECK(scope IN ('preset','session')),
                 is_required BOOLEAN NOT NULL DEFAULT 0,
                 enum_values_json TEXT,

@@ -11,7 +11,7 @@ def test_get_metrics_for_preset_pre_session(sample_db):
         """
         INSERT INTO preset_preset_metrics
             (preset_id, metric_name, type, input_timing, scope, is_required, position)
-        VALUES (?, 'Duration', 'int', 'pre_workout', 'session', 1, 0)
+        VALUES (?, 'Duration', 'int', 'pre_session', 'session', 1, 0)
         """,
         (preset_id,),
     )

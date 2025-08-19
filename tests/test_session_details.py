@@ -17,7 +17,7 @@ def _prepare_session(db_path: str) -> WorkoutSession:
         INSERT INTO preset_preset_metrics
             (preset_id, library_metric_type_id, metric_name, metric_description,
              type, input_timing, scope, is_required, position)
-        VALUES (?, ?, 'Session Reps', 'Total session reps', 'int', 'pre_workout', 'session', 1, 0)
+        VALUES (?, ?, 'Session Reps', 'Total session reps', 'int', 'pre_session', 'session', 1, 0)
         """,
         (preset_id, metric_type_id),
     )

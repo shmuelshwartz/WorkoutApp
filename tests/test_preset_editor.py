@@ -292,7 +292,7 @@ def test_save_preset_metadata(db_copy):
     assert row == ("int", "preset", "preset", 0, "3")
 
 
-def test_session_metric_timing_alias(db_copy):
+def test_session_metric_timing(db_copy):
     conn = sqlite3.connect(db_copy)
     cur = conn.cursor()
     cur.execute(
@@ -321,7 +321,7 @@ def test_session_metric_timing_alias(db_copy):
     conn.close()
     editor.close()
 
-    assert timing == "pre_workout"
+    assert timing == "pre_session"
 
 
 def test_save_missing_exercise_fails(db_copy):
