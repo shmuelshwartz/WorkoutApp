@@ -109,7 +109,7 @@ class RestScreen(MDScreen):
         self.is_ready = False
         self.timer_color = (1, 0, 0, 1)
         self.update_timer(0)
-        self._event = Clock.schedule_interval(self.update_timer, 0.1)
+        self._ensure_clock_event()
         self.update_record_button_color()
         return super().on_pre_enter(*args)
 
@@ -121,6 +121,11 @@ class RestScreen(MDScreen):
             self._event.cancel()
         return super().on_leave(*args)
 
+    def _ensure_clock_event(self):
+        """Ensure the timer update event is running."""
+        if not hasattr(self, "_event") or not self._event:
+            self._event = Clock.schedule_interval(self.update_timer, 0.1)
+
     def toggle_ready(self):
         app = MDApp.get_running_app()
         session = app.workout_session if app else None
@@ -130,12 +135,8 @@ class RestScreen(MDScreen):
         # button always works.
         self.is_ready = not self.is_ready
         self.timer_color = (0, 1, 0, 1) if self.is_ready else (1, 0, 0, 1)
-        if self.is_ready and self.target_time <= time.time():
-            if hasattr(self, "_event") and self._event:
-                self._event.cancel()
-                self._event = None
-            if self.manager:
-                self.manager.current = "workout_active"
+        if self.is_ready and self.target_time <= time.time() and self.manager:
+            self.manager.current = "workout_active"
 
     def unready(self):
         """Reset the ready state without toggling."""
@@ -219,6 +220,7 @@ class RestScreen(MDScreen):
                         and not session.exercises[0]["results"]
                     )
                     self.update_timer(0)
+                    self._ensure_clock_event()
                 elif self.manager:
                     self.manager.current = "workout_active"
 
@@ -262,6 +264,7 @@ class RestScreen(MDScreen):
                 and not session.exercises[0]["results"]
             )
             self.update_timer(0)
+            self._ensure_clock_event()
         else:
             toast("No next exercise")
                 
@@ -299,9 +302,6 @@ class RestScreen(MDScreen):
         remaining = self.target_time - time.time()
         if remaining <= 0:
             self.timer_label = "00:00"
-            if hasattr(self, "_event") and self._event:
-                self._event.cancel()
-                self._event = None
             if self.is_ready and self.manager:
                 self.manager.current = "workout_active"
         else:
@@ -338,14 +338,11 @@ class RestScreen(MDScreen):
             self.target_time += seconds
             if self.target_time <= now:
                 self.target_time = now
-        if self.target_time <= time.time():
-            if hasattr(self, "_event") and self._event:
-                self._event.cancel()
-                self._event = None
-            self.update_timer(0)
-            if self.is_ready and self.manager:
-                self.manager.current = "workout_active"
-        else:
-            if not hasattr(self, "_event") or not self._event:
-                self._event = Clock.schedule_interval(self.update_timer, 0.1)
-            self.update_timer(0)
+        should_change = (
+            self.target_time <= time.time() and self.is_ready and self.manager
+        )
+        if should_change:
+            self.manager.current = "workout_active"
+        self.update_timer(0)
+        if not should_change:
+            self._ensure_clock_event()
