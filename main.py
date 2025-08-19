@@ -93,6 +93,7 @@ from ui.screens.general.edit_preset_screen import (
 
 from ui.screens.session.workout_summary_screen import WorkoutSummaryScreen
 from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
+from assets.sounds import SoundSystem
 
 # Set a consistent window size on desktop for predictable layout.
 if os.name == "nt":
@@ -551,6 +552,10 @@ class WorkoutApp(MDApp):
     metric_library_version: int = 0
     # Displayed application version on the welcome screen
     app_version = StringProperty("1.0.0")
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.sound = SoundSystem()
 
     def build(self):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))

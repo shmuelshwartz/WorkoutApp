@@ -108,6 +108,7 @@ class RestScreen(MDScreen):
             self.session_start_time = now
         self.is_ready = False
         self.timer_color = (1, 0, 0, 1)
+        self._last_second = None
         self.update_timer(0)
         self._ensure_clock_event()
         self.update_record_button_color()
@@ -136,7 +137,10 @@ class RestScreen(MDScreen):
         # button always works.
         self.is_ready = not self.is_ready
         self.timer_color = (0, 1, 0, 1) if self.is_ready else (1, 0, 0, 1)
+        self._last_second = None
         if self.is_ready and self.target_time <= time.time() and self.manager:
+            if app and hasattr(app, "sound"):
+                app.sound.play("start")
             self.manager.current = "workout_active"
 
     def unready(self):
@@ -144,6 +148,7 @@ class RestScreen(MDScreen):
         if self.is_ready:
             self.is_ready = False
             self.timer_color = (1, 0, 0, 1)
+            self._last_second = None
 
     def update_record_button_color(self):
         app = MDApp.get_running_app()
@@ -301,14 +306,25 @@ class RestScreen(MDScreen):
 
     def update_timer(self, dt):
         remaining = self.target_time - time.time()
+        app = MDApp.get_running_app()
         if remaining <= 0:
             self.timer_label = "00:00"
             if self.is_ready and self.manager:
+                if app and hasattr(app, "sound"):
+                    app.sound.play("start")
                 self.manager.current = "workout_active"
+            self._last_second = 0
         else:
             total_seconds = math.ceil(remaining)
             minutes, seconds = divmod(total_seconds, 60)
             self.timer_label = f"{minutes:02d}:{seconds:02d}"
+            if self.is_ready and total_seconds <= 10:
+                if total_seconds != getattr(self, "_last_second", None) and total_seconds > 0:
+                    if app and hasattr(app, "sound"):
+                        app.sound.play("tick")
+                    self._last_second = total_seconds
+            else:
+                self._last_second = total_seconds
 
         elapsed = int(time.time() - (self.session_start_time or time.time()))
         minutes, seconds = divmod(elapsed, 60)

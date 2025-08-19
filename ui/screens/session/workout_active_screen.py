@@ -33,9 +33,15 @@ class WorkoutActiveScreen(MDScreen):
         self._update_elapsed(0)
 
     def on_pre_enter(self, *args):
-        session = MDApp.get_running_app().workout_session
-        if session:
+        app = MDApp.get_running_app()
+        session = app.workout_session if app else None
+        if session and session.current_exercise < len(session.exercises):
             self.exercise_name = session.next_exercise_display()
+            tempo = session.exercises[session.current_exercise].get("tempo")
+        else:
+            tempo = None
+        if app and hasattr(app, "sound"):
+            app.sound.start_tempo(tempo, skip_start=True)
         self.start_timer()
         return super().on_pre_enter(*args)
 
@@ -44,6 +50,13 @@ class WorkoutActiveScreen(MDScreen):
         if self._event:
             self._event.cancel()
             self._event = None
+
+    def on_leave(self, *args):
+        app = MDApp.get_running_app()
+        if app and hasattr(app, "sound"):
+            app.sound.stop()
+        self.stop_timer()
+        return super().on_leave(*args)
 
     def _update_elapsed(self, dt):
         self.elapsed = time.time() - self.start_time
