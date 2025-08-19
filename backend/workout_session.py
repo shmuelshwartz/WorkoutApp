@@ -377,6 +377,30 @@ class WorkoutSession:
         store = self.metric_store.get((self.current_exercise, self.current_set), {})
         return all(store.get(name) not in (None, "") for name in required)
 
+    def tempo_for_set(self, exercise_index: int, set_index: int) -> str | None:
+        """Return a 4-digit tempo string for the specified set, if present."""
+
+        if exercise_index >= len(self.preset_snapshot):
+            return None
+        metric_defs = self.preset_snapshot[exercise_index].get("metric_defs", [])
+        tempo_name = next(
+            (
+                m["name"]
+                for m in metric_defs
+                if m.get("library_metric_type_id") == 3
+            ),
+            None,
+        )
+        if not tempo_name:
+            return None
+        value = self.metric_store.get((exercise_index, set_index), {}).get(tempo_name)
+        if value is None:
+            return None
+        tempo = str(value)
+        if tempo.isdigit() and len(tempo) == 4:
+            return tempo
+        return None
+
     # --------------------------------------------------------------
     # Post-set metric helpers
     # --------------------------------------------------------------
