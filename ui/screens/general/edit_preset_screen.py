@@ -757,16 +757,16 @@ class ExerciseSelectionPanel(MDBoxLayout):
             if app:
                 self.cache_version = app.exercise_library_version
 
-        exercises = self.all_exercises or []
+        exercise_rows = self.all_exercises or []
         if self.filter_mode == "user":
-            exercises = [ex for ex in exercises if ex[1]]
+            exercise_rows = [ex for ex in exercise_rows if ex[1]]
         elif self.filter_mode == "premade":
-            exercises = [ex for ex in exercises if not ex[1]]
+            exercise_rows = [ex for ex in exercise_rows if not ex[1]]
         if self.search_text:
             s = self.search_text.lower()
-            exercises = [ex for ex in exercises if s in ex[0].lower()]
+            exercise_rows = [ex for ex in exercise_rows if s in ex[0].lower()]
 
-        for name, is_user in exercises:
+        for name, is_user in exercise_rows:
             item = OneLineListItem(
                 text=name,
                 theme_text_color="Custom",
