@@ -2,7 +2,7 @@ TESTING = True
 # Feature flag: when True the UI is scaled to half size while staying centered.
 half_screen = False
 import os
-# os.environ["KIVY_AUDIO"] = "sdl2"
+os.environ["KIVY_AUDIO"] = "sdl2"
 from kivymd.app import MDApp
 from kivy.lang import Builder
 from kivy.clock import Clock
