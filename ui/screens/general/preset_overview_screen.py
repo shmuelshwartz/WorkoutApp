@@ -12,7 +12,6 @@ class PresetOverviewScreen(MDScreen):
 
     details_list = ObjectProperty(None)
     workout_list = ObjectProperty(None)
-    preset_label = ObjectProperty(None)
     _pre_session_metric_data = None
 
     def on_pre_enter(self, *args):
@@ -22,7 +21,7 @@ class PresetOverviewScreen(MDScreen):
         return super().on_pre_enter(*args)
 
     def populate(self):
-        if not self.details_list or not self.workout_list or not self.preset_label:
+        if not self.details_list or not self.workout_list:
             return
 
         self.details_list.clear_widgets()
@@ -31,11 +30,6 @@ class PresetOverviewScreen(MDScreen):
         app = MDApp.get_running_app()
         app.init_preset_editor()
         preset_name = app.selected_preset
-        self.preset_label.text = (
-            preset_name
-            if preset_name
-            else "Preset Overview - summary of the chosen preset"
-        )
 
         editor = app.preset_editor
         if not editor:
@@ -89,8 +83,11 @@ class PresetOverviewScreen(MDScreen):
         if self.manager:
             self.manager.current = "rest"
 
-    def _prompt_pre_session_metrics(self):
-        if self._pre_session_metric_data is not None:
+    def open_metric_popup(self):
+        self._prompt_pre_session_metrics(force=True)
+
+    def _prompt_pre_session_metrics(self, force: bool = False):
+        if self._pre_session_metric_data is not None and not force:
             return
         app = MDApp.get_running_app()
         preset_name = app.selected_preset

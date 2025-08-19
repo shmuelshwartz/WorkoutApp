@@ -1018,18 +1018,11 @@ RootUI:
 <PresetOverviewScreen>:
     details_list: details_tab.ids.details_list
     workout_list: workout_tab.ids.workout_list
-    preset_label: preset_label
     md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            id: preset_label
-            text: ""
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
         MDTabs:
             id: tabs
             DetailsTab:
@@ -1038,12 +1031,19 @@ RootUI:
             WorkoutTab:
                 id: workout_tab
                 title: "Workout"
-        MDRaisedButton:
-            text: "Back to Detail"
-            on_release: app.root.current = "preset_detail"
-        MDRaisedButton:
-            text: "Start Workout"
-            on_release: root.start_workout()
+        MDBoxLayout:
+            size_hint_y: None
+            height: "40dp"
+            spacing: "10dp"
+            MDIconButton:
+                icon: "chevron-left"
+                on_release: app.root.current = "preset_detail"
+            MDIconButton:
+                icon: "clipboard"
+                on_release: root.open_metric_popup()
+            MDIconButton:
+                icon: "play"
+                on_release: root.start_workout()
 
 <EditExerciseScreen>:
     metrics_list: metrics_list
