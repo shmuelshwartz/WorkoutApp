@@ -97,7 +97,10 @@ from assets.sounds import SoundSystem
 
 # Set a consistent window size on desktop for predictable layout.
 if os.name == "nt":
-    base_width, base_height = 140, 140 * (20 / 9)
+    if half_screen:
+        base_width, base_height = 140, 140 * (20 / 9)
+    else:
+        base_width, base_height = 140 * 2, 140 * 2 * (20 / 9)
     Window.size = (base_width, base_height)
 
 
