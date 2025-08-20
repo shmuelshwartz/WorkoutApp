@@ -202,3 +202,37 @@ def test_metric_store_fallback_on_rebuild():
     screen._on_cell_change("Reps", "int", 0, metric_module.MDTextField(text="5"))
     screen.update_metrics()
     assert screen.metric_cells[("Reps", 0)].text == "5"
+
+
+def test_save_metrics_records_new_set(monkeypatch):
+    """Saving metrics should finalize the recently completed set."""
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.current_exercise = 0
+            self.current_set = 0
+            self.exercises = [{"name": "Bench", "sets": 1, "results": []}]
+            # pending_pre_set_metrics stores entries from _on_cell_change
+            self.pending_pre_set_metrics = {(0, 0): {"Reps": 5}}
+            self.metric_store = {(0, 0): {"Reps": 5}}
+            self.recorded = False
+
+        def record_metrics(self, ex, st, metrics):
+            if ex == 0 and st == 0:
+                self.recorded = True
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(
+        workout_session=dummy_session, record_new_set=True, record_pre_set=False
+    )
+    monkeypatch.setattr(metric_module.MDApp, "get_running_app", classmethod(lambda cls: dummy_app))
+
+    manager = types.SimpleNamespace(current="metric_input")
+    screen.manager = manager
+
+    screen.save_metrics()
+
+    assert dummy_session.recorded
+    assert manager.current == "rest"
+    assert dummy_app.record_new_set is False

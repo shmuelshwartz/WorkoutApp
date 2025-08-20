@@ -456,5 +456,29 @@ class MetricInputScreen(MDScreen):
 
     # ------------------------------------------------------------------
     def save_metrics(self):
+        """Persist entered metrics and return to the rest screen.
+
+        When a set has just been completed ``WorkoutSession.mark_set_completed``
+        leaves the indices pointing at that set until
+        :meth:`WorkoutSession.record_metrics` is called.  The ``Finish`` button
+        on :class:`WorkoutActiveScreen` flags ``App.record_new_set`` so this
+        method knows a set was finished and needs to be recorded.  Recording the
+        metrics here ensures the session advances to the next set before
+        returning to the rest screen.
+        """
+
+        app = MDApp.get_running_app()
+        session = getattr(app, "workout_session", None)
+
+        if app and session and getattr(app, "record_new_set", False):
+            # ``record_metrics`` consumes values already stored in
+            # ``session.metric_store`` via ``_on_cell_change`` to avoid holding
+            # additional state.
+            session.record_metrics(session.current_exercise, session.current_set, {})
+
+        if app:
+            app.record_new_set = False
+            app.record_pre_set = False
+
         if getattr(self, "manager", None):
             self.manager.current = "rest"
