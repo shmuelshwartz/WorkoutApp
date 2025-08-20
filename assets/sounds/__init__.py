@@ -22,6 +22,8 @@ class SoundSystem:
         self._durations: list[int] = []
         self._index = 0
         self._next_time = 0.0
+        self._volume = 1.0
+        self._enabled = True
         # Preload frequently used sounds to avoid first-play latency.
         for name in ("start", "tick"):
             self._load(name)
@@ -38,11 +40,22 @@ class SoundSystem:
         return snd
 
     def play(self, name: str) -> None:
-        """Play a named sound if available."""
+        """Play a named sound if available respecting volume and toggle."""
+        if not self._enabled:
+            return
         snd = self._load(name)
         if snd:
+            snd.volume = self._volume
             snd.stop()
             snd.play()
+
+    def set_volume(self, volume: float) -> None:
+        """Set playback volume for future sounds."""
+        self._volume = max(0.0, min(1.0, float(volume)))
+
+    def set_enabled(self, enabled: bool) -> None:
+        """Enable or disable sound playback."""
+        self._enabled = bool(enabled)
 
     # ------------------------------------------------------------------
     # Public API

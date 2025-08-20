@@ -70,6 +70,7 @@ from ui.screens.session.rest_screen import RestScreen
 from ui.screens.general.previous_workouts_screen import PreviousWorkoutsScreen
 from ui.screens.general.workout_history_screen import WorkoutHistoryScreen
 from ui.screens.general.view_previous_workout_screen import ViewPreviousWorkoutScreen
+from ui.screens.general.settings_screen import SettingsScreen
 
 
 
@@ -95,6 +96,7 @@ from ui.screens.general.edit_preset_screen import (
 from ui.screens.session.workout_summary_screen import WorkoutSummaryScreen
 from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
 from assets.sounds import SoundSystem
+from backend import settings as app_settings
 
 # Set a consistent window size on desktop for predictable layout.
 if os.name == "nt":
@@ -560,6 +562,10 @@ class WorkoutApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.sound = SoundSystem()
+        # Initialize sound system with persisted settings.
+        self.sound.set_volume(app_settings.get_value("sound_level") or 1.0)
+        sound_on = app_settings.get_value("sound_on")
+        self.sound.set_enabled(True if sound_on is None else sound_on)
 
     def build(self):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))

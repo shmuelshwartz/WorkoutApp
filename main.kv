@@ -366,7 +366,7 @@ RootUI:
             text: "Back"
             on_release: app.root.current = "workout_history"
 
-<SettingsScreen@MDScreen>:
+<SettingsScreen>:
     md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
@@ -377,6 +377,30 @@ RootUI:
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
+        MDBoxLayout:
+            orientation: "horizontal"
+            size_hint_y: None
+            height: "40dp"
+            MDLabel:
+                text: "Sound"
+                valign: "center"
+            MDSwitch:
+                id: sound_toggle
+                pos_hint: {"center_y": 0.5}
+                on_active: root.on_sound_toggle(self, self.active)
+        MDBoxLayout:
+            orientation: "horizontal"
+            size_hint_y: None
+            height: "40dp"
+            MDLabel:
+                text: "Sound Level"
+                valign: "center"
+            MDSlider:
+                id: sound_level_slider
+                min: 0
+                max: 1
+                value: 1
+                on_value: root.on_sound_level(self, self.value)
         MDRaisedButton:
             text: "Back to Home"
             on_release: app.root.current = "home"

@@ -1,0 +1,4 @@
+[
+    {"key": "sound_level", "value": 1.0, "type": "slider"},
+    {"key": "sound_on", "value": true, "type": "bool"}
+]
