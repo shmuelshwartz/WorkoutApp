@@ -81,12 +81,6 @@ class AddMetricPopup(MDDialog):
     # Building widgets for both modes
     # ------------------------------------------------------------------
     def _build_select_widgets(self):
-        """Create the metric selection list for the popup.
-
-        The list's ``minimum_height`` is bound to its ``height`` so the
-        surrounding :class:`ScrollView` can calculate the correct size and
-        display all options.
-        """
         metric_types = metrics.get_all_metric_types()
         existing = {m.get("name") for m in self.screen.exercise_obj.metrics}
         metric_types = [
@@ -115,12 +109,6 @@ class AddMetricPopup(MDDialog):
         return scroll, buttons, "Select Metric"
 
     def _build_new_metric_widgets(self):
-        """Create the form used for defining a new metric.
-
-        Binding the form layout's ``minimum_height`` to its ``height`` prevents
-        the configuration fields from collapsing inside the surrounding
-        :class:`ScrollView`.
-        """
         default_height = dp(48)
         self.input_widgets = {}
 
@@ -153,8 +141,6 @@ class AddMetricPopup(MDDialog):
             ] + [field for field in schema if field["name"] not in METRIC_FIELD_ORDER]
 
         form = MDBoxLayout(orientation="vertical", spacing="8dp", size_hint_y=None)
-        # Bind ``minimum_height`` so the ScrollView knows the form's content
-        # height; otherwise the layout would collapse to zero.
         form.bind(minimum_height=form.setter("height"))
 
         def enable_auto_resize(text_field: MDTextField):
