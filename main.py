@@ -289,6 +289,8 @@ class EditMetricTypePopup(MDDialog):
         self.metric_name = metric_name
         self.is_user_created = is_user_created
         self.metric = None
+        # Default to nearly full-screen to keep buttons visible on small devices
+        kwargs.setdefault("size_hint", (0.95, 0.95))
         if metric_name:
             for m in screen.all_metrics or []:
                 if (
@@ -444,7 +446,8 @@ class EditMetricTypePopup(MDDialog):
             update_enum_visibility()
             update_enum_filter()
 
-        layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        # Fill the dialog space and allow scrolling for compact screens
+        layout = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         info_widgets = []
         if self.metric and not self.is_user_created:
             has_copy = False
