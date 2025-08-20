@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
+import os
 import shutil
 import sqlite3
 import time
@@ -25,22 +26,35 @@ REQUIRED_TABLES = [
 def get_downloads_dir() -> Path:
     """Return a user-accessible Downloads directory.
 
-    On Android we resolve the path to the primary external storage so that
-    exported files appear in the device's shared ``Download`` folder. Storage
-    permissions are requested at runtime. When the Android APIs are unavailable
-    or the permission request fails, ``~/Downloads`` is used instead.
+    The function first checks whether the runtime exposes the Android
+    ``PythonActivity`` class or appears to be running inside Pydroid. If
+    either condition is not met, Android-specific permission logic is skipped
+    and ``Path.home() / "Downloads"`` is returned. On a full Android
+    environment the function requests the necessary storage permissions and
+    resolves the path to the system's shared ``Download`` directory.
+
 
     The directory is created if it does not already exist and a
     :class:`~pathlib.Path` to it is returned.
     """
-    try:
-        # These modules only exist on Android; importing them at runtime keeps
-        # desktop development lightweight.
-        from android.permissions import Permission, request_permissions  # type: ignore
-        from android.storage import primary_external_storage_path  # type: ignore
-    except Exception:
+    android_api_available = True
+    if "PYDROID_HOME" in os.environ:
+        android_api_available = False
+    else:
+        try:
+            # ``PythonActivity`` is provided by python-for-android builds but is
+            # absent in environments like Pydroid. Attempting to access it is a
+            # lightweight way to detect full Android support.
+            from jnius import autoclass  # type: ignore
+
+            autoclass("org.kivy.android.PythonActivity")
+        except Exception:
+            android_api_available = False
+
+    if not android_api_available:
         downloads = Path.home() / "Downloads"
     else:
+
         try:
             request_permissions(
                 [Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE]
@@ -51,6 +65,7 @@ def get_downloads_dir() -> Path:
                 "Falling back to home Downloads directory: %s", exc
             )
             downloads = Path.home() / "Downloads"
+
     downloads.mkdir(parents=True, exist_ok=True)
     return downloads
 
