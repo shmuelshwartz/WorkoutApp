@@ -8,12 +8,12 @@ from kivy.properties import (
 )
 from kivy.clock import Clock
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
 from kivymd.uix.selectioncontrol import MDCheckbox
+from kivymd.uix.button import MDFlatButton
 
 
 class MetricInputScreen(MDScreen):
@@ -23,6 +23,12 @@ class MetricInputScreen(MDScreen):
     label_text = StringProperty("")
     can_nav_left = BooleanProperty(False)
     can_nav_right = BooleanProperty(False)
+    exercise_bar = ObjectProperty(None)
+    metric_names = ObjectProperty(None)
+    metric_values = ObjectProperty(None)
+    metric_names_scroll = ObjectProperty(None)
+    metric_values_scroll = ObjectProperty(None)
+    set_headers = ObjectProperty(None)
 
     show_required = BooleanProperty(True)
     show_additional = BooleanProperty(False)
@@ -55,6 +61,27 @@ class MetricInputScreen(MDScreen):
         self._update_filter_colors()
 
         self._notes_widget = None
+        self.exercise_bar = None
+        self.metric_names = None
+        self.metric_values = None
+        self.metric_names_scroll = None
+        self.metric_values_scroll = None
+        self.set_headers = None
+        self.metric_cells = {}
+
+    def on_kv_post(self, base_widget):
+        super().on_kv_post(base_widget)
+        if self.metric_values_scroll and self.metric_names_scroll:
+            self.metric_values_scroll.bind(scroll_y=self._sync_scroll_y)
+            self.metric_names_scroll.bind(scroll_y=self._sync_scroll_names)
+
+    def _sync_scroll_y(self, instance, value):
+        if self.metric_names_scroll:
+            self.metric_names_scroll.scroll_y = value
+
+    def _sync_scroll_names(self, instance, value):
+        if self.metric_values_scroll:
+            self.metric_values_scroll.scroll_y = value
 
     # ------------------------------------------------------------------
     # Navigation
@@ -63,16 +90,43 @@ class MetricInputScreen(MDScreen):
         self.session = getattr(app, "workout_session", None)
         if self.session:
             self.exercise_idx = self.session.current_exercise
-            self.set_idx = self.session.current_set
         else:
             self.exercise_idx = 0
-            self.set_idx = 0
+        self.populate_exercise_bar()
         self.update_display()
         return super().on_pre_enter(*args)
 
     def update_display(self):
-        self._update_navigation_label()
+        self.highlight_current_exercise()
         self.update_metrics()
+
+    def populate_exercise_bar(self):
+        if not self.exercise_bar:
+            return
+        self.exercise_bar.clear_widgets()
+        if not self.session:
+            return
+        for idx, ex in enumerate(self.session.exercises):
+            btn = MDFlatButton(
+                text=ex.get("name", f"Ex {idx+1}"),
+                size_hint=(None, None),
+                height=dp(40),
+                width=dp(110),
+                on_release=lambda _w, i=idx: self.select_exercise(i),
+            )
+            self.exercise_bar.add_widget(btn)
+
+    def highlight_current_exercise(self):
+        if not self.exercise_bar:
+            return
+        for idx, child in enumerate(reversed(self.exercise_bar.children)):
+            color = (0.2, 0.6, 0.86, 1) if idx == self.exercise_idx else (0, 0, 0, 0)
+            if hasattr(child, "md_bg_color"):
+                child.md_bg_color = color
+
+    def select_exercise(self, index: int):
+        self.exercise_idx = index
+        self.update_display()
 
     def _update_navigation_label(self):
         if not self.session or self.exercise_idx >= len(self.session.exercises):
@@ -244,41 +298,39 @@ class MetricInputScreen(MDScreen):
         return visible
 
     def update_metrics(self):
-        if not self.metrics_list:
+        if not (self.metric_names and self.metric_values and self.set_headers):
             return
-        self.metrics_list.clear_widgets()
+        self.metric_names.clear_widgets()
+        self.metric_values.clear_widgets()
+        self.set_headers.clear_widgets()
+        self.metric_cells.clear()
         if not self.session or self.exercise_idx >= len(self.session.exercises):
             return
         exercise = self.session.exercises[self.exercise_idx]
         metrics = [
             m
             for m in exercise.get("metric_defs", [])
-            if m.get("name") not in ("Notes", "Time")
+            if m.get("name") not in ("Notes",)
         ]
-        # Determine any previously recorded values for this set
-        values = {}
+        metrics = self._apply_filters(metrics)
+        set_count = exercise.get("sets", 0)
+        self.metric_values.cols = max(1, set_count)
+        for s in range(set_count):
+            lbl = MDLabel(text=f"Set {s + 1}", size_hint_x=None, width=dp(80))
+            self.set_headers.add_widget(lbl)
         results = exercise.get("results", [])
-        if self.set_idx < len(results):
-            values = results[self.set_idx].get("metrics", {})
-        else:
-            values = self.session.pending_pre_set_metrics.get(
-                (self.exercise_idx, self.set_idx), {}
-            )
-        duration = self.session.get_set_duration(self.exercise_idx, self.set_idx)
-        if duration is not None:
-            self.metrics_list.add_widget(self._create_time_row(duration))
-        for metric in self._apply_filters(metrics):
+        for metric in metrics:
             name = metric.get("name")
-            self.metrics_list.add_widget(
-                self._create_row(metric, values.get(name))
+            self.metric_names.add_widget(
+                MDLabel(text=name, size_hint_y=None, height=dp(40))
             )
-
-        notes_text = ""
-        if hasattr(self.session, "get_set_notes"):
-            notes_text = self.session.get_set_notes(self.exercise_idx, self.set_idx)
-        notes_row = self._create_notes_row(notes_text)
-        self.metrics_list.add_widget(notes_row)
-        self._notes_widget = notes_row.input_widget
+            for s in range(set_count):
+                value = None
+                if s < len(results):
+                    value = results[s].get("metrics", {}).get(name)
+                widget = self._create_input_widget(metric, value, s)
+                self.metric_cells[(name, s)] = widget
+                self.metric_values.add_widget(widget)
 
     # ------------------------------------------------------------------
     # Metric row helpers
@@ -305,15 +357,10 @@ class MetricInputScreen(MDScreen):
             scroll.do_scroll_y = True
         return False
 
-    def _on_metric_change(self, row):
+    def _on_cell_change(self, name, mtype, set_idx, widget):
         app = MDApp.get_running_app()
         session = getattr(app, "workout_session", None)
         if not session:
-            return
-        widget = getattr(row, "input_widget", None)
-        mtype = getattr(row, "type", "str")
-        name = getattr(row, "metric_name", "")
-        if widget is None or not name:
             return
         value = None
         if isinstance(widget, MDTextField):
@@ -324,14 +371,6 @@ class MetricInputScreen(MDScreen):
             value = widget.text
         elif isinstance(widget, MDCheckbox):
             value = widget.active
-        if name == "Time":
-            try:
-                duration = float(value)
-            except (TypeError, ValueError):
-                duration = 0.0
-            session.update_set_duration(self.exercise_idx, self.set_idx, duration)
-            widget.text = f"{duration:.2f}"
-            return
         if value in (None, ""):
             value = 0 if mtype in ("int", "float", "slider") else ""
         if mtype == "int":
@@ -346,69 +385,29 @@ class MetricInputScreen(MDScreen):
                 value = 0.0
         exercise = session.exercises[self.exercise_idx]
         results = exercise.get("results", [])
-        if self.set_idx < len(results):
-            session.edit_set_metrics(self.exercise_idx, self.set_idx, {name: value})
+        if set_idx < len(results):
+            session.edit_set_metrics(self.exercise_idx, set_idx, {name: value})
         else:
-            session.set_pre_set_metrics({name: value}, self.exercise_idx, self.set_idx)
+            session.set_pre_set_metrics({name: value}, self.exercise_idx, set_idx)
 
-    def _create_time_row(self, duration: float):
-        row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
-        row.metric_name = "Time"
-        row.type = "float"
-        row.add_widget(MDLabel(text="Time", size_hint_x=0.4))
-        widget = MDTextField(
-            text=f"{duration:.2f}", input_filter="float"
-        )
-
-        if hasattr(widget, "bind"):
-            widget.bind(
-                text=lambda _w, _val, row=row: self._on_metric_change(row)
-            )
-        row.input_widget = widget
-        row.add_widget(widget)
-        return row
-
-    def _create_row(self, metric, value=None):
-        if isinstance(metric, str):
-            name = metric
-            mtype = "str"
-            values = []
-        else:
-            name = metric.get("name")
-            mtype = metric.get("type", "str")
-            values = metric.get("values", [])
-
-        row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(48))
-        row.metric_name = name
-        row.type = mtype
-        row.add_widget(MDLabel(text=name, size_hint_x=0.4))
-
+    def _create_input_widget(self, metric, value, set_idx):
+        name = metric.get("name")
+        mtype = metric.get("type", "str")
+        values = metric.get("values", [])
         if mtype == "slider":
             widget = MDSlider(min=0, max=1, value=value or 0)
-            widget.size_hint_x = 0.4
-            value_label = MDLabel(
-                text=f"{widget.value:.2f}", size_hint_x=0.2
-            )
-            def _slider_val(_w, val, row=row):
-                value_label.text = f"{val:.2f}"
-                self._on_metric_change(row)
             widget.bind(
-                value=_slider_val,
+                value=lambda inst, val: self._on_cell_change(name, mtype, set_idx, inst),
                 on_touch_down=self.on_slider_touch_down,
                 on_touch_up=self.on_slider_touch_up,
             )
         elif mtype == "enum":
-            widget = Spinner(
-                text=str(value) if value not in (None, "") else "",
-                values=values,
-            )
-            if hasattr(widget, "bind"):
-                widget.bind(text=lambda _w, _val, row=row: self._on_metric_change(row))
+            widget = Spinner(text=str(value) if value not in (None, "") else "", values=values)
+            widget.bind(text=lambda inst, val: self._on_cell_change(name, mtype, set_idx, inst))
         elif mtype == "bool":
             widget = MDCheckbox(active=bool(value))
-            if hasattr(widget, "bind"):
-                widget.bind(active=lambda _w, _val, row=row: self._on_metric_change(row))
-        else:  # manual_text
+            widget.bind(active=lambda inst, val: self._on_cell_change(name, mtype, set_idx, inst))
+        else:
             input_filter = None
             if mtype == "int":
                 input_filter = "int"
@@ -419,117 +418,13 @@ class MetricInputScreen(MDScreen):
                 input_filter=input_filter,
                 text=str(value) if value not in (None, "") else "",
             )
-            if hasattr(widget, "bind"):
-                widget.bind(text=lambda _w, _val, row=row: self._on_metric_change(row))
-
-        row.input_widget = widget
-        row.add_widget(widget)
-        if mtype == "slider":
-            row.add_widget(value_label)
-        return row
-
-    def _collect_metrics(self, widget_list):
-        data = {}
-        if not widget_list:
-            return data
-        for row in reversed(widget_list.children):
-            if getattr(row, "is_notes", False):
-                continue
-            name = getattr(row, "metric_name", "")
-            if name == "Time":
-                continue
-            widget = getattr(row, "input_widget", None)
-            mtype = getattr(row, "type", "str")
-            if widget is None:
-                continue
-            value = None
-            if isinstance(widget, MDTextField):
-                value = widget.text
-            elif isinstance(widget, MDSlider):
-                value = widget.value
-            elif isinstance(widget, Spinner):
-                value = widget.text
-            elif isinstance(widget, MDCheckbox):
-                value = widget.active
-            if value in (None, ""):
-                value = 0 if mtype in ("int", "float", "slider") else ""
-            if mtype == "int":
-                try:
-                    value = int(value)
-                except ValueError:
-                    value = 0
-            elif mtype in ("float", "slider"):
-                try:
-                    value = float(value)
-                except ValueError:
-                    value = 0.0
-            data[name] = value
-        return data
+            widget.bind(text=lambda inst, val: self._on_cell_change(name, mtype, set_idx, inst))
+        widget.size_hint = (None, None)
+        widget.height = dp(40)
+        widget.width = dp(80)
+        return widget
 
     # ------------------------------------------------------------------
     def save_metrics(self):
-        metrics = self._collect_metrics(self.metrics_list)
-        app = MDApp.get_running_app()
-        session = getattr(app, "workout_session", None)
-        if not session:
-            return
-        if getattr(app, "record_pre_set", False) and not getattr(
-            app, "record_new_set", False
-        ):
-            session.set_pre_set_metrics(metrics, self.exercise_idx, self.set_idx)
-            app.record_pre_set = False
-            if getattr(self, "manager", None):
-                self.manager.current = "rest"
-            return
-
-        orig_ex = session.current_exercise
-        orig_set = session.current_set
-
-        sel_ex = self.exercise_idx
-        sel_set = self.set_idx
-
-        finished = False
-        if getattr(app, "record_new_set", False):
-            post_metrics = metrics if (sel_ex == orig_ex and sel_set == orig_set) else {}
-            finished = session.record_metrics(orig_ex, orig_set, post_metrics)
-            if (sel_ex, sel_set) != (orig_ex, orig_set):
-                session.set_pre_set_metrics(metrics, sel_ex, sel_set)
-        else:
-            exercise = session.exercises[sel_ex]
-            results = exercise.get("results", [])
-            if sel_set < len(results):
-                session.edit_set_metrics(sel_ex, sel_set, metrics)
-            else:
-                finished = session.record_metrics(sel_ex, sel_set, metrics)
-
-        app.record_new_set = False
-        app.record_pre_set = False
-
-        self.exercise_idx = session.current_exercise
-        self.set_idx = session.current_set
-        self.update_display()
-        if finished and getattr(self, "manager", None):
-            self.manager.current = "workout_summary"
-        elif getattr(self, "manager", None):
+        if getattr(self, "manager", None):
             self.manager.current = "rest"
-
-    def _on_notes_change(self, instance, text):
-        app = MDApp.get_running_app()
-        session = getattr(app, "workout_session", None)
-        if not session:
-            return
-        session.set_set_notes(self.exercise_idx, self.set_idx, text)
-
-    def _create_notes_row(self, text: str = ""):
-        row = MDBoxLayout(orientation="vertical", size_hint_y=None, height=dp(96))
-        label = MDLabel(text="Notes", size_hint_y=None, height=dp(24))
-        widget = MDTextField(multiline=True, text=text)
-        widget.size_hint_y = None
-        widget.height = dp(72)
-        if hasattr(widget, "bind"):
-            widget.bind(text=self._on_notes_change)
-        row.add_widget(label)
-        row.add_widget(widget)
-        row.input_widget = widget
-        row.is_notes = True
-        return row

@@ -550,29 +550,32 @@ RootUI:
 
 <MetricInputScreen>:
     on_pre_enter: root.on_pre_enter()
-    metrics_list: metrics_list
+    exercise_bar: exercise_bar
+    metric_names: metric_names
+    metric_values: metric_values
+    metric_names_scroll: metric_names_scroll
+    metric_values_scroll: metric_values_scroll
+    set_headers: set_headers
     md_bg_color: PURPLE_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        BoxLayout:
-            orientation: "horizontal"
-            size_hint_y: 0.1
-            MDIconButton:
-                icon: "chevron-left"
-                on_release: root.register_left_tap()
-                disabled: not root.can_nav_left
-            MDLabel:
-                id: nav_label
-                text: root.label_text
-                halign: "center"
-                theme_text_color: "Custom"
-                text_color: 0.2, 0.6, 0.86, 1
-            MDIconButton:
-                icon: "chevron-right"
-                on_release: root.register_right_tap()
-                disabled: not root.can_nav_right
+        ScrollView:
+            id: exercise_scroll
+            size_hint_y: None
+            height: dp(40)
+            do_scroll_x: True
+            do_scroll_y: False
+            bar_width: 0
+            BoxLayout:
+                id: exercise_bar
+                orientation: "horizontal"
+                size_hint_x: None
+                width: self.minimum_width
+                height: dp(40)
+                spacing: dp(10)
+                padding: "0dp", "0dp"
         ScrollView:
             size_hint_y: None
             height: "40dp"
@@ -627,9 +630,56 @@ RootUI:
                     md_bg_color: root.post_color
                     text_color: 1, 1, 1, 1
                     on_release: root.toggle_filter('post')
-        ScrollView:
-            MDList:
-                id: metrics_list
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: 1
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: None
+                width: dp(100)
+                Widget:
+                    size_hint_y: None
+                    height: dp(30)
+                ScrollView:
+                    id: metric_names_scroll
+                    do_scroll_x: False
+                    do_scroll_y: True
+                    bar_width: 0
+                    BoxLayout:
+                        id: metric_names
+                        orientation: "vertical"
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(5)
+            BoxLayout:
+                orientation: "vertical"
+                ScrollView:
+                    id: set_header_scroll
+                    size_hint_y: None
+                    height: dp(30)
+                    do_scroll_x: True
+                    do_scroll_y: False
+                    bar_width: 0
+                    BoxLayout:
+                        id: set_headers
+                        orientation: "horizontal"
+                        size_hint_x: None
+                        width: self.minimum_width
+                        height: dp(30)
+                        spacing: dp(5)
+                ScrollView:
+                    id: metric_values_scroll
+                    do_scroll_x: True
+                    do_scroll_y: True
+                    bar_width: 0
+                    GridLayout:
+                        id: metric_values
+                        size_hint: None, None
+                        cols: 1
+                        row_default_height: dp(40)
+                        height: self.minimum_height
+                        width: self.minimum_width
+                        spacing: dp(5)
         MDRaisedButton:
             size_hint_y: 0.1
             text: "Back"
