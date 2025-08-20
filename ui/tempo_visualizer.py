@@ -48,10 +48,10 @@ class TempoVisualizer(BoxLayout):
     tempo = StringProperty("0000")
     colors = ListProperty(
         [
-            [0.2, 0.6, 1, 1],  # concentric
-            [0.2, 1, 0.6, 1],  # pause top
-            [1, 0.6, 0.2, 1],  # eccentric
-            [1, 0.2, 0.2, 1],  # pause bottom
+            [1, 0.2, 0.2, 1],  # concentric
+            [1, 0.6, 0.2, 1],  # pause top
+            [0.2, 0.6, 1, 1],  # eccentric
+            [0.2, 1, 0.6, 1],  # pause bottom
         ]
     )
 
