@@ -27,8 +27,8 @@ def get_downloads_dir() -> Path:
 
     On Android we resolve the path to the primary external storage so that
     exported files appear in the device's shared ``Download`` folder. Storage
-    permissions are requested at runtime. When the Android APIs are not
-    available (e.g. during desktop testing), ``~/Downloads`` is used instead.
+    permissions are requested at runtime. When the Android APIs are unavailable
+    or the permission request fails, ``~/Downloads`` is used instead.
 
     The directory is created if it does not already exist and a
     :class:`~pathlib.Path` to it is returned.
@@ -41,10 +41,16 @@ def get_downloads_dir() -> Path:
     except Exception:
         downloads = Path.home() / "Downloads"
     else:
-        request_permissions(
-            [Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE]
-        )
-        downloads = Path(primary_external_storage_path()) / "Download"
+        try:
+            request_permissions(
+                [Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE]
+            )
+            downloads = Path(primary_external_storage_path()) / "Download"
+        except Exception as exc:  # pragma: no cover - Android only
+            logging.warning(
+                "Falling back to home Downloads directory: %s", exc
+            )
+            downloads = Path.home() / "Downloads"
     downloads.mkdir(parents=True, exist_ok=True)
     return downloads
 
