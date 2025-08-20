@@ -399,6 +399,26 @@ RootUI:
                 max: 1
                 value: 1
                 on_value: root.on_sound_level(self, self.value)
+        MDBoxLayout:
+            orientation: "vertical"
+            spacing: "10dp"
+            size_hint_y: None
+            height: self.minimum_height
+            MDRaisedButton:
+                text: "Export DB"
+                size_hint_y: None
+                height: "40dp"
+                on_release: root.export_db()
+            MDRaisedButton:
+                text: "Export JSON"
+                size_hint_y: None
+                height: "40dp"
+                on_release: root.export_json()
+            MDRaisedButton:
+                text: "Import DB"
+                size_hint_y: None
+                height: "40dp"
+                on_release: root.open_import_db()
         MDRaisedButton:
             text: "Back"
             on_release: app.root.current = root.return_to
