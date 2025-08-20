@@ -47,6 +47,8 @@ class AddMetricPopup(MDDialog):
         self.screen = screen
         self.mode = mode
         self.popup_mode = popup_mode
+        # Ensure dialog nearly fills the screen on small devices
+        kwargs.setdefault("size_hint", (0.95, 0.95))
         if self.mode == "session":
             content = MDBoxLayout()
             close_btn = MDRaisedButton(
@@ -88,8 +90,8 @@ class AddMetricPopup(MDDialog):
             item = OneLineListItem(text=m["name"])
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
-
-        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        # Use full available space and allow scrolling so buttons remain visible
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(list_view)
 
         new_btn = MDRaisedButton(
@@ -224,7 +226,8 @@ class AddMetricPopup(MDDialog):
             update_enum_visibility()
             update_enum_filter()
 
-        layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        # Fill dialog area and enable scrolling for small screens
+        layout = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         layout.add_widget(form)
 
         save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)
@@ -354,6 +357,8 @@ class EditMetricPopup(MDDialog):
         self.screen = screen
         self.metric = metric
         self.mode = mode
+        # Ensure dialog uses most of the screen on small devices
+        kwargs.setdefault("size_hint", (0.95, 0.95))
         if self.mode == "session":
             content = MDBoxLayout()
             close_btn = MDRaisedButton(
@@ -531,7 +536,8 @@ class EditMetricPopup(MDDialog):
             )
             update_value_visibility()
 
-        layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        # Allow the form to scroll within the dialog and prevent clipping
+        layout = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         layout.add_widget(form)
 
         save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)

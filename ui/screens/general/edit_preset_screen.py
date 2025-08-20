@@ -840,6 +840,8 @@ class AddPresetMetricPopup(MDDialog):
     def __init__(self, screen: "EditPresetScreen", **kwargs):
         self.screen = screen
         content, buttons = self._build_widgets()
+        # Expand popup to cover most of the screen for better visibility on small devices
+        kwargs.setdefault("size_hint", (0.95, 0.95))
         super().__init__(
             title="Select Metric", type="custom", content_cls=content, buttons=buttons, **kwargs
         )
@@ -866,7 +868,8 @@ class AddPresetMetricPopup(MDDialog):
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
 
-        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        # Use available space and make list scrollable so action buttons remain on screen
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(list_view)
 
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
@@ -888,6 +891,8 @@ class AddSessionMetricPopup(MDDialog):
     def __init__(self, screen: "EditPresetScreen", **kwargs):
         self.screen = screen
         content, buttons = self._build_widgets()
+        # Ensure dialog is nearly full screen to avoid hidden buttons
+        kwargs.setdefault("size_hint", (0.95, 0.95))
         super().__init__(
             title="Select Metric",
             type="custom",
@@ -918,7 +923,8 @@ class AddSessionMetricPopup(MDDialog):
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
 
-        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        # Occupy available space and enable scrolling for small displays
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(list_view)
 
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
