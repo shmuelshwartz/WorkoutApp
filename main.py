@@ -289,8 +289,11 @@ class EditMetricTypePopup(MDDialog):
         self.metric_name = metric_name
         self.is_user_created = is_user_created
         self.metric = None
-        # Default to nearly full-screen to keep buttons visible on small devices
-        kwargs.setdefault("size_hint", (0.95, 0.95))
+        # Default to nearly full-screen to keep buttons visible on small devices.
+        # ``MDDialog`` does not respect vertical ``size_hint`` values, so specify
+        # the height explicitly to occupy most of the window.
+        kwargs.setdefault("size_hint", (0.95, None))
+        kwargs.setdefault("height", Window.height * 0.9)
         if metric_name:
             for m in screen.all_metrics or []:
                 if (
