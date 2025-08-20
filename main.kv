@@ -29,8 +29,6 @@ RootUI:
         name: "metric_input"
     WorkoutEditScreen:
         name: "workout_edit"
-    WorkoutSettingsScreen:
-        name: "workout_settings"
     WorkoutSummaryScreen:
         name: "workout_summary"
     EditExerciseScreen:
@@ -68,7 +66,7 @@ RootUI:
                 on_release: app.root.current = "progress"
             MDRaisedButton:
                 text: "Settings"
-                on_release: app.root.current = "settings"
+                on_release: app.open_settings('home')
             MDRaisedButton:
                 text: "History"
                 on_release: app.root.current = "workout_history"
@@ -335,8 +333,8 @@ RootUI:
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
-            text: "Back to Home"
-            on_release: app.root.current = "home"
+            text: "Back"
+            on_release: app.root.current = root.return_to
 
 <WorkoutHistoryScreen>:
     md_bg_color: PINK_BG
@@ -349,8 +347,8 @@ RootUI:
             MDList:
                 id: history_list
         MDRaisedButton:
-            text: "Back to Home"
-            on_release: app.root.current = "home"
+            text: "Back"
+            on_release: app.root.current = root.return_to
 
 <ViewPreviousWorkoutScreen>:
     md_bg_color: PINK_BG
@@ -402,8 +400,8 @@ RootUI:
                 value: 1
                 on_value: root.on_sound_level(self, self.value)
         MDRaisedButton:
-            text: "Back to Home"
-            on_release: app.root.current = "home"
+            text: "Back"
+            on_release: app.root.current = root.return_to
 
 <IconTextButton@MDCard>:
     on_press: print("IconTextButton pressed:", root.icon)
@@ -522,7 +520,7 @@ RootUI:
                     on_release: app.edit_active_preset()
                 IconTextButton:
                     icon: "cog"
-                    on_release: app.root.current = "workout_settings"
+                    on_release: app.open_settings('rest')
                 IconTextButton:
                     icon: "book"
                     on_release: app.root.current = "previous_workouts"
@@ -717,21 +715,6 @@ RootUI:
         padding: "20dp"
         MDLabel:
             text: "Workout Edit - tweak exercises in this session"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-        MDRaisedButton:
-            text: "Back to Rest"
-            on_release: app.root.current = "rest"
-
-<WorkoutSettingsScreen@MDScreen>:
-    md_bg_color: PINK_BG
-    BoxLayout:
-        orientation: "vertical"
-        spacing: "10dp"
-        padding: "20dp"
-        MDLabel:
-            text: "Workout Settings - adjust options for this workout"
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
