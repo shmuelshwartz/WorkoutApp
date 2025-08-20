@@ -1,5 +1,5 @@
 from kivymd.uix.screen import MDScreen
-from kivy.properties import NumericProperty, StringProperty
+from kivy.properties import NumericProperty, StringProperty, ObjectProperty
 from kivy.clock import Clock
 from kivymd.app import MDApp
 from kivymd.uix.dialog import MDDialog
@@ -19,13 +19,18 @@ else:
 
 
 class WorkoutActiveScreen(MDScreen):
-    """Screen that shows an active workout with a stopwatch."""
+    """Screen that shows an active workout with a stopwatch.
+
+    A small ``TempoVisualizer`` renders the current exercise tempo so the
+    user can follow along without relying solely on audio cues.
+    """
 
     elapsed = NumericProperty(0.0)
     start_time = NumericProperty(0.0)
     formatted_time = StringProperty("00:00")
     exercise_name = StringProperty("")
     digital_font = StringProperty(DIGITAL_FONT)
+    tempo_bar = ObjectProperty(None)
     _event = None
 
     def start_timer(self, *args):
@@ -59,6 +64,15 @@ class WorkoutActiveScreen(MDScreen):
                     app.sound.start_tempo(tempo, skip_start=True, start_time=self.start_time)
                 else:
                     app.sound.start_ticks()
+        # Update tempo visualisation
+        if self.tempo_bar:
+            if tempo:
+                self.tempo_bar.tempo = tempo
+                self.tempo_bar.start(self.start_time)
+                self.tempo_bar.opacity = 1
+            else:
+                self.tempo_bar.stop()
+                self.tempo_bar.opacity = 0
         return super().on_pre_enter(*args)
 
     def stop_timer(self, *args):
@@ -75,6 +89,8 @@ class WorkoutActiveScreen(MDScreen):
             if app and hasattr(app, "sound"):
                 app.sound.stop()
             self.stop_timer()
+            if self.tempo_bar:
+                self.tempo_bar.stop()
         return super().on_leave(*args)
 
     def _update_elapsed(self, dt):

@@ -74,8 +74,22 @@ class TempoVisualizer(BoxLayout):
             self._segments.append(seg)
             self.add_widget(seg)
 
-    def start(self):
-        self._start = time.perf_counter()
+    def start(self, start_time: float | None = None) -> None:
+        """Begin visual playback of the tempo cycle.
+
+        ``start_time`` can optionally be provided to align the visualisation
+        with an external clock (e.g. the sound system). If omitted, the
+        animation starts from the current moment.
+        """
+
+        now = time.perf_counter()
+        if start_time is None:
+            self._start = now
+        else:
+            # ``start_time`` is based on ``time.time()`` so convert it to the
+            # ``perf_counter`` reference to keep progress in sync.
+            self._start = now - (time.time() - start_time)
+
         if self._event:
             self._event.cancel()
         self._event = Clock.schedule_interval(self._update, 1 / 30)
