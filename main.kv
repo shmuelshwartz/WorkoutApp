@@ -824,22 +824,31 @@ RootUI:
             padding: "5dp"
             size_hint: 1, 1
 
-            MDBoxLayout:
+            # Wrap navigation buttons in a horizontal ScrollView so they remain
+            # accessible on small screens without altering existing logic.
+            ScrollView:
                 size_hint_y: None
                 height: "40dp"
-                spacing: "10dp"
-                MDRaisedButton:
-                    text: "Sections"
-                    md_bg_color: app.theme_cls.primary_color if root.current_tab == "sections" else (.5, .5, .5, 1)
-                    on_release: root.switch_tab("sections")
-                MDRaisedButton:
-                    text: "Details"
-                    md_bg_color: app.theme_cls.primary_color if root.current_tab == "details" else (.5, .5, .5, 1)
-                    on_release: root.switch_tab("details")
-                MDRaisedButton:
-                    text: "Metrics"
-                    md_bg_color: app.theme_cls.primary_color if root.current_tab == "metrics" else (.5, .5, .5, 1)
-                    on_release: root.switch_tab("metrics")
+                do_scroll_y: False  # only horizontal scrolling is allowed
+                bar_width: 0  # hide scrollbar for cleaner UI
+                MDBoxLayout:
+                    orientation: "horizontal"
+                    size_hint_x: None
+                    height: "40dp"
+                    width: self.minimum_width
+                    spacing: "10dp"
+                    MDRaisedButton:
+                        text: "Sections"
+                        md_bg_color: app.theme_cls.primary_color if root.current_tab == "sections" else (.5, .5, .5, 1)
+                        on_release: root.switch_tab("sections")
+                    MDRaisedButton:
+                        text: "Details"
+                        md_bg_color: app.theme_cls.primary_color if root.current_tab == "details" else (.5, .5, .5, 1)
+                        on_release: root.switch_tab("details")
+                    MDRaisedButton:
+                        text: "Metrics"
+                        md_bg_color: app.theme_cls.primary_color if root.current_tab == "metrics" else (.5, .5, .5, 1)
+                        on_release: root.switch_tab("metrics")
 
             ScreenManager:
                 id: edit_tabs
