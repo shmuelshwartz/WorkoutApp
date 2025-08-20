@@ -80,7 +80,7 @@ def test_home_screen_triggers_recovery(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_home_screen_no_recovery_shows_info(monkeypatch):
+def test_home_screen_no_recovery_shows_nothing(monkeypatch):
     from ui.screens.general.home_screen import HomeScreen
     from backend.workout_session import WorkoutSession
 
@@ -92,15 +92,15 @@ def test_home_screen_no_recovery_shows_info(monkeypatch):
 
     called = {}
 
-    def fake_dialog(self):
+    def fake_dialog(self, *args):
         called["called"] = True
 
-    monkeypatch.setattr(HomeScreen, "_show_no_session_dialog", fake_dialog)
+    monkeypatch.setattr(HomeScreen, "_show_recovery_dialog", fake_dialog)
 
     screen = HomeScreen()
     screen.on_enter()
 
-    assert called.get("called") is True
+    assert called.get("called") is None
 
 
 def test_rest_screen_toggle_ready_changes_state():
