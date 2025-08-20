@@ -44,12 +44,12 @@ class WorkoutActiveScreen(MDScreen):
         if session and session.current_exercise < len(session.exercises):
             self.exercise_name = session.next_exercise_display()
             tempo = session.tempo_for_set(session.current_exercise, session.current_set)
+        self.start_timer()
         if app and hasattr(app, "sound"):
             if tempo:
-                app.sound.start_tempo(tempo, skip_start=True)
+                app.sound.start_tempo(tempo, skip_start=True, start_time=self.start_time)
             else:
                 app.sound.start_ticks()
-        self.start_timer()
         return super().on_pre_enter(*args)
 
     def stop_timer(self, *args):
