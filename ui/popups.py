@@ -4,6 +4,7 @@ from __future__ import annotations
 from kivymd.app import MDApp
 from kivy.metrics import dp
 from kivy.core.window import Window
+from kivy.clock import Clock
 from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.dialog import MDDialog
@@ -47,11 +48,11 @@ class AddMetricPopup(MDDialog):
         self.screen = screen
         self.mode = mode
         self.popup_mode = popup_mode
-        # Ensure dialog nearly fills the screen on small devices. MDDialog
-        # ignores vertical ``size_hint`` values, so we explicitly set the
-        # height to occupy most of the available window.
+        # The dialog should nearly fill the screen on small devices. MDDialog
+        # ignores vertical ``size_hint`` values and resets explicit heights
+        # during ``__init__``, so we assign the height after initialization
+        # using ``Clock.schedule_once``.
         kwargs.setdefault("size_hint", (0.95, None))
-        kwargs.setdefault("height", Window.height * 0.9)
         if self.mode == "session":
             content = MDBoxLayout()
             close_btn = MDRaisedButton(
@@ -64,6 +65,9 @@ class AddMetricPopup(MDDialog):
                 buttons=[close_btn],
                 **kwargs,
             )
+            Clock.schedule_once(
+                lambda *_: setattr(self, "height", Window.height * 0.9)
+            )
             return
 
         if popup_mode == "select":
@@ -75,6 +79,9 @@ class AddMetricPopup(MDDialog):
 
         super().__init__(
             title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
+        )
+        Clock.schedule_once(
+            lambda *_: setattr(self, "height", Window.height * 0.9)
         )
 
     # ------------------------------------------------------------------
@@ -949,12 +956,15 @@ class PreSessionMetricPopup(MDDialog):
         self.on_save = on_save
         # Match the behaviour of the other metric popups by having the dialog
         # consume most of the available screen space on small devices. ``size_hint_y``
-        # is ignored by :class:`MDDialog`, so the explicit ``height`` is required.
+        # is ignored by :class:`MDDialog`, and it resets explicit heights during
+        # construction, so height is assigned after initialization.
         kwargs.setdefault("size_hint", (0.95, None))
-        kwargs.setdefault("height", Window.height * 0.9)
         content, buttons = self._build_widgets()
         super().__init__(
             title="Session Metrics", type="custom", content_cls=content, buttons=buttons, **kwargs
+        )
+        Clock.schedule_once(
+            lambda *_: setattr(self, "height", Window.height * 0.9)
         )
 
     def _build_widgets(self):
