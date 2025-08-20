@@ -23,12 +23,28 @@ REQUIRED_TABLES = [
 
 
 def get_downloads_dir() -> Path:
-    """Return the system Downloads directory.
+    """Return a user-accessible Downloads directory.
 
-    The path is derived from :class:`pathlib.Path.home` and is created if it
-    does not already exist.
+    On Android we resolve the path to the primary external storage so that
+    exported files appear in the device's shared ``Download`` folder. Storage
+    permissions are requested at runtime. When the Android APIs are not
+    available (e.g. during desktop testing), ``~/Downloads`` is used instead.
+
+    The directory is created if it does not already exist and a
+    :class:`~pathlib.Path` to it is returned.
     """
-    downloads = Path.home() / "Downloads"
+    try:
+        # These modules only exist on Android; importing them at runtime keeps
+        # desktop development lightweight.
+        from android.permissions import Permission, request_permissions  # type: ignore
+        from android.storage import primary_external_storage_path  # type: ignore
+    except Exception:
+        downloads = Path.home() / "Downloads"
+    else:
+        request_permissions(
+            [Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE]
+        )
+        downloads = Path(primary_external_storage_path()) / "Download"
     downloads.mkdir(parents=True, exist_ok=True)
     return downloads
 
