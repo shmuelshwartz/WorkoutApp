@@ -89,6 +89,10 @@ class AddMetricPopup(MDDialog):
             if m["name"] not in existing and m.get("scope") in ("set", "exercise")
         ]
         list_view = MDList()
+        # Ensure the list expands to fit its items so the surrounding
+        # ScrollView can calculate a proper height. Without this binding the
+        # list would have zero height and appear empty inside the dialog.
+        list_view.bind(minimum_height=list_view.setter("height"))
         for m in metric_types:
             item = OneLineListItem(text=m["name"])
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
@@ -944,23 +948,28 @@ class PreSessionMetricPopup(MDDialog):
     def __init__(self, metrics: list[dict], on_save, **kwargs):
         self.metrics = metrics
         self.on_save = on_save
+        # Match the behaviour of the other metric popups by having the dialog
+        # consume most of the available screen space on small devices. ``size_hint_y``
+        # is ignored by :class:`MDDialog`, so the explicit ``height`` is required.
+        kwargs.setdefault("size_hint", (0.95, None))
+        kwargs.setdefault("height", Window.height * 0.9)
         content, buttons = self._build_widgets()
         super().__init__(
             title="Session Metrics", type="custom", content_cls=content, buttons=buttons, **kwargs
         )
 
     def _build_widgets(self):
-        layout = MDBoxLayout(orientation="vertical", spacing="8dp", size_hint_y=None)
-        layout.bind(minimum_height=layout.setter("height"))
+        # Build a list of metric input rows. Binding ``minimum_height`` ensures
+        # the list grows with its children so that it is fully scrollable.
         self.metric_list = MDList()
+        self.metric_list.bind(minimum_height=self.metric_list.setter("height"))
         for m in self.metrics:
             self.metric_list.add_widget(self._create_row(m))
-        scroll = ScrollView()
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(self.metric_list)
-        layout.add_widget(scroll)
         save_btn = MDRaisedButton(text="Save", on_release=lambda *_: self._on_save())
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *_: self.dismiss())
-        return layout, [save_btn, cancel_btn]
+        return scroll, [save_btn, cancel_btn]
 
     def _create_row(self, metric):
         name = metric.get("name")
