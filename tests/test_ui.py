@@ -270,11 +270,71 @@ def test_confirm_finish_opens_dialog(monkeypatch):
         pytest.skip("RestScreen module not available")
     monkeypatch.setattr(rest_screen_module, "MDDialog", DummyDialog)
     monkeypatch.setattr(rest_screen_module, "MDRaisedButton", lambda *a, **k: None)
+    if hasattr(rest_screen_module, "MDFlatButton"):
+        monkeypatch.setattr(rest_screen_module, "MDFlatButton", lambda *a, **k: None)
 
     screen = rest_screen_module.RestScreen()
     screen.confirm_finish()
 
     assert opened["value"]
+
+
+def test_confirm_finish_discard(monkeypatch):
+    """Pressing discard abandons the session and returns to home."""
+
+    import importlib
+
+    captured = {}
+
+    class DummyDialog:
+        def __init__(self, *a, **k):
+            captured["buttons"] = k.get("buttons", [])
+
+        def open(self):
+            pass
+
+        def dismiss(self):
+            pass
+
+    def dummy_button(*_a, **k):
+        return type("B", (), {"on_release": k.get("on_release")})
+
+    try:
+        rest_screen_module = importlib.import_module("ui.screens.session.rest_screen")
+    except ModuleNotFoundError:
+        pytest.skip("RestScreen module not available")
+    if not hasattr(rest_screen_module, "MDFlatButton"):
+        pytest.skip("RestScreen stub without discard support")
+
+    monkeypatch.setattr(rest_screen_module, "MDDialog", DummyDialog)
+    monkeypatch.setattr(rest_screen_module, "MDRaisedButton", dummy_button)
+    monkeypatch.setattr(rest_screen_module, "MDFlatButton", dummy_button)
+
+    cleared = {"value": False}
+
+    class DummySession:
+        def clear_recovery_files(self):
+            cleared["value"] = True
+
+    dummy_root = type("R", (), {"current": "rest"})()
+    dummy_app = type("A", (), {"root": dummy_root, "workout_session": DummySession()})()
+
+    class DummyAppClass:
+        @staticmethod
+        def get_running_app():
+            return dummy_app
+
+    monkeypatch.setattr(rest_screen_module, "MDApp", DummyAppClass)
+
+    screen = rest_screen_module.RestScreen()
+    screen.confirm_finish()
+
+    discard_btn = captured["buttons"][1]
+    discard_btn.on_release(None)
+
+    assert dummy_root.current == "home"
+    assert cleared["value"]
+    assert dummy_app.workout_session is None
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")

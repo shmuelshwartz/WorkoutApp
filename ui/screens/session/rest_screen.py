@@ -301,12 +301,27 @@ class RestScreen(MDScreen):
             if dialog:
                 dialog.dismiss()
 
+        def do_discard(*_args):
+            """Abandon the current session without saving."""
+
+            app = MDApp.get_running_app()
+            if app:
+                session = getattr(app, "workout_session", None)
+                if session:
+                    session.clear_recovery_files()
+                    app.workout_session = None
+            if app and app.root:
+                app.root.current = "home"
+            if dialog:
+                dialog.dismiss()
+
         dialog = MDDialog(
             title="Finish Workout?",
             text="Are you sure you want to finish this workout?",
             buttons=[
                 MDRaisedButton(text="Cancel", on_release=lambda *_: dialog.dismiss()),
-                MDRaisedButton(text="Finish", on_release=do_finish),
+                MDFlatButton(text="Discard", on_release=do_discard),
+                MDRaisedButton(text="Save", on_release=do_finish),
             ],
         )
         dialog.open()
