@@ -70,7 +70,13 @@ class SoundSystem:
         self._next_time = time.time() + 1
         self._schedule_update()
 
-    def start_tempo(self, tempo: str | None, *, skip_start: bool = False) -> None:
+    def start_tempo(
+        self,
+        tempo: str | None,
+        *,
+        skip_start: bool = False,
+        start_time: float | None = None,
+    ) -> None:
         """Begin tempo-driven playback.
 
         ``tempo`` must be a four digit string. The digits are rotated and used
@@ -85,18 +91,32 @@ class SoundSystem:
         self._durations = [int(d) for d in rotated]
         self._sequence = ["start", "hold", "release", "end"]
         self.stop()
+
+        base = start_time or time.time()
+
         if skip_start:
-            base = int(time.time())
             self._mode = "tempo"
-            self._index = 1
-            self._next_time = base + self._durations[0]
+            cycle = sum(self._durations)
+            now = time.time()
+            elapsed = int(now - base)
+            pos = elapsed % cycle
+            cumulative = 0
+            for idx, dur in enumerate(self._durations):
+                cumulative += dur
+                if pos < cumulative:
+                    self._index = (idx + 1) % len(self._sequence)
+                    remaining = cumulative - pos
+                    self._next_time = base + elapsed + remaining
+                    break
+            else:
+                self._index = 0
+                self._next_time = base + ((elapsed // cycle) + 1) * cycle
             self._schedule_update()
         else:
-            delay = 1 - (time.time() % 1)
+            delay = max(0, base - time.time())
 
             def _begin(dt):
                 self.play("start")
-                base = int(time.time())
                 self._mode = "tempo"
                 self._index = 1
                 self._next_time = base + self._durations[0]
