@@ -660,14 +660,15 @@ class EditMetricPopup(MDDialog):
                         enum_values=updates.get("values"),
                         db_path=db_path,
                     )
-                        if metric_saved:
-                            metrics.set_exercise_metric_override(
-                                self.screen.exercise_obj.name,
-                                self.metric["name"],
-                                is_user_created=self.screen.exercise_obj.is_user_created,
-                                value=updates.get("value"),
-                                db_path=db_path,
-                            )
+                    # Ensure overrides are updated if the metric already existed
+                    if metric_saved:
+                        metrics.set_exercise_metric_override(
+                            self.screen.exercise_obj.name,
+                            self.metric["name"],
+                            is_user_created=self.screen.exercise_obj.is_user_created,
+                            value=updates.get("value"),
+                            db_path=db_path,
+                        )
                 elif cb_ex.active:
                     if metric_saved:
                         metrics.set_exercise_metric_override(
