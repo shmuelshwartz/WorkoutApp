@@ -583,6 +583,9 @@ class WorkoutApp(MDApp):
 
     def on_pause(self):
         """Ensure rest timer isn't marked ready when app is backgrounded."""
+        # ``rest_screen`` must always be defined to avoid an ``UnboundLocalError``
+        # when the app is paused on screens other than ``rest``.
+        rest_screen = None
         if self.root and self.root.current == "rest":
             try:
                 rest_screen = self.root.get_screen("rest")
