@@ -517,16 +517,12 @@ RootUI:
             id: stopwatch
             text: root.formatted_time
             halign: "center"
+            font_name: root.digital_font
             font_style: "H2"
             multiline: False
         MDLabel:
             text: root.exercise_name
             halign: "center"
-        MDLabel:
-            text: "Active Workout Screen – The primary screen shown while the user is performing an exercise. Displays the current exercise details, timer, and any relevant cues or instructions."
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
         MDBoxLayout:
             orientation: "horizontal"
             spacing: "10dp"
