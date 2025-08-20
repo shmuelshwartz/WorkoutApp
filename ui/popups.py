@@ -88,10 +88,9 @@ class AddMetricPopup(MDDialog):
             for m in metric_types
             if m["name"] not in existing and m.get("scope") in ("set", "exercise")
         ]
-        list_view = MDList()
-        # Ensure the list expands to fit its items so the surrounding
-        # ScrollView can calculate a proper height. Without this binding the
-        # list would have zero height and appear empty inside the dialog.
+        list_view = MDList(adaptive_height=True)
+        # Disable vertical size hint so ``minimum_height`` binding adjusts the
+        # list's height and the surrounding ScrollView can size properly.
         list_view.bind(minimum_height=list_view.setter("height"))
         for m in metric_types:
             item = OneLineListItem(text=m["name"])
@@ -961,7 +960,9 @@ class PreSessionMetricPopup(MDDialog):
     def _build_widgets(self):
         # Build a list of metric input rows. Binding ``minimum_height`` ensures
         # the list grows with its children so that it is fully scrollable.
-        self.metric_list = MDList()
+        self.metric_list = MDList(adaptive_height=True)
+        # Disable vertical size hint so the ``minimum_height`` binding updates
+        # the list's height for scrolling.
         self.metric_list.bind(minimum_height=self.metric_list.setter("height"))
         for m in self.metrics:
             self.metric_list.add_widget(self._create_row(m))
