@@ -865,19 +865,10 @@ RootUI:
                                     spacing: "10dp"
                                     size_hint_y: None
                                     height: self.minimum_height
-                        MDBoxLayout:
-                            orientation: "horizontal"
-                            size_hint_y: None
-                            height: "56dp"
-                            padding: "8dp"
-                            Widget:
-                        MDFloatingActionButton:
-                            icon: "plus"
-                            md_bg_color: app.theme_cls.primary_color
-                            pos_hint: {"center_x": 0.5, "center_y": 0.5}
-                            opacity: 1 if root.mode != "session" else 0
-                            disabled: root.mode == "session"
-                            on_release: app.root.get_screen("edit_preset").add_section()
+                        # Removed floating action button to place all actions
+                        # in a single bottom bar for better use of space on
+                        # small screens. Section adding is now handled by the
+                        # plus icon in the bottom bar.
 
 
                 Screen:
@@ -955,18 +946,25 @@ RootUI:
                             disabled: root.mode == "session"
                             on_release: root.open_add_session_metric_popup()
 
+            # Bottom action bar: back, add section, save
             MDBoxLayout:
+                orientation: "horizontal"
                 size_hint_y: None
-                height: "40dp"
+                height: "48dp"
                 spacing: "10dp"
-                MDRaisedButton:
-                    text: "Save"
+                MDIconButton:
+                    icon: "arrow-left"
+                    on_release: root.go_back()
+                MDIconButton:
+                    icon: "plus"
+                    disabled: root.mode == "session" or root.current_tab != "sections"
+                    opacity: 1 if root.mode != "session" and root.current_tab == "sections" else 0
+                    on_release: app.root.get_screen("edit_preset").add_section()
+                MDIconButton:
+                    icon: "check"
                     disabled: root.mode == "session" or not root.save_enabled
                     opacity: 1 if root.mode != "session" else 0
                     on_release: root.save_preset()
-                MDRaisedButton:
-                    text: "Back"
-                    on_release: root.go_back()
 
         ExerciseSelectionPanel:
             id: exercise_panel
