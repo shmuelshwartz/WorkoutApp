@@ -371,55 +371,58 @@ RootUI:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: "Settings - configure the app"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-        MDBoxLayout:
-            orientation: "horizontal"
-            size_hint_y: None
-            height: "40dp"
-            MDLabel:
-                text: "Sound"
-                valign: "center"
-            MDSwitch:
-                id: sound_toggle
-                pos_hint: {"center_y": 0.5}
-                on_active: root.on_sound_toggle(self, self.active)
-        MDBoxLayout:
-            orientation: "horizontal"
-            size_hint_y: None
-            height: "40dp"
-            MDLabel:
-                text: "Sound Level"
-                valign: "center"
-            MDSlider:
-                id: sound_level_slider
-                min: 0
-                max: 1
-                value: 1
-                on_value: root.on_sound_level(self, self.value)
-        MDBoxLayout:
-            orientation: "vertical"
-            spacing: "10dp"
-            size_hint_y: None
-            height: self.minimum_height
-            MDRaisedButton:
-                text: "Export DB"
+        # ScrollView ensures remaining settings are accessible on small screens
+        ScrollView:
+            do_scroll_x: False
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: "10dp"
                 size_hint_y: None
-                height: "40dp"
-                on_release: root.export_db()
-            MDRaisedButton:
-                text: "Export JSON"
-                size_hint_y: None
-                height: "40dp"
-                on_release: root.export_json()
-            MDRaisedButton:
-                text: "Import DB"
-                size_hint_y: None
-                height: "40dp"
-                on_release: root.open_import_db()
+                height: self.minimum_height
+                MDBoxLayout:
+                    orientation: "horizontal"
+                    size_hint_y: None
+                    height: "40dp"
+                    MDLabel:
+                        text: "Sound"
+                        valign: "center"
+                    MDSwitch:
+                        id: sound_toggle
+                        pos_hint: {"center_y": 0.5}
+                        on_active: root.on_sound_toggle(self, self.active)
+                MDBoxLayout:
+                    orientation: "horizontal"
+                    size_hint_y: None
+                    height: "40dp"
+                    MDLabel:
+                        text: "Sound Level"
+                        valign: "center"
+                    MDSlider:
+                        id: sound_level_slider
+                        min: 0
+                        max: 1
+                        value: 1
+                        on_value: root.on_sound_level(self, self.value)
+                MDBoxLayout:
+                    orientation: "vertical"
+                    spacing: "10dp"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    MDRaisedButton:
+                        text: "Export DB"
+                        size_hint_y: None
+                        height: "40dp"
+                        on_release: root.export_db()
+                    MDRaisedButton:
+                        text: "Export JSON"
+                        size_hint_y: None
+                        height: "40dp"
+                        on_release: root.export_json()
+                    MDRaisedButton:
+                        text: "Import DB"
+                        size_hint_y: None
+                        height: "40dp"
+                        on_release: root.open_import_db()
         MDRaisedButton:
             text: "Back"
             on_release: app.root.current = root.return_to
