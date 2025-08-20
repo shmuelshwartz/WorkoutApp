@@ -88,7 +88,14 @@ class SettingsScreen(MDScreen):
                 select_path=self.select_import_file,
                 ext=[".db"],
             )
-        self.file_manager.show(str(db_io.get_downloads_dir()))
+        try:
+            # The downloads directory may be unavailable on some platforms.
+            downloads_dir = db_io.get_downloads_dir()
+        except Exception as exc:  # pragma: no cover - defensive
+            logging.error("Downloads directory lookup failed: %s", exc)
+            toast("Import unavailable")
+            return
+        self.file_manager.show(str(downloads_dir))
 
     def close_file_manager(self, *_) -> None:
         """Close the file picker if it is open."""
