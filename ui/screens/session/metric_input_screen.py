@@ -397,16 +397,35 @@ class MetricInputScreen(MDScreen):
         if mtype == "slider":
             widget = MDSlider(min=0, max=1, value=value or 0)
             widget.bind(
-                value=lambda inst, val: self._on_cell_change(name, mtype, set_idx, inst),
+                # Capture loop variables to ensure each cell updates correctly
+                value=lambda inst,
+                val,
+                name=name,
+                mtype=mtype,
+                set_idx=set_idx: self._on_cell_change(
+                    name, mtype, set_idx, inst
+                ),
                 on_touch_down=self.on_slider_touch_down,
                 on_touch_up=self.on_slider_touch_up,
             )
         elif mtype == "enum":
             widget = Spinner(text=str(value) if value not in (None, "") else "", values=values)
-            widget.bind(text=lambda inst, val: self._on_cell_change(name, mtype, set_idx, inst))
+            widget.bind(
+                text=lambda inst,
+                val,
+                name=name,
+                mtype=mtype,
+                set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst)
+            )
         elif mtype == "bool":
             widget = MDCheckbox(active=bool(value))
-            widget.bind(active=lambda inst, val: self._on_cell_change(name, mtype, set_idx, inst))
+            widget.bind(
+                active=lambda inst,
+                val,
+                name=name,
+                mtype=mtype,
+                set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst)
+            )
         else:
             input_filter = None
             if mtype == "int":
@@ -418,7 +437,13 @@ class MetricInputScreen(MDScreen):
                 input_filter=input_filter,
                 text=str(value) if value not in (None, "") else "",
             )
-            widget.bind(text=lambda inst, val: self._on_cell_change(name, mtype, set_idx, inst))
+            widget.bind(
+                text=lambda inst,
+                val,
+                name=name,
+                mtype=mtype,
+                set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst)
+            )
         widget.size_hint = (None, None)
         widget.height = dp(40)
         widget.width = dp(80)
