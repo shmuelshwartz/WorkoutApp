@@ -77,6 +77,21 @@ class _Label(_DummyWidget):
     def __init__(self, text="", **kwargs):
         self.text = text
 
+class _Layout(list):
+    """Minimal container to emulate Kivy layouts in tests."""
+    def __init__(self):
+        super().__init__()
+        self.cols = 0
+
+    def clear_widgets(self):
+        self.clear()
+
+    def add_widget(self, widget):
+        self.append(widget)
+
+    def __bool__(self):
+        return True
+
 kivymd_modules["kivymd.app"].MDApp = _DummyWidget
 kivymd_modules["kivymd.uix.screen"].MDScreen = _DummyWidget
 kivymd_modules["kivymd.uix.textfield"].MDTextField = _TextField
@@ -146,3 +161,44 @@ def test_on_cell_change_updates_session():
     dummy_session.exercises[0]["results"] = []
     screen._on_cell_change("Reps", "int", 0, widget)
     assert dummy_session.pending[(0, 0)] == {"Reps": 5}
+
+
+def test_metric_store_fallback_on_rebuild():
+    """Widget should prefill metrics from session.metric_store for unfinished sets."""
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [
+                {
+                    "name": "Bench",
+                    "sets": 1,
+                    "metric_defs": [
+                        {
+                            "name": "Reps",
+                            "type": "int",
+                            "is_required": True,
+                            "input_timing": "post_set",
+                        }
+                    ],
+                    "results": [],
+                }
+            ]
+            self.metric_store = {}
+
+        def set_pre_set_metrics(self, data, ex, st):
+            self.metric_store[(ex, st)] = data
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(workout_session=dummy_session)
+    metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
+
+    screen.session = dummy_session
+    screen.metric_names = _Layout()
+    screen.metric_values = _Layout()
+    screen.set_headers = _Layout()
+
+    screen.update_metrics()
+    screen._on_cell_change("Reps", "int", 0, metric_module.MDTextField(text="5"))
+    screen.update_metrics()
+    assert screen.metric_cells[("Reps", 0)].text == "5"

@@ -325,9 +325,14 @@ class MetricInputScreen(MDScreen):
                 MDLabel(text=name, size_hint_y=None, height=dp(40))
             )
             for s in range(set_count):
+                store = self.session.metric_store.get((self.exercise_idx, s), {})
                 value = None
                 if s < len(results):
                     value = results[s].get("metrics", {}).get(name)
+                else:
+                    # Fallback to pre-set metrics stored in metric_store so
+                    # previously entered values for unfinished sets reappear.
+                    value = store.get(name)
                 widget = self._create_input_widget(metric, value, s)
                 self.metric_cells[(name, s)] = widget
                 self.metric_values.add_widget(widget)
