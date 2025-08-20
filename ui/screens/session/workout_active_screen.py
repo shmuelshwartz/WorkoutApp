@@ -6,9 +6,16 @@ from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton
 from kivy.core.text import LabelBase
 from kivymd.font_definitions import fonts_path
+from pathlib import Path
 import time
 
-LabelBase.register(name="RobotoMonoDigital", fn_regular=f"{fonts_path}/RobotoMono-Regular.ttf")
+# Only register the custom font if it exists to avoid unnecessary errors and memory usage
+DIGITAL_FONT = "RobotoMonoDigital"
+_font_path = Path(fonts_path) / "RobotoMono-Regular.ttf"
+if _font_path.exists():
+    LabelBase.register(name=DIGITAL_FONT, fn_regular=str(_font_path))
+else:
+    DIGITAL_FONT = "Roboto"
 
 
 class WorkoutActiveScreen(MDScreen):
@@ -18,7 +25,7 @@ class WorkoutActiveScreen(MDScreen):
     start_time = NumericProperty(0.0)
     formatted_time = StringProperty("00:00")
     exercise_name = StringProperty("")
-    digital_font = StringProperty("RobotoMonoDigital")
+    digital_font = StringProperty(DIGITAL_FONT)
     _event = None
 
     def start_timer(self, *args):
