@@ -28,14 +28,13 @@ from backend.workout_session import WorkoutSession
 
 
 class HomeScreen(MDScreen):
-    """Primary screen that always prompts about session recovery."""
+    """Primary screen that prompts to resume a recovered session if available."""
 
     def on_enter(self, *args):
+        """Attempt to restore any previous workout session."""
         session = WorkoutSession.load_from_recovery()
         if session:
             self._show_recovery_dialog(session)
-        else:
-            self._show_no_session_dialog()
         return super().on_enter(*args)
 
     def _show_recovery_dialog(self, session: WorkoutSession) -> None:
@@ -63,17 +62,6 @@ class HomeScreen(MDScreen):
                 MDFlatButton(text="No", on_release=discard),
                 MDRaisedButton(text="Yes", on_release=recover),
             ],
-        )
-        dialog.open()
-        self._recovery_dialog = dialog
-
-    def _show_no_session_dialog(self) -> None:
-        def close(*_):
-            dialog.dismiss()
-
-        dialog = MDDialog(
-            text="No recovered session found.",
-            buttons=[MDRaisedButton(text="Continue", on_release=close)],
         )
         dialog.open()
         self._recovery_dialog = dialog
