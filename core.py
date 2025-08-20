@@ -57,7 +57,8 @@ def get_metrics_for_exercise(
                COALESCE(em.is_required, mt.is_required),
                COALESCE(em.scope, mt.scope),
                COALESCE(em.enum_values_json, mt.enum_values_json),
-               mt.description
+               mt.description,
+               em.value
         FROM library_exercise_metrics em
         JOIN library_metric_types mt ON mt.id = em.metric_type_id
         WHERE em.exercise_id = ? AND em.deleted = 0 AND mt.deleted = 0
@@ -76,6 +77,7 @@ def get_metrics_for_exercise(
             scope,
             enum_json,
             description,
+            value,
         ) in cursor.fetchall():
             values = []
             if mtype == "enum" and enum_json:
@@ -92,6 +94,7 @@ def get_metrics_for_exercise(
                     "scope": scope,
                     "description": description,
                     "values": values,
+                    "value": value,
                     "library_metric_type_id": metric_type_id,
                     "preset_exercise_metric_id": None,
                 }
@@ -109,6 +112,7 @@ def get_metrics_for_exercise(
                    COALESCE(sem.scope, mt.scope),
                    COALESCE(sem.enum_values_json, mt.enum_values_json),
                    COALESCE(sem.metric_description, mt.description),
+                   sem.value,
                    COALESCE(sem.library_metric_type_id, mt.id)
             FROM preset_exercise_metrics sem
             JOIN preset_section_exercises se ON sem.section_exercise_id = se.id
@@ -131,6 +135,7 @@ def get_metrics_for_exercise(
                 scope,
                 enum_json,
                 description,
+                value,
                 lib_type_id,
             ) in cursor.fetchall():
                 values = []
@@ -147,6 +152,7 @@ def get_metrics_for_exercise(
                     "scope": scope,
                     "values": values,
                     "description": description,
+                    "value": value,
                     "library_metric_type_id": lib_type_id,
                 }
             names = {m["name"] for m in metrics}
@@ -189,7 +195,8 @@ def get_metrics_for_preset(
                    COALESCE(pm.input_timing, mt.input_timing),
                    COALESCE(pm.is_required, mt.is_required),
                    COALESCE(pm.scope, mt.scope),
-                   COALESCE(pm.enum_values_json, mt.enum_values_json)
+                   COALESCE(pm.enum_values_json, mt.enum_values_json),
+                   pm.value
               FROM preset_preset_metrics pm
               LEFT JOIN library_metric_types mt ON pm.library_metric_type_id = mt.id
              WHERE pm.preset_id = ? AND pm.deleted = 0
@@ -208,6 +215,7 @@ def get_metrics_for_preset(
             is_required,
             scope,
             enum_json,
+            value,
         ) in cursor.fetchall():
             values = []
             if mtype == "enum" and enum_json:
@@ -224,6 +232,7 @@ def get_metrics_for_preset(
                     "scope": scope,
                     "values": values,
                     "description": description,
+                    "value": value,
                     "library_metric_type_id": lib_type_id,
                     "preset_metric_id": pm_id,
                 }
@@ -555,6 +564,7 @@ def set_section_exercise_metric_override(
     is_required: bool = False,
     scope: str = "set",
     enum_values: list[str] | None = None,
+    value: str | None = None,
     db_path: Path = DEFAULT_DB_PATH,
 ) -> None:
     """Apply an override for ``metric_type_name`` for a specific exercise in a preset."""
@@ -609,6 +619,9 @@ def set_section_exercise_metric_override(
             if enum_values is not None:
                 updates.append("enum_values_json = ?")
                 params.append(json.dumps(enum_values))
+            if value is not None:
+                updates.append("value = ?")
+                params.append(value)
             params.append(row[0])
             cursor.execute(
                 f"UPDATE preset_exercise_metrics SET {', '.join(updates)} WHERE id = ?",
@@ -619,8 +632,8 @@ def set_section_exercise_metric_override(
                 """
                 INSERT INTO preset_exercise_metrics
                     (section_exercise_id, metric_name, metric_description, type, input_timing,
-                     is_required, scope, enum_values_json, library_metric_type_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     is_required, scope, enum_values_json, library_metric_type_id, value)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     se_id,
@@ -632,6 +645,7 @@ def set_section_exercise_metric_override(
                     scope,
                     json.dumps(enum_values) if enum_values is not None else None,
                     metric_type_id,
+                    value,
                 ),
             )
         conn.commit()
@@ -647,6 +661,7 @@ def set_exercise_metric_override(
     is_required: bool | None = None,
     scope: str | None = None,
     enum_values: list[str] | None = None,
+    value: str | None = None,
     db_path: Path = DEFAULT_DB_PATH,
 ) -> None:
     """Apply an override for ``metric_type_name`` for a specific exercise.
@@ -709,6 +724,9 @@ def set_exercise_metric_override(
         if enum_values is not None:
             updates.append("enum_values_json = ?")
             params.append(json.dumps(enum_values))
+        if value is not None:
+            updates.append("value = ?")
+            params.append(value)
 
         if not updates:
             cursor.execute(
@@ -718,7 +736,8 @@ def set_exercise_metric_override(
                        input_timing = NULL,
                        is_required = NULL,
                        scope = NULL,
-                       enum_values_json = NULL
+                       enum_values_json = NULL,
+                       value = NULL
                  WHERE id = ?
                 """,
                 (em_id,),
