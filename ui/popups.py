@@ -47,8 +47,11 @@ class AddMetricPopup(MDDialog):
         self.screen = screen
         self.mode = mode
         self.popup_mode = popup_mode
-        # Ensure dialog nearly fills the screen on small devices
-        kwargs.setdefault("size_hint", (0.95, 0.95))
+        # Ensure dialog nearly fills the screen on small devices. MDDialog
+        # ignores vertical ``size_hint`` values, so we explicitly set the
+        # height to occupy most of the available window.
+        kwargs.setdefault("size_hint", (0.95, None))
+        kwargs.setdefault("height", Window.height * 0.9)
         if self.mode == "session":
             content = MDBoxLayout()
             close_btn = MDRaisedButton(
@@ -357,8 +360,11 @@ class EditMetricPopup(MDDialog):
         self.screen = screen
         self.metric = metric
         self.mode = mode
-        # Ensure dialog uses most of the screen on small devices
-        kwargs.setdefault("size_hint", (0.95, 0.95))
+        # Ensure dialog uses most of the screen on small devices. ``size_hint_y``
+        # alone has no effect for :class:`MDDialog`, so we also specify the
+        # height directly.
+        kwargs.setdefault("size_hint", (0.95, None))
+        kwargs.setdefault("height", Window.height * 0.9)
         if self.mode == "session":
             content = MDBoxLayout()
             close_btn = MDRaisedButton(
