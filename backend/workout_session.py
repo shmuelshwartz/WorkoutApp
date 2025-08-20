@@ -129,6 +129,11 @@ class WorkoutSession:
             for set_idx in range(ex["sets"]):
                 self.metric_store[(ex_idx, set_idx)] = template.copy()
 
+        # Precompute merged exercise data so screens can access it instantly
+        # without repeatedly building dictionaries. Each entry contains the
+        # preset details and a reference to the per-set results list.
+        self._rebuild_exercises()
+
         self.current_exercise = 0
         self.current_set = 0
         self.start_time = time.time()
@@ -163,21 +168,31 @@ class WorkoutSession:
     # Helpers
     # ------------------------------------------------------------------
 
+    def _rebuild_exercises(self) -> None:
+        """Populate ``_exercises`` with preset info and result references."""
+
+        self._exercises: list[dict] = []
+        for idx, preset in enumerate(self.preset_snapshot):
+            data = self.session_data[idx]
+            info = data.get("exercise_info") or preset
+            data["exercise_info"] = info
+            self._exercises.append({**info, "results": data["results"]})
+
     def _ensure_session_entry(self, exercise_index: int) -> None:
         """Ensure session data exists for ``exercise_index``."""
         entry = self.session_data[exercise_index]
         if entry["exercise_info"] is None:
             entry["exercise_info"] = self.preset_snapshot[exercise_index].copy()
+            # keep the cached list in sync when lazily populating
+            self._exercises[exercise_index] = {
+                **entry["exercise_info"],
+                "results": entry["results"],
+            }
 
     @property
     def exercises(self) -> list[dict]:
-        """Return merged view of preset snapshot and session results."""
-        merged: list[dict] = []
-        for idx, preset in enumerate(self.preset_snapshot):
-            data = self.session_data[idx]
-            info = data["exercise_info"] or preset
-            merged.append({**info, "results": data["results"]})
-        return merged
+        """Return the precomputed list of exercises."""
+        return self._exercises
 
     def mark_set_completed(self, adjust_seconds: int = 0) -> None:
         """Record completion time and update rest timer for the next set.
@@ -758,6 +773,9 @@ class WorkoutSession:
         self.section_names = section_names
         self.exercise_sections = exercise_sections
 
+        # Refresh cached exercise list to include edited preset structure
+        self._rebuild_exercises()
+
         # Ensure current indices remain within bounds
         if self.current_exercise >= len(self.preset_snapshot):
             self.current_exercise = max(0, len(self.preset_snapshot) - 1)
@@ -884,6 +902,7 @@ class WorkoutSession:
         obj.section_starts = data.get("section_starts", [])
         obj.section_names = data.get("section_names", [])
         obj.exercise_sections = data.get("exercise_sections", [])
+        obj._rebuild_exercises()
         return obj
 
     def save_recovery_state(self) -> None:

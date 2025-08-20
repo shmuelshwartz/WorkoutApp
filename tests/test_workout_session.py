@@ -33,6 +33,14 @@ def test_workout_session_flow(sample_db):
     assert "Bench Press" in summary
 
 
+def test_exercises_preloaded(sample_db):
+    session = WorkoutSession("Push Day", db_path=sample_db)
+    first = session.exercises
+    second = session.exercises
+    assert first is second
+    assert all(data["exercise_info"] is not None for data in session.session_data)
+
+
 def test_pre_set_metrics_flow(sample_db):
     session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
 
