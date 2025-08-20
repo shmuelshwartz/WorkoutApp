@@ -4,7 +4,11 @@ from kivy.clock import Clock
 from kivymd.app import MDApp
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton
+from kivy.core.text import LabelBase
+from kivymd.font_definitions import fonts_path
 import time
+
+LabelBase.register(name="RobotoMonoDigital", fn_regular=f"{fonts_path}/RobotoMono-Regular.ttf")
 
 
 class WorkoutActiveScreen(MDScreen):
@@ -14,6 +18,7 @@ class WorkoutActiveScreen(MDScreen):
     start_time = NumericProperty(0.0)
     formatted_time = StringProperty("00:00")
     exercise_name = StringProperty("")
+    digital_font = StringProperty("RobotoMonoDigital")
     _event = None
 
     def start_timer(self, *args):
