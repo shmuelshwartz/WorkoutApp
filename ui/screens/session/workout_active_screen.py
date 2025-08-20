@@ -45,18 +45,20 @@ class WorkoutActiveScreen(MDScreen):
         self._update_elapsed(0)
 
     def on_pre_enter(self, *args):
+        """Prepare the workout display when entering the screen."""
         app = MDApp.get_running_app()
         session = app.workout_session if app else None
         tempo = None
         if session and session.current_exercise < len(session.exercises):
             self.exercise_name = session.next_exercise_display()
             tempo = session.tempo_for_set(session.current_exercise, session.current_set)
-        self.start_timer()
-        if app and hasattr(app, "sound"):
-            if tempo:
-                app.sound.start_tempo(tempo, skip_start=True, start_time=self.start_time)
-            else:
-                app.sound.start_ticks()
+        if not self._event:
+            self.start_timer()
+            if app and hasattr(app, "sound"):
+                if tempo:
+                    app.sound.start_tempo(tempo, skip_start=True, start_time=self.start_time)
+                else:
+                    app.sound.start_ticks()
         return super().on_pre_enter(*args)
 
     def stop_timer(self, *args):
@@ -66,10 +68,13 @@ class WorkoutActiveScreen(MDScreen):
             self._event = None
 
     def on_leave(self, *args):
-        app = MDApp.get_running_app()
-        if app and hasattr(app, "sound"):
-            app.sound.stop()
-        self.stop_timer()
+        """Stop timers only when exiting to a non-settings screen."""
+        next_screen = self.manager.current if self.manager else None
+        if next_screen != "settings":
+            app = MDApp.get_running_app()
+            if app and hasattr(app, "sound"):
+                app.sound.stop()
+            self.stop_timer()
         return super().on_leave(*args)
 
     def _update_elapsed(self, dt):

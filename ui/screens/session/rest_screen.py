@@ -78,7 +78,16 @@ class RestScreen(MDScreen):
     undo_disabled = BooleanProperty(True)
 
     def on_pre_enter(self, *args):
-        session = MDApp.get_running_app().workout_session
+        """Prepare rest info unless returning from settings."""
+        app = MDApp.get_running_app()
+        if getattr(app, "_settings_origin", "") == "rest":
+            app._settings_origin = ""
+            self._ensure_clock_event()
+            self.update_timer(0)
+            self.update_record_button_color()
+            return super().on_pre_enter(*args)
+
+        session = app.workout_session
         if session:
             ex_name = session.next_exercise_name()
             self.next_exercise_name = ex_name
@@ -119,7 +128,9 @@ class RestScreen(MDScreen):
         return super().on_enter(*args)
 
     def on_leave(self, *args):
-        if hasattr(self, "_event") and self._event:
+        """Pause the rest timer only when leaving the session."""
+        next_screen = self.manager.current if self.manager else None
+        if getattr(self, "_event", None) and next_screen != "settings":
             self._event.cancel()
             self._event = None
         return super().on_leave(*args)

@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from kivymd.uix.screen import MDScreen
 from kivymd.app import MDApp
+from kivy.properties import StringProperty
 from backend import settings as app_settings
 
 
 class SettingsScreen(MDScreen):
     """Display and persist user-configurable settings."""
+
+    return_to = StringProperty("home")
+    """Name of the screen to return to when leaving settings."""
 
     def on_pre_enter(self, *args) -> None:
         """Populate controls from stored settings."""

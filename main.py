@@ -566,6 +566,7 @@ class WorkoutApp(MDApp):
         self.sound.set_volume(app_settings.get_value("sound_level") or 1.0)
         sound_on = app_settings.get_value("sound_on")
         self.sound.set_enabled(True if sound_on is None else sound_on)
+        self._settings_origin = ""
 
     def build(self):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
@@ -587,12 +588,30 @@ class WorkoutApp(MDApp):
                 rest_screen = self.root.get_screen("rest")
             except Exception:
                 rest_screen = None
-            if rest_screen and getattr(rest_screen, "is_ready", False):
-                if hasattr(rest_screen, "unready"):
-                    rest_screen.unready()
-                else:
-                    rest_screen.is_ready = False
+        if rest_screen and getattr(rest_screen, "is_ready", False):
+            if hasattr(rest_screen, "unready"):
+                rest_screen.unready()
+            else:
+                rest_screen.is_ready = False
         return True
+
+    def open_settings(self, return_to: str) -> None:
+        """Show the settings screen and remember where to return.
+
+        Parameters
+        ----------
+        return_to:
+            Name of the screen to resume when settings closes.
+        """
+        if not self.root:
+            return
+        try:
+            settings = self.root.get_screen("settings")
+        except Exception:
+            return
+        settings.return_to = return_to
+        self._settings_origin = return_to
+        self.root.current = "settings"
 
     def init_preset_editor(self, force_reload: bool = False):
         """Create or reload the ``PresetEditor`` for the selected preset."""
