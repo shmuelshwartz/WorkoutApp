@@ -33,6 +33,7 @@ def get_downloads_dir() -> Path:
     environment the function requests the necessary storage permissions and
     resolves the path to the system's shared ``Download`` directory.
 
+
     The directory is created if it does not already exist and a
     :class:`~pathlib.Path` to it is returned.
     """
@@ -53,13 +54,18 @@ def get_downloads_dir() -> Path:
     if not android_api_available:
         downloads = Path.home() / "Downloads"
     else:
-        from android.permissions import Permission, request_permissions  # type: ignore
-        from android.storage import primary_external_storage_path  # type: ignore
 
-        request_permissions(
-            [Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE]
-        )
-        downloads = Path(primary_external_storage_path()) / "Download"
+        try:
+            request_permissions(
+                [Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE]
+            )
+            downloads = Path(primary_external_storage_path()) / "Download"
+        except Exception as exc:  # pragma: no cover - Android only
+            logging.warning(
+                "Falling back to home Downloads directory: %s", exc
+            )
+            downloads = Path.home() / "Downloads"
+
     downloads.mkdir(parents=True, exist_ok=True)
     return downloads
 
