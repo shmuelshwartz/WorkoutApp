@@ -2,6 +2,7 @@
 #:import ButtonBehavior kivy.uix.behaviors.button.ButtonBehavior
 #:import PINK_BG ui.colors.PINK_BG
 #:import PURPLE_BG ui.colors.PURPLE_BG
+#:import TempoVisualizer ui.tempo_visualizer.TempoVisualizer
 RootUI:
     WelcomeScreen:
         name: "welcome"
@@ -549,6 +550,7 @@ RootUI:
                     on_release: root.confirm_finish()
 
 <WorkoutActiveScreen>:
+    tempo_bar: tempo_bar
     on_leave: root.stop_timer()
     md_bg_color: PURPLE_BG
     BoxLayout:
@@ -565,6 +567,11 @@ RootUI:
         MDLabel:
             text: root.exercise_name
             halign: "center"
+        TempoVisualizer:
+            id: tempo_bar
+            size_hint_y: None
+            height: dp(8)
+            opacity: 0
         MDBoxLayout:
             orientation: "horizontal"
             spacing: "10dp"
