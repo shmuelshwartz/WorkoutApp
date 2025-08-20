@@ -185,6 +185,15 @@ class AddMetricPopup(MDDialog):
         self.enum_values_field.hint_text_font_size = "12sp"
         enable_auto_resize(self.enum_values_field)
 
+        self.value_field = MDTextField(
+            hint_text="Value",
+            size_hint_y=None,
+            height=default_height,
+            multiline=True,
+        )
+        self.value_field.hint_text_font_size = "12sp"
+        enable_auto_resize(self.value_field)
+
         def update_enum_visibility(*args):
             show = self.input_widgets["type"].text == "enum"
             has_parent = self.enum_values_field.parent is not None
@@ -468,6 +477,8 @@ class EditMetricPopup(MDDialog):
             if self.enum_values_field.parent is not None:
                 form.remove_widget(self.enum_values_field)
 
+        self.value_field.text = self.metric.get("value", "")
+
         def update_enum_visibility(*args):
             show = self.input_widgets["type"].text == "enum"
             has_parent = self.enum_values_field.parent is not None
@@ -491,12 +502,34 @@ class EditMetricPopup(MDDialog):
 
             self.enum_values_field.input_filter = _filter
 
+        def update_value_visibility(*args):
+            # Value defaults are currently supported only when editing an
+            # exercise from the library. Other contexts will expose this field
+            # in a future iteration.
+            show = (
+                self.mode == "library"
+                and getattr(self.screen, "previous_screen", "") == "exercise_library"
+                and "input_timing" in self.input_widgets
+                and self.input_widgets["input_timing"].text == "library"
+            )
+            has_parent = self.value_field.parent is not None
+            if show and not has_parent:
+                form.add_widget(self.value_field)
+            elif not show and has_parent:
+                form.remove_widget(self.value_field)
+
         if "type" in self.input_widgets:
             self.input_widgets["type"].bind(
                 text=lambda *a: (update_enum_filter(), update_enum_visibility())
             )
             update_enum_visibility()
             update_enum_filter()
+
+        if "input_timing" in self.input_widgets:
+            self.input_widgets["input_timing"].bind(
+                text=lambda *a: update_value_visibility()
+            )
+            update_value_visibility()
 
         layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
         layout.add_widget(form)
@@ -514,6 +547,12 @@ class EditMetricPopup(MDDialog):
                 updates[key] = bool(widget.active)
             else:
                 updates[key] = widget.text
+
+        if self.value_field.parent is not None:
+            text = self.value_field.text.strip()
+            if not text:
+                errors.append("value")
+            updates["value"] = text
 
         if "type" in updates:
             updates["type"] = updates.pop("type")
@@ -543,6 +582,8 @@ class EditMetricPopup(MDDialog):
                 widget.text_color = red if key in errors else (1, 1, 1, 1)
             elif isinstance(widget, MDTextField):
                 widget.error = key in errors
+        if self.value_field.parent is not None:
+            self.value_field.error = "value" in errors
 
         if errors:
             return
@@ -619,13 +660,14 @@ class EditMetricPopup(MDDialog):
                         enum_values=updates.get("values"),
                         db_path=db_path,
                     )
-                    if metric_saved:
-                        metrics.set_exercise_metric_override(
-                            self.screen.exercise_obj.name,
-                            self.metric["name"],
-                            is_user_created=self.screen.exercise_obj.is_user_created,
-                            db_path=db_path,
-                        )
+                        if metric_saved:
+                            metrics.set_exercise_metric_override(
+                                self.screen.exercise_obj.name,
+                                self.metric["name"],
+                                is_user_created=self.screen.exercise_obj.is_user_created,
+                                value=updates.get("value"),
+                                db_path=db_path,
+                            )
                 elif cb_ex.active:
                     if metric_saved:
                         metrics.set_exercise_metric_override(
@@ -636,6 +678,7 @@ class EditMetricPopup(MDDialog):
                             is_required=updates.get("is_required"),
                             scope=updates.get("scope"),
                             enum_values=updates.get("values"),
+                            value=updates.get("value"),
                             is_user_created=self.screen.exercise_obj.is_user_created,
                             db_path=db_path,
                         )
@@ -650,6 +693,7 @@ class EditMetricPopup(MDDialog):
                         is_required=bool(updates.get("is_required")),
                         scope=updates.get("scope", "set"),
                         enum_values=updates.get("values"),
+                        value=updates.get("value"),  # future support
                         db_path=db_path,
                     )
                 cancel_action()
@@ -758,6 +802,7 @@ class EditMetricPopup(MDDialog):
                                 self.screen.exercise_obj.name,
                                 self.metric["name"],
                                 is_user_created=self.screen.exercise_obj.is_user_created,
+                                value=updates.get("value"),
                                 db_path=db_path,
                             )
                     else:
@@ -770,6 +815,7 @@ class EditMetricPopup(MDDialog):
                                 is_required=updates.get("is_required"),
                                 scope=updates.get("scope"),
                                 enum_values=updates.get("values"),
+                                value=updates.get("value"),
                                 is_user_created=self.screen.exercise_obj.is_user_created,
                                 db_path=db_path,
                             )
@@ -838,6 +884,7 @@ class EditMetricPopup(MDDialog):
                             self.screen.exercise_obj.name,
                             self.metric["name"],
                             is_user_created=self.screen.exercise_obj.is_user_created,
+                            value=updates.get("value"),
                             db_path=db_path,
                         )
                 else:
@@ -849,6 +896,7 @@ class EditMetricPopup(MDDialog):
                             input_timing=updates.get("input_timing"),
                             is_required=updates.get("is_required"),
                             scope=updates.get("scope"),
+                            value=updates.get("value"),
                             is_user_created=self.screen.exercise_obj.is_user_created,
                             db_path=db_path,
                         )
