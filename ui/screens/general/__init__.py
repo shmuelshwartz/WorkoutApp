@@ -18,6 +18,7 @@ from .previous_workouts_screen import PreviousWorkoutsScreen
 from .workout_history_screen import WorkoutHistoryScreen
 from .view_previous_workout_screen import ViewPreviousWorkoutScreen
 from .welcome_screen import WelcomeScreen
+from .settings_screen import SettingsScreen
 
 __all__ = [
     "EditExerciseScreen",
@@ -36,4 +37,5 @@ __all__ = [
     "WorkoutHistoryScreen",
     "ViewPreviousWorkoutScreen",
     "WelcomeScreen",
+    "SettingsScreen",
 ]
