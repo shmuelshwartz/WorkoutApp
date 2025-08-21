@@ -57,10 +57,26 @@ class Exercise:
     # Modification helpers.  These operate only on the in-memory object
     # until the exercise is explicitly saved back to the database.
     # ------------------------------------------------------------------
-    def add_metric(self, metric: dict) -> None:
-        """Append ``metric`` to the metrics list."""
+    def add_metric(self, metric: dict) -> bool:
+        """Append ``metric`` if a metric with the same name is not present.
 
+        Parameters
+        ----------
+        metric:
+            Mapping containing at least a ``name`` key describing the metric.
+
+        Returns
+        -------
+        bool
+            ``True`` when the metric was added, ``False`` if a metric with the
+            same name already exists.
+        """
+
+        name = metric.get("name")
+        if any(m.get("name") == name for m in self.metrics):
+            return False
         self.metrics.append(metric)
+        return True
 
     def remove_metric(self, metric_name: str) -> None:
         """Remove metric with ``metric_name`` if present."""

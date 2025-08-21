@@ -85,82 +85,100 @@ def get_exercise_details(
 
 
 def save_exercise(exercise: "Exercise") -> None:
-    """Persist ``exercise`` to the database as a user-defined copy."""
+    """Persist ``exercise`` to the database as a user-defined copy.
+
+    Raises
+    ------
+    ValueError
+        If validation fails or the database operation encounters an error.
+    """
 
     db_path = exercise.db_path
-    with sqlite3.connect(str(db_path)) as conn:
-        cursor = conn.cursor()
 
-        cursor.execute(
-            "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = 1 AND deleted = 0",
-            (exercise.name,),
-        )
-        row = cursor.fetchone()
-        if row:
-            ex_id = row[0]
-            cursor.execute(
-                "UPDATE library_exercises SET description = ? WHERE id = ?",
-                (exercise.description, ex_id),
-            )
-            cursor.execute(
-                "UPDATE library_exercise_metrics SET deleted = 1 WHERE exercise_id = ?",
-                (ex_id,),
-            )
-        else:
-            cursor.execute(
-                "INSERT INTO library_exercises (name, description, is_user_created) VALUES (?, ?, 1)",
-                (exercise.name, exercise.description),
-            )
-            ex_id = cursor.lastrowid
+    # Validate metrics to avoid violating database constraints.
+    seen: set[str] = set()
+    for m in exercise.metrics:
+        name = m.get("name")
+        if name in seen:
+            raise ValueError(f"Duplicate metric '{name}'")
+        seen.add(name)
 
-        for position, m in enumerate(exercise.metrics):
-            cursor.execute(
-                "SELECT id, type FROM library_metric_types WHERE name = ?",
-                (m["name"],),
-            )
-            mt_row = cursor.fetchone()
-            if not mt_row:
-                continue
-            metric_id, default_type = mt_row
+    try:
+        with sqlite3.connect(str(db_path)) as conn:
+            cursor = conn.cursor()
 
             cursor.execute(
-                "SELECT type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
-                (metric_id,),
+                "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = 1 AND deleted = 0",
+                (exercise.name,),
             )
-            default_row = cursor.fetchone()
-            mtype = timing = req = scope_val = None
-            if default_row:
-                def_type, def_timing, def_req, def_scope = default_row
-                if m.get("type") != def_type:
-                    mtype = m.get("type")
-                if m.get("input_timing") != def_timing:
-                    timing = m.get("input_timing")
-                if bool(m.get("is_required")) != bool(def_req):
-                    req = int(m.get("is_required", False))
-                if m.get("scope") != def_scope:
-                    scope_val = m.get("scope")
+            row = cursor.fetchone()
+            if row:
+                ex_id = row[0]
+                cursor.execute(
+                    "UPDATE library_exercises SET description = ? WHERE id = ?",
+                    (exercise.description, ex_id),
+                )
+                cursor.execute(
+                    "UPDATE library_exercise_metrics SET deleted = 1 WHERE exercise_id = ?",
+                    (ex_id,),
+                )
+            else:
+                cursor.execute(
+                    "INSERT INTO library_exercises (name, description, is_user_created) VALUES (?, ?, 1)",
+                    (exercise.name, exercise.description),
+                )
+                ex_id = cursor.lastrowid
 
-            cursor.execute(
-                """INSERT INTO library_exercise_metrics
-                    (exercise_id, metric_type_id, position, type, input_timing, is_required, scope, enum_values_json)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    ex_id,
-                    metric_id,
-                    position,
-                    mtype,
-                    timing,
-                    req,
-                    scope_val,
+            for position, m in enumerate(exercise.metrics):
+                cursor.execute(
+                    "SELECT id, type FROM library_metric_types WHERE name = ?",
+                    (m["name"],),
+                )
+                mt_row = cursor.fetchone()
+                if not mt_row:
+                    continue
+                metric_id, default_type = mt_row
+
+                cursor.execute(
+                    "SELECT type, input_timing, is_required, scope FROM library_metric_types WHERE id = ?",
+                    (metric_id,),
+                )
+                default_row = cursor.fetchone()
+                mtype = timing = req = scope_val = None
+                if default_row:
+                    def_type, def_timing, def_req, def_scope = default_row
+                    if m.get("type") != def_type:
+                        mtype = m.get("type")
+                    if m.get("input_timing") != def_timing:
+                        timing = m.get("input_timing")
+                    if bool(m.get("is_required")) != bool(def_req):
+                        req = int(m.get("is_required", False))
+                    if m.get("scope") != def_scope:
+                        scope_val = m.get("scope")
+
+                cursor.execute(
+                    """INSERT INTO library_exercise_metrics
+                        (exercise_id, metric_type_id, position, type, input_timing, is_required, scope, enum_values_json)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
-                        json.dumps(m.get("values"))
-                        if m.get("values") and (m.get("type") or default_type) == "enum"
-                        else None
+                        ex_id,
+                        metric_id,
+                        position,
+                        mtype,
+                        timing,
+                        req,
+                        scope_val,
+                        (
+                            json.dumps(m.get("values"))
+                            if m.get("values") and (m.get("type") or default_type) == "enum"
+                            else None
+                        ),
                     ),
-                ),
-            )
+                )
 
-        conn.commit()
+            conn.commit()
+    except sqlite3.Error as exc:  # pragma: no cover - defensive
+        raise ValueError(f"Failed to save exercise: {exc}") from exc
 
     exercise.is_user_created = True
     exercise.mark_saved()

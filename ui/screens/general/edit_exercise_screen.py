@@ -298,6 +298,7 @@ class EditExerciseScreen(MDScreen):
         popup.open()
 
     def save_exercise(self):
+        """Validate and persist changes to the current exercise."""
         if not self.exercise_obj:
             return
 
@@ -387,83 +388,99 @@ class EditExerciseScreen(MDScreen):
 
         def do_save(*args):
             update_library = (not update_in_preset) or (checkbox and checkbox.active)
-            if update_library:
-                exercises.save_exercise(self.exercise_obj)
-                if app:
-                    app.exercise_library_version += 1
-            if (not update_in_preset) and checkbox and checkbox.active and presets:
-                apply_exercise_changes_to_presets(
-                    self.exercise_obj,
-                    presets,
-                    db_path=DEFAULT_DB_PATH,
-                )
-            if update_in_preset:
-                app.preset_editor.update_exercise(
-                    self.section_index,
-                    self.exercise_index,
-                    sets=self.exercise_sets,
-                    rest=self.exercise_rest,
-                )
-                if not update_library:
-                    preset_name = app.preset_editor.preset_name
-                    orig = {
-                        m.get("name"): m
-                        for m in (self.exercise_obj._original or {}).get("metrics", [])
-                    }
-                    current = {m.get("name"): m for m in self.exercise_obj.metrics}
-                    for name, metric in current.items():
-                        old = orig.get(name)
-                        if old is None or any(
-                            metric.get(field) != old.get(field)
-                            for field in ("input_timing", "is_required", "scope")
-                        ):
-                            metrics.set_section_exercise_metric_override(
-                                preset_name,
-                                self.section_index,
-                                self.exercise_obj.name,
-                                name,
-                                input_timing=metric.get("input_timing"),
-                                is_required=bool(metric.get("is_required")),
-                                scope=metric.get("scope", "set"),
-                            )
-
-                    removed = [name for name in orig if name not in current]
-                    if removed:
-                        db_path = DEFAULT_DB_PATH
-                        conn = sqlite3.connect(str(db_path))
-                        cur = conn.cursor()
-                        cur.execute(
-                            "SELECT id FROM preset_presets WHERE name = ?",
-                            (preset_name,),
-                        )
-                        row = cur.fetchone()
-                        if row:
-                            preset_id = row[0]
-                            cur.execute(
-                                "SELECT id FROM preset_preset_sections WHERE preset_id = ? ORDER BY position",
-                                (preset_id,),
-                            )
-                            sections = cur.fetchall()
-                            if 0 <= self.section_index < len(sections):
-                                section_id = sections[self.section_index][0]
-                                cur.execute(
-                                    """SELECT id FROM preset_section_exercises WHERE section_id = ? AND exercise_name = ? ORDER BY position LIMIT 1""",
-                                    (section_id, self.exercise_obj.name),
+            try:
+                if update_library:
+                    exercises.save_exercise(self.exercise_obj)
+                    if app:
+                        app.exercise_library_version += 1
+                if (not update_in_preset) and checkbox and checkbox.active and presets:
+                    apply_exercise_changes_to_presets(
+                        self.exercise_obj,
+                        presets,
+                        db_path=DEFAULT_DB_PATH,
+                    )
+                if update_in_preset:
+                    app.preset_editor.update_exercise(
+                        self.section_index,
+                        self.exercise_index,
+                        sets=self.exercise_sets,
+                        rest=self.exercise_rest,
+                    )
+                    if not update_library:
+                        preset_name = app.preset_editor.preset_name
+                        orig = {
+                            m.get("name"): m
+                            for m in (self.exercise_obj._original or {}).get("metrics", [])
+                        }
+                        current = {m.get("name"): m for m in self.exercise_obj.metrics}
+                        for name, metric in current.items():
+                            old = orig.get(name)
+                            if old is None or any(
+                                metric.get(field) != old.get(field)
+                                for field in ("input_timing", "is_required", "scope")
+                            ):
+                                metrics.set_section_exercise_metric_override(
+                                    preset_name,
+                                    self.section_index,
+                                    self.exercise_obj.name,
+                                    name,
+                                    input_timing=metric.get("input_timing"),
+                                    is_required=bool(metric.get("is_required")),
+                                    scope=metric.get("scope", "set"),
                                 )
-                                se_row = cur.fetchone()
-                                if se_row:
-                                    se_id = se_row[0]
-                                    for mname in removed:
-                                        cur.execute(
-                                            "DELETE FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ?",
-                                            (se_id, mname),
-                                        )
-                                    conn.commit()
-                        conn.close()
 
-            self.save_enabled = False
-            if dialog:
-                dialog.dismiss()
+                        removed = [name for name in orig if name not in current]
+                        if removed:
+                            db_path = DEFAULT_DB_PATH
+                            conn = sqlite3.connect(str(db_path))
+                            cur = conn.cursor()
+                            cur.execute(
+                                "SELECT id FROM preset_presets WHERE name = ?",
+                                (preset_name,),
+                            )
+                            row = cur.fetchone()
+                            if row:
+                                preset_id = row[0]
+                                cur.execute(
+                                    "SELECT id FROM preset_preset_sections WHERE preset_id = ? ORDER BY position",
+                                    (preset_id,),
+                                )
+                                sections = cur.fetchall()
+                                if 0 <= self.section_index < len(sections):
+                                    section_id = sections[self.section_index][0]
+                                    cur.execute(
+                                        """SELECT id FROM preset_section_exercises WHERE section_id = ? AND exercise_name = ? ORDER BY position LIMIT 1""",
+                                        (section_id, self.exercise_obj.name),
+                                    )
+                                    se_row = cur.fetchone()
+                                    if se_row:
+                                        se_id = se_row[0]
+                                        for mname in removed:
+                                            cur.execute(
+                                                "DELETE FROM preset_exercise_metrics WHERE section_exercise_id = ? AND metric_name = ?",
+                                                (se_id, mname),
+                                            )
+                                        conn.commit()
+                            conn.close()
+
+                self.save_enabled = False
+                if dialog:
+                    dialog.dismiss()
+            except Exception as exc:  # pragma: no cover - user feedback
+                if dialog:
+                    dialog.dismiss()
+                err = None
+
+                def _dismiss(*_):
+                    if err:
+                        err.dismiss()
+
+                err = MDDialog(
+                    title="Save Failed",
+                    text=str(exc),
+                    buttons=[MDRaisedButton(text="OK", on_release=_dismiss)],
+                )
+                err.open()
 
         if update_in_preset:
             label_text = (
