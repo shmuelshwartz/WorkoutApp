@@ -48,11 +48,11 @@ class AddMetricPopup(MDDialog):
         self.screen = screen
         self.mode = mode
         self.popup_mode = popup_mode
-        # The dialog should nearly fill the screen on small devices. MDDialog
-        # ignores vertical ``size_hint`` values and resets explicit heights
-        # during ``__init__``, so we assign the height after initialization
-        # using ``Clock.schedule_once``.
+        # Make the popup occupy most of the display on phones. ``MDDialog``
+        # ignores ``size_hint_y`` so an explicit height is provided instead of
+        # using :func:`Clock.schedule_once` to set it later.
         kwargs.setdefault("size_hint", (0.95, None))
+        kwargs.setdefault("height", Window.height * 0.9)
         if self.mode == "session":
             content = MDBoxLayout()
             close_btn = MDRaisedButton(
@@ -65,9 +65,6 @@ class AddMetricPopup(MDDialog):
                 buttons=[close_btn],
                 **kwargs,
             )
-            Clock.schedule_once(
-                lambda *_: setattr(self, "height", Window.height * 0.9)
-            )
             return
 
         if popup_mode == "select":
@@ -79,9 +76,6 @@ class AddMetricPopup(MDDialog):
 
         super().__init__(
             title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
-        )
-        Clock.schedule_once(
-            lambda *_: setattr(self, "height", Window.height * 0.9)
         )
 
     # ------------------------------------------------------------------
@@ -96,15 +90,19 @@ class AddMetricPopup(MDDialog):
             if m["name"] not in existing and m.get("scope") in ("set", "exercise")
         ]
         list_view = MDList(adaptive_height=True)
-        # Disable vertical size hint so ``minimum_height`` binding adjusts the
-        # list's height and the surrounding ScrollView can size properly.
+        # Bind ``minimum_height`` so the list expands with its children. The
+        # list itself has no vertical size hint so the surrounding ScrollView
+        # can determine its height.
         list_view.bind(minimum_height=list_view.setter("height"))
         for m in metric_types:
             item = OneLineListItem(text=m["name"])
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
-        # Use full available space and allow scrolling so buttons remain visible
-        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
+        # Occupy most of the dialog and keep buttons visible by constraining
+        # the scroll height.
+        scroll = ScrollView(
+            do_scroll_y=True, size_hint=(1, None), height=Window.height * 0.7
+        )
         scroll.add_widget(list_view)
 
         new_btn = MDRaisedButton(
@@ -239,8 +237,10 @@ class AddMetricPopup(MDDialog):
             update_enum_visibility()
             update_enum_filter()
 
-        # Fill dialog area and enable scrolling for small screens
-        layout = ScrollView(do_scroll_y=True, size_hint=(1, 1))
+        # Fill the dialog while keeping action buttons visible
+        layout = ScrollView(
+            do_scroll_y=True, size_hint=(1, None), height=Window.height * 0.7
+        )
         layout.add_widget(form)
 
         save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)

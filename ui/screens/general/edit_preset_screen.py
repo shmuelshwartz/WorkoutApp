@@ -18,6 +18,7 @@ from kivymd.uix.textfield import MDTextField
 from kivymd.uix.slider import MDSlider
 from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
+from kivy.core.window import Window
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import MDList, OneLineListItem
 from kivymd.uix.selectioncontrol import MDCheckbox
@@ -840,8 +841,11 @@ class AddPresetMetricPopup(MDDialog):
     def __init__(self, screen: "EditPresetScreen", **kwargs):
         self.screen = screen
         content, buttons = self._build_widgets()
-        # Expand popup to cover most of the screen for better visibility on small devices
-        kwargs.setdefault("size_hint", (0.95, 0.95))
+        # Nearly fill the screen so the list and buttons remain accessible on
+        # small devices. ``MDDialog`` ignores ``size_hint_y``, so provide an
+        # explicit height.
+        kwargs.setdefault("size_hint", (0.95, None))
+        kwargs.setdefault("height", Window.height * 0.9)
         super().__init__(
             title="Select Metric", type="custom", content_cls=content, buttons=buttons, **kwargs
         )
@@ -868,8 +872,10 @@ class AddPresetMetricPopup(MDDialog):
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
 
-        # Use available space and make list scrollable so action buttons remain on screen
-        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
+        # Use available space but constrain height so the action buttons stay visible
+        scroll = ScrollView(
+            do_scroll_y=True, size_hint=(1, None), height=Window.height * 0.7
+        )
         scroll.add_widget(list_view)
 
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
@@ -891,8 +897,9 @@ class AddSessionMetricPopup(MDDialog):
     def __init__(self, screen: "EditPresetScreen", **kwargs):
         self.screen = screen
         content, buttons = self._build_widgets()
-        # Ensure dialog is nearly full screen to avoid hidden buttons
-        kwargs.setdefault("size_hint", (0.95, 0.95))
+        # Match the preset metric popup's sizing rules.
+        kwargs.setdefault("size_hint", (0.95, None))
+        kwargs.setdefault("height", Window.height * 0.9)
         super().__init__(
             title="Select Metric",
             type="custom",
@@ -924,7 +931,9 @@ class AddSessionMetricPopup(MDDialog):
             list_view.add_widget(item)
 
         # Occupy available space and enable scrolling for small displays
-        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
+        scroll = ScrollView(
+            do_scroll_y=True, size_hint=(1, None), height=Window.height * 0.7
+        )
         scroll.add_widget(list_view)
 
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
