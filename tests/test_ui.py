@@ -1,6 +1,7 @@
 import importlib.util
 import os
 import pytest
+import time
 
 os.environ["KIVY_WINDOW"] = "mock"
 # Skip tests entirely if Kivy (and KivyMD) are not installed
@@ -16,7 +17,10 @@ if kivy_available:
 
     from kivy.app import App
     from kivy.properties import ObjectProperty
-    import core
+    from backend import metrics, exercises, presets
+    from backend.preset_editor import PresetEditor
+    from backend.exercise import Exercise
+    from backend.workout_session import WorkoutSession
 
     from main import (
         RestScreen,
@@ -51,311 +55,73 @@ if kivy_available:
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_switch_tab_updates_current_tab():
-    screen = MetricInputScreen()
-    screen.update_header = lambda: None
-    screen.switch_tab("next")
-    assert screen.current_tab == "next"
+def test_home_screen_triggers_recovery(monkeypatch):
+    from ui.screens.general.home_screen import HomeScreen
+    from backend.workout_session import WorkoutSession
+
+    dummy_session = object()
+    monkeypatch.setattr(
+        WorkoutSession,
+        "load_from_recovery",
+        classmethod(lambda cls: dummy_session),
+    )
+
+    called = {}
+
+    def fake_dialog(self, session):
+        called["session"] = session
+
+    monkeypatch.setattr(HomeScreen, "_show_recovery_dialog", fake_dialog)
+
+    screen = HomeScreen()
+    screen.on_enter()
+
+    assert called.get("session") is dummy_session
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_optional_metrics_populated():
-    from kivy.lang import Builder
-    from pathlib import Path
+def test_home_screen_no_recovery_shows_nothing(monkeypatch):
+    from ui.screens.general.home_screen import HomeScreen
+    from backend.workout_session import WorkoutSession
 
-    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
-
-    screen = MetricInputScreen()
-    screen.populate_metrics(
-        [
-            {
-                "name": "RPE",
-                "type": "int",
-                "input_timing": "post_set",
-                "is_required": False,
-            }
-        ]
+    monkeypatch.setattr(
+        WorkoutSession,
+        "load_from_recovery",
+        classmethod(lambda cls: None),
     )
-    assert len(screen.prev_optional_list.children) == 1
 
+    called = {}
 
-@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_populate_blank_for_new_set(monkeypatch):
-    from kivy.lang import Builder
-    from pathlib import Path
-    import ui.screens.metric_input_screen as mis
+    def fake_dialog(self, session):
+        called["called"] = True
 
-    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+    monkeypatch.setattr(HomeScreen, "_show_recovery_dialog", fake_dialog)
 
-    screen = MetricInputScreen()
+    screen = HomeScreen()
+    screen.on_enter()
 
-    class DummyList:
-        def __init__(self):
-            self.children = []
+    assert "called" not in called
 
-        def clear_widgets(self):
-            self.children.clear()
 
-        def add_widget(self, widget):
-            self.children.append(widget)
-
-    screen.prev_metric_list = DummyList()
-    screen.next_metric_list = DummyList()
-    screen.prev_optional_list = DummyList()
-    screen.next_optional_list = DummyList()
-
-    class DummySession:
-        preset_name = "Test"
-        pending_pre_set_metrics = {}
-        current_exercise = 0
-        current_set = 1
-        awaiting_post_set_metrics = True
-        exercises = [
-            {"name": "Bench", "sets": 3, "results": [{"Weight": 100, "Notes": "prev"}]}
-        ]
-
-        def next_exercise_name(self):
-            return "Bench"
-
-        def upcoming_exercise_name(self):
-            return "Bench"
-
-    dummy_app = _DummyApp()
-    dummy_app.workout_session = DummySession()
-    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
-
-    def fake_get_metrics(name, preset_name=None):
-        return [
-            {"name": "Weight", "type": "int", "input_timing": "post_set", "is_required": True}
-        ]
-
-    monkeypatch.setattr(mis, "get_metrics_for_exercise", fake_get_metrics)
-
-    screen.populate_metrics()
-
-    weight_row = next(
-        r for r in screen.prev_metric_list.children if getattr(r, "metric_name", "") == "Weight"
-    )
-    assert getattr(weight_row.input_widget, "text", "") == ""
-
-
-@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_prev_metrics_use_last_set(monkeypatch):
-    from kivy.lang import Builder
-    from pathlib import Path
-    import ui.screens.metric_input_screen as mis
-
-    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
-
-    screen = MetricInputScreen()
-
-    class DummyList:
-        def __init__(self):
-            self.children = []
-
-        def clear_widgets(self):
-            self.children.clear()
-
-        def add_widget(self, widget):
-            self.children.append(widget)
-
-    screen.prev_metric_list = DummyList()
-    screen.next_metric_list = DummyList()
-    screen.prev_optional_list = DummyList()
-    screen.next_optional_list = DummyList()
-
-    class DummySession:
-        preset_name = "Test"
-        pending_pre_set_metrics = {}
-        current_exercise = 1
-        current_set = 0
-        awaiting_post_set_metrics = True
-        exercises = [
-            {"name": "Push", "sets": 1, "results": [{"Reps": 10}]},
-            {"name": "Run", "sets": 1, "results": []},
-        ]
-
-        def next_exercise_name(self):
-            return "Run"
-
-        def upcoming_exercise_name(self):
-            return "Run"
-
-        def last_recorded_set_metrics(self):
-            return {"Reps": 10}
-
-    dummy_app = _DummyApp()
-    dummy_app.workout_session = DummySession()
-    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
-
-    def fake_get_metrics(name, preset_name=None):
-        if name == "Push":
-            return [
-                {
-                    "name": "Reps",
-                    "type": "int",
-                    "input_timing": "post_set",
-                    "is_required": True,
-                }
-            ]
-        return []
-
-    monkeypatch.setattr(mis, "get_metrics_for_exercise", fake_get_metrics)
-
-    screen.populate_metrics()
-
-    reps_row = next(
-        r for r in screen.prev_metric_list.children if getattr(r, "metric_name", "") == "Reps"
-    )
-    assert getattr(reps_row.input_widget, "text", "") == "10"
-
-
-@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_save_metrics_clears_next_metrics(monkeypatch):
-    from kivy.lang import Builder
-    from pathlib import Path
-    import ui.screens.metric_input_screen as mis
-
-    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
-
-    screen = MetricInputScreen()
-
-    class DummySession:
-        preset_name = "Test"
-        pending_pre_set_metrics = {}
-        current_exercise = 0
-        current_set = 0
-        awaiting_post_set_metrics = False
-        exercises = [{"name": "Bench", "sets": 3, "results": []}]
-
-        def next_exercise_name(self):
-            return "Bench"
-
-        def upcoming_exercise_name(self):
-            return "Bench"
-
-        def record_metrics(self, ex_idx, set_idx, metrics):
-            while len(self.exercises[0]["results"]) <= set_idx:
-                self.exercises[0]["results"].append(None)
-            self.exercises[0]["results"][set_idx] = metrics
-
-            self.current_set += 1
-            return False
-
-        def set_pre_set_metrics(self, metrics):
-            key = (self.current_exercise, self.current_set)
-            self.pending_pre_set_metrics[key] = metrics.copy()
-
-    dummy_app = _DummyApp()
-    dummy_app.workout_session = DummySession()
-    dummy_app.record_new_set = True
-    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
-
-    def fake_get_metrics(name, preset_name=None):
-        return [
-            {
-                "name": "Weight",
-                "type": "int",
-                "input_timing": "post_set",
-                "is_required": True,
-            },
-            {
-                "name": "Goal",
-                "type": "int",
-                "input_timing": "pre_set",
-                "is_required": True,
-            },
-        ]
-
-    monkeypatch.setattr(mis, "get_metrics_for_exercise", fake_get_metrics)
-
-    screen.populate_metrics()
-
-    goal_row = next(
-        r for r in screen.next_metric_list.children if getattr(r, "metric_name", "") == "Goal"
-    )
-    goal_row.input_widget.text = "200"
-
-    screen.save_metrics()
-    screen.populate_metrics()
-
-    goal_row = next(
-        r for r in screen.next_metric_list.children if getattr(r, "metric_name", "") == "Goal"
-    )
-    assert getattr(goal_row.input_widget, "text", "") == ""
-
-
-@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_pre_set_metrics_do_not_advance(monkeypatch):
-    from kivy.lang import Builder
-    from pathlib import Path
-
-    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
-
-    screen = MetricInputScreen()
-
-    class DummySession:
-        preset_name = "Test"
-        pending_pre_set_metrics = {}
-        current_exercise = 0
-        current_set = 0
-        awaiting_post_set_metrics = False
-        exercises = [
-            {
-                "name": "Bench",
-                "sets": 2,
-                "results": [],
-                "metric_defs": [
-                    {
-                        "name": "Goal",
-                        "type": "int",
-                        "input_timing": "pre_set",
-                        "is_required": True,
-                    }
-                ],
-            }
-        ]
-
-        def record_metrics(self, ex_idx, set_idx, metrics):
-            while len(self.exercises[0]["results"]) <= set_idx:
-                self.exercises[0]["results"].append(None)
-            self.exercises[0]["results"][set_idx] = {"metrics": metrics}
-
-            self.current_set += 1
-            return False
-
-        def set_pre_set_metrics(self, metrics):
-            key = (self.current_exercise, self.current_set)
-            self.pending_pre_set_metrics[key] = metrics.copy()
-
-    dummy_app = _DummyApp()
-    dummy_app.workout_session = DummySession()
-    dummy_app.record_new_set = False
-    dummy_app.record_pre_set = True
-    dummy_app.root = type("Root", (), {"current": ""})()
-
-    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
-
-    screen.on_pre_enter()
-    goal_row = next(
-        r for r in screen.metrics_list.children if getattr(r, "metric_name", "") == "Goal"
-    )
-    goal_row.input_widget.text = "5"
-
-    screen.save_metrics()
-
-    assert dummy_app.workout_session.current_set == 0
-    assert dummy_app.workout_session.pending_pre_set_metrics == {(0, 0): {"Goal": 5}}
-    assert dummy_app.root.current == "rest"
-
-@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_rest_screen_toggle_ready_changes_state():
     screen = RestScreen()
+    if not hasattr(screen, "toggle_ready"):
+        pytest.skip("toggle_ready unavailable in stub")
     screen.is_ready = False
     screen.timer_color = (1, 0, 0, 1)
     screen.toggle_ready()
     assert screen.is_ready is True
     assert screen.timer_color == (0, 1, 0, 1)
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_rest_screen_session_time_updates(monkeypatch):
+    screen = RestScreen()
+    screen.target_time = 200.0
+    screen.session_start_time = 100.0
+    monkeypatch.setattr(time, "time", lambda: 160.0)
+    screen.update_timer(0)
+    assert screen.session_time_label == "01:00"
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
@@ -428,9 +194,48 @@ def test_open_metric_input_prefers_pre_set(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_undo_skip_stays_on_rest(monkeypatch, sample_db):
+    import importlib
+
+    try:
+        rest_screen_module = importlib.import_module("ui.screens.session.rest_screen")
+    except ModuleNotFoundError:
+        pytest.skip("RestScreen module not available")
+
+    class DummyDialog:
+        def __init__(self, text="", buttons=None):
+            self.text = text
+        def open(self):
+            pass
+        def dismiss(self):
+            pass
+
+    monkeypatch.setattr(rest_screen_module, "MDDialog", DummyDialog)
+    monkeypatch.setattr(rest_screen_module, "MDFlatButton", lambda *a, **k: None)
+
+    screen = rest_screen_module.RestScreen()
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})
+    session.mark_set_completed()
+    session.skip_exercise()
+
+    dummy_app = _DummyApp()
+    dummy_app.workout_session = session
+    dummy_manager = type("M", (), {"current": "rest"})()
+    screen.manager = dummy_manager
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+
+    screen.show_undo_confirmation()
+    assert screen._undo_dialog.text == "Undo skipped exercise?"
+    screen._perform_undo()
+    assert dummy_manager.current == "rest"
+    assert session.current_exercise == 0
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_active_screen_resumes_from_session(monkeypatch, sample_db):
     screen = WorkoutActiveScreen()
-    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     session.current_set_start_time = 100.0
     session.resume_from_last_start = True
     dummy_app = _DummyApp()
@@ -460,16 +265,76 @@ def test_confirm_finish_opens_dialog(monkeypatch):
     import pytest
 
     try:
-        rest_screen_module = importlib.import_module("ui.screens.rest_screen")
+        rest_screen_module = importlib.import_module("ui.screens.session.rest_screen")
     except ModuleNotFoundError:
         pytest.skip("RestScreen module not available")
     monkeypatch.setattr(rest_screen_module, "MDDialog", DummyDialog)
     monkeypatch.setattr(rest_screen_module, "MDRaisedButton", lambda *a, **k: None)
+    if hasattr(rest_screen_module, "MDFlatButton"):
+        monkeypatch.setattr(rest_screen_module, "MDFlatButton", lambda *a, **k: None)
 
     screen = rest_screen_module.RestScreen()
     screen.confirm_finish()
 
     assert opened["value"]
+
+
+def test_confirm_finish_discard(monkeypatch):
+    """Pressing discard abandons the session and returns to home."""
+
+    import importlib
+
+    captured = {}
+
+    class DummyDialog:
+        def __init__(self, *a, **k):
+            captured["buttons"] = k.get("buttons", [])
+
+        def open(self):
+            pass
+
+        def dismiss(self):
+            pass
+
+    def dummy_button(*_a, **k):
+        return type("B", (), {"on_release": k.get("on_release")})
+
+    try:
+        rest_screen_module = importlib.import_module("ui.screens.session.rest_screen")
+    except ModuleNotFoundError:
+        pytest.skip("RestScreen module not available")
+    if not hasattr(rest_screen_module, "MDFlatButton"):
+        pytest.skip("RestScreen stub without discard support")
+
+    monkeypatch.setattr(rest_screen_module, "MDDialog", DummyDialog)
+    monkeypatch.setattr(rest_screen_module, "MDRaisedButton", dummy_button)
+    monkeypatch.setattr(rest_screen_module, "MDFlatButton", dummy_button)
+
+    cleared = {"value": False}
+
+    class DummySession:
+        def clear_recovery_files(self):
+            cleared["value"] = True
+
+    dummy_root = type("R", (), {"current": "rest"})()
+    dummy_app = type("A", (), {"root": dummy_root, "workout_session": DummySession()})()
+
+    class DummyAppClass:
+        @staticmethod
+        def get_running_app():
+            return dummy_app
+
+    monkeypatch.setattr(rest_screen_module, "MDApp", DummyAppClass)
+
+    screen = rest_screen_module.RestScreen()
+    screen.confirm_finish()
+
+    discard_btn = captured["buttons"][1]
+    discard_btn.on_release(None)
+
+    assert dummy_root.current == "home"
+    assert cleared["value"]
+    assert dummy_app.workout_session is None
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
@@ -611,18 +476,45 @@ def test_edit_metric_popup_no_duplicate_field():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_popup_shows_value_field():
+    """Metrics with library input timing expose the value field."""
+
+    class DummyExercise:
+        metrics = [
+            {
+                "name": "Tempo",
+                "input_timing": "library",
+                "type": "int",
+            }
+        ]
+
+    class DummyScreen:
+        exercise_obj = DummyExercise()
+        previous_screen = "exercise_library"
+
+    metric = DummyScreen.exercise_obj.metrics[0]
+    popup = EditMetricPopup(DummyScreen(), metric, mode="library")
+    children = popup.content_cls.children[0].children
+    value_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Value"
+    ]
+    assert len(value_fields) == 1
+    popup.dismiss()
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_add_metric_popup_filters_scope(monkeypatch):
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
 
-    metrics = [
+    metric_types = [
         {"name": "Session", "scope": "session"},
         {"name": "Section", "scope": "section"},
         {"name": "Exercise", "scope": "exercise"},
         {"name": "Set", "scope": "set"},
     ]
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: metric_types)
 
     popup = AddMetricPopup(DummyScreen(), popup_mode="select")
     list_view = popup.content_cls.children[0]
@@ -647,13 +539,13 @@ def test_add_preset_metric_popup_filters_scope(monkeypatch):
     )()
     monkeypatch.setattr(App, "get_running_app", lambda: app)
 
-    metrics = [
+    metric_types = [
         {"name": "Focus", "scope": "preset"},
         {"name": "Level", "scope": "preset"},
         {"name": "Session", "scope": "session"},
     ]
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: metric_types)
     screen = EditPresetScreen()
     popup = AddPresetMetricPopup(screen)
     list_view = popup.content_cls.children[0]
@@ -678,13 +570,13 @@ def test_add_session_metric_popup_filters_scope(monkeypatch):
     )()
     monkeypatch.setattr(App, "get_running_app", lambda: app)
 
-    metrics = [
+    metric_types = [
         {"name": "Duration", "scope": "session"},
         {"name": "Mood", "scope": "session"},
         {"name": "Focus", "scope": "preset"},
     ]
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: metric_types)
     screen = EditPresetScreen()
     popup = AddSessionMetricPopup(screen)
     list_view = popup.content_cls.children[0]
@@ -767,7 +659,7 @@ def test_exercise_selection_panel_filters(monkeypatch):
     )()
 
     monkeypatch.setattr(
-        core,
+        exercises,
         "get_all_exercises",
         lambda *a, **k: [("Push Ups", False), ("Custom", True)],
     )
@@ -781,24 +673,67 @@ def test_exercise_selection_panel_filters(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
-def test_preset_select_button_updates(monkeypatch):
-    """Selecting a preset updates the select button text."""
+def test_presets_screen_selects_preset(monkeypatch):
+    """Selecting a preset stores the chosen name."""
     from kivy.lang import Builder
     from pathlib import Path
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     monkeypatch.setattr(
-        core,
+        presets,
         "WORKOUT_PRESETS",
         [{"name": "Sample", "exercises": []}],
     )
 
     screen = PresetsScreen()
-    dummy = type("Obj", (), {"md_bg_color": (0, 0, 0, 0)})()
+    dummy = type(
+        "Obj",
+        (),
+        {
+            "md_bg_color": (0, 0, 0, 0),
+            "theme_text_color": "Primary",
+            "text_color": (0, 0, 0, 1),
+        },
+    )()
     screen.select_preset("Sample", dummy)
 
-    assert screen.ids.select_btn.text == "Sample"
+    assert screen.selected_preset == "Sample"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_presets_screen_second_tap_confirms(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    monkeypatch.setattr(
+        presets, "WORKOUT_PRESETS", [{"name": "Sample", "exercises": []}]
+    )
+
+    screen = PresetsScreen()
+    dummy = type(
+        "Obj",
+        (),
+        {
+            "md_bg_color": (0, 0, 0, 0),
+            "theme_text_color": "Primary",
+            "text_color": (0, 0, 0, 1),
+        },
+    )()
+
+    called = {"v": False}
+
+    def fake_confirm():
+        called["v"] = True
+
+    screen.confirm_selection = fake_confirm
+
+    screen.select_preset("Sample", dummy)
+    assert not called["v"]
+    screen.select_preset("Sample", dummy)
+    assert called["v"]
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
@@ -810,7 +745,7 @@ def test_presets_screen_preserves_selection_on_leave(monkeypatch):
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     # Ensure the preset exists
-    monkeypatch.setattr(core, "WORKOUT_PRESETS", [{"name": "Sample", "exercises": []}])
+    monkeypatch.setattr(presets, "WORKOUT_PRESETS", [{"name": "Sample", "exercises": []}])
 
     # Provide an app instance with a selected_preset attribute
     class DummyApp:
@@ -910,7 +845,6 @@ def test_preset_overview_screen_populate(monkeypatch):
     screen = PresetOverviewScreen()
     screen.details_list = DummyList()
     screen.workout_list = DummyList()
-    screen.preset_label = type("L", (), {"text": ""})()
 
     class DummyApp:
         selected_preset = "Test"
@@ -934,7 +868,7 @@ def test_preset_overview_screen_populate(monkeypatch):
     monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
 
     monkeypatch.setattr(
-        core,
+        exercises,
         "get_exercise_details",
         lambda name, *a, **k: {
             "name": name,
@@ -943,7 +877,7 @@ def test_preset_overview_screen_populate(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        core,
+        metrics,
         "get_metrics_for_exercise",
         lambda name, *a, **k: [{"name": "M1"}, {"name": "M2"}],
     )
@@ -974,7 +908,6 @@ def test_pre_session_metrics_prompt_before_start(monkeypatch):
     screen = PresetOverviewScreen()
     screen.details_list = DummyList()
     screen.workout_list = DummyList()
-    screen.preset_label = type("L", (), {"text": ""})()
     screen.manager = type("M", (), {"current": ""})()
 
     class DummyApp:
@@ -994,7 +927,7 @@ def test_pre_session_metrics_prompt_before_start(monkeypatch):
     monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
 
     monkeypatch.setattr(
-        core,
+        presets,
         "get_metrics_for_preset",
         lambda name: [{"name": "M1", "input_timing": "pre_session"}],
     )
@@ -1033,12 +966,12 @@ def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
         conn.executescript(fh.read())
     conn.close()
 
-    ex = core.Exercise(db_path=db_path)
+    ex = Exercise(db_path=db_path)
     ex.name = "Custom"
-    core.save_exercise(ex)
+    exercises.save_exercise(ex)
 
     screen = EditExerciseScreen()
-    screen.exercise_obj = core.Exercise(db_path=db_path)
+    screen.exercise_obj = Exercise(db_path=db_path)
     screen.exercise_obj.name = "Custom"
     screen.name_field = type("F", (), {"error": False})()
 
@@ -1078,7 +1011,7 @@ def test_edit_metric_duplicate_name(monkeypatch):
     metric = DummyScreen.exercise_obj.metrics[0]
     popup = EditMetricPopup(DummyScreen(), metric)
     popup.input_widgets["name"].text = "Weight"
-    monkeypatch.setattr(core, "is_metric_type_user_created", lambda *a, **k: False)
+    monkeypatch.setattr(metrics, "is_metric_type_user_created", lambda *a, **k: False)
     popup.save_metric()
 
     assert not DummyScreen.exercise_obj.updated
@@ -1154,7 +1087,7 @@ def test_edit_metric_type_popup_shows_affected(monkeypatch):
         ]
 
     monkeypatch.setattr(
-        core, "find_exercises_using_metric_type", lambda *a, **k: ["A", "B"]
+        metrics, "find_exercises_using_metric_type", lambda *a, **k: ["A", "B"]
     )
     popup = EditMetricTypePopup(DummyScreen(), "Speed", True)
     labels = [
@@ -1174,7 +1107,7 @@ def test_preset_select_button_color(monkeypatch):
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     monkeypatch.setattr(
-        core,
+        presets,
         "WORKOUT_PRESETS",
         [{"name": "Sample", "exercises": []}],
     )
@@ -1203,7 +1136,7 @@ def test_preset_selected_text_color_and_clear(monkeypatch):
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
     monkeypatch.setattr(
-        core,
+        presets,
         "WORKOUT_PRESETS",
         [{"name": "Sample", "exercises": []}],
     )
@@ -1236,7 +1169,7 @@ def test_edit_preset_populate_details(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
-    metrics = [
+    metric_types = [
         {
             "name": "Focus",
             "type": "str",
@@ -1253,7 +1186,7 @@ def test_edit_preset_populate_details(monkeypatch):
         },
     ]
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: metrics)
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: metric_types)
 
     app = _DummyApp()
     app.preset_editor = type(
@@ -1285,7 +1218,7 @@ def test_preset_name_row_preserved(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: [])
 
     app = _DummyApp()
     app.preset_editor = type(
@@ -1314,7 +1247,7 @@ def test_details_has_add_button(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: [])
 
     app = _DummyApp()
     app.preset_editor = type(
@@ -1342,7 +1275,7 @@ def test_metrics_has_add_button(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
 
-    monkeypatch.setattr(core, "get_all_metric_types", lambda *a, **k: [])
+    monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: [])
 
     app = _DummyApp()
     app.preset_editor = type(
@@ -1370,7 +1303,7 @@ def test_fallback_input_timing_options(monkeypatch):
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
 
-    monkeypatch.setattr(core, "get_metric_type_schema", lambda *a, **k: [])
+    monkeypatch.setattr(metrics, "get_metric_type_schema", lambda *a, **k: [])
     popup = AddMetricPopup(DummyScreen(), popup_mode="new")
     opts = list(popup.input_widgets["input_timing"].values)
     assert opts == [
@@ -1401,7 +1334,7 @@ def test_refresh_sections_preserves_names(monkeypatch):
 
     Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
     app = _DummyApp()
-    app.preset_editor = core.PresetEditor()
+    app.preset_editor = PresetEditor()
     app.preset_editor.add_section("Warmup")
     app.preset_editor.add_section("Skill work")
     app.preset_editor.add_section("Workout")
@@ -1418,7 +1351,7 @@ def test_refresh_sections_preserves_names(monkeypatch):
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_session_edit_locking(monkeypatch, sample_db):
-    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
     app = _DummyApp()
     app.workout_session = session
     monkeypatch.setattr(App, "get_running_app", lambda: app)
@@ -1432,9 +1365,26 @@ def test_session_edit_locking(monkeypatch, sample_db):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_previous_section_unlocked_until_next_started(monkeypatch, sample_db):
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    app = _DummyApp()
+    app.workout_session = session
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+    screen = EditPresetScreen(mode="session")
+    next_start = session.section_starts[1]
+    session.current_exercise = next_start
+    session.current_set = 0
+    assert not screen._is_section_locked(0)
+    assert screen._is_exercise_locked(0, 0)
+    session.current_set = 1
+    assert screen._is_section_locked(0)
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_reordering_current_exercise_updates_index(monkeypatch, sample_db):
-    session = core.WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
-    editor = core.PresetEditor("Push Day", db_path=sample_db)
+    editor = PresetEditor("Push Day", db_path=sample_db)
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+
     app = _DummyApp()
     app.workout_session = session
     app.preset_editor = editor

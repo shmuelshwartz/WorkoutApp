@@ -4,6 +4,7 @@ from __future__ import annotations
 from kivymd.app import MDApp
 from kivy.metrics import dp
 from kivy.core.window import Window
+from kivy.clock import Clock
 from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.dialog import MDDialog
@@ -19,8 +20,9 @@ import string
 import re
 import sqlite3
 
-import core
 from core import DEFAULT_DB_PATH
+from backend.presets import find_presets_using_exercise, apply_exercise_changes_to_presets
+from backend import metrics
 
 # Order of fields for metric editing popups
 METRIC_FIELD_ORDER = [
@@ -46,8 +48,24 @@ class AddMetricPopup(MDDialog):
         self.screen = screen
         self.mode = mode
         self.popup_mode = popup_mode
+        # Store a reference to the active ScrollView so it can be resized once
+        # the dialog opens. ``MDDialog`` recalculates its height during
+        # ``open`` which can cause scrollable content to collapse on small
+        # screens. By tracking the ScrollView we can later apply a height that
+        # fills most of the window while leaving room for the action buttons.
+        self._scroll_view = None
+        # Disable the vertical size hint so the dialog height can be set
+        # explicitly on ``on_open``. Using a full width size hint ensures the
+        # popup occupies the entire screen which prevents long metric lists from
+        # extending beyond the visible area on small devices.
+        kwargs.setdefault("size_hint", (1, None))
+        # Remove rounded corners; otherwise the dialog leaves small gaps at the
+        # screen edges which looks odd for a full-screen overlay.
+        kwargs.setdefault("radius", [0, 0, 0, 0])
+        md_bg = MDApp.get_running_app().theme_cls.bg_light
+        kwargs.setdefault("md_bg_color", md_bg)
         if self.mode == "session":
-            content = MDBoxLayout()
+            content = MDBoxLayout(size_hint=(1, 1))
             close_btn = MDRaisedButton(
                 text="Close", on_release=lambda *a: self.dismiss()
             )
@@ -68,28 +86,44 @@ class AddMetricPopup(MDDialog):
             content, buttons, title = self._build_choice_widgets()
 
         super().__init__(
-            title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
+            title=title,
+            type="custom",
+            content_cls=content,
+            buttons=buttons,
+            **kwargs,
         )
+        # Apply final sizing once the dialog is visible. This ensures the
+        # dialog covers the entire screen and the ScrollView consumes all
+        # remaining vertical space.
+        self.bind(on_open=self._apply_dialog_sizing)
 
     # ------------------------------------------------------------------
     # Building widgets for both modes
     # ------------------------------------------------------------------
+
     def _build_select_widgets(self):
-        metrics = core.get_all_metric_types()
+        metric_types = metrics.get_all_metric_types()
         existing = {m.get("name") for m in self.screen.exercise_obj.metrics}
-        metrics = [
+        metric_types = [
             m
-            for m in metrics
+            for m in metric_types
             if m["name"] not in existing and m.get("scope") in ("set", "exercise")
         ]
-        list_view = MDList()
-        for m in metrics:
+        list_view = MDList(adaptive_height=True, size_hint_y=None)
+        # Bind ``minimum_height`` so the list expands and the ScrollView can
+        # allocate space without collapsing.
+        list_view.bind(minimum_height=list_view.setter("height"))
+        for m in metric_types:
             item = OneLineListItem(text=m["name"])
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
 
-        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, None))
         scroll.add_widget(list_view)
+        # Remember the ScrollView so we can adjust its height after the dialog
+        # opens. ``size_hint_y`` is disabled to prevent the view from collapsing
+        # when ``MDDialog`` recalculates its own height.
+        self._scroll_view = scroll
 
         new_btn = MDRaisedButton(
             text="New Metric", on_release=self.show_new_metric_form
@@ -102,7 +136,7 @@ class AddMetricPopup(MDDialog):
         default_height = dp(48)
         self.input_widgets = {}
 
-        schema = core.get_metric_type_schema()
+        schema = metrics.get_metric_type_schema()
         if not schema:
             schema = [
                 {"name": "name"},
@@ -130,7 +164,9 @@ class AddMetricPopup(MDDialog):
                 order_map[name] for name in METRIC_FIELD_ORDER if name in order_map
             ] + [field for field in schema if field["name"] not in METRIC_FIELD_ORDER]
 
-        form = MDBoxLayout(orientation="vertical", spacing="8dp", size_hint_y=None)
+        form = MDBoxLayout(
+            orientation="vertical", spacing="8dp", size_hint_y=None
+        )
         form.bind(minimum_height=form.setter("height"))
 
         def enable_auto_resize(text_field: MDTextField):
@@ -184,6 +220,15 @@ class AddMetricPopup(MDDialog):
         self.enum_values_field.hint_text_font_size = "12sp"
         enable_auto_resize(self.enum_values_field)
 
+        self.value_field = MDTextField(
+            hint_text="Value",
+            size_hint_y=None,
+            height=default_height,
+            multiline=True,
+        )
+        self.value_field.hint_text_font_size = "12sp"
+        enable_auto_resize(self.value_field)
+
         def update_enum_visibility(*args):
             show = self.input_widgets["type"].text == "enum"
             has_parent = self.enum_values_field.parent is not None
@@ -214,13 +259,39 @@ class AddMetricPopup(MDDialog):
             update_enum_visibility()
             update_enum_filter()
 
-        layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
-        layout.add_widget(form)
+        # Make form scrollable so content fits on small screens.
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, None))
+        scroll.add_widget(form)
+        # Store reference for later resizing in ``_apply_dialog_sizing``.
+        self._scroll_view = scroll
 
         save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)
         back_btn = MDRaisedButton(text="Back", on_release=lambda *a: self.dismiss())
         buttons = [save_btn, back_btn]
-        return layout, buttons, "New Metric"
+        return scroll, buttons, "New Metric"
+
+    # ------------------------------------------------------------------
+    # Sizing helpers
+    # ------------------------------------------------------------------
+    def _apply_dialog_sizing(self, *_):
+        """Resize the dialog and its scroll view so it covers the entire
+        window. The metric list then occupies all remaining space below the
+        action buttons, preventing content from being clipped on small screens."""
+
+        target = Window.height
+        self.height = target
+        # ``size_hint_x`` is 1 so width follows the window; however MDDialog may
+        # still report a smaller width until it is explicitly set.
+        self.width = Window.width
+        if self._scroll_view is None:
+            return
+
+        def _resize_scroll(*_args):
+            button_height = self.ids.button_box.height if "button_box" in self.ids else 0
+            self._scroll_view.height = max(0, target - button_height)
+
+        # Defer until next frame so ``button_box`` has a valid height.
+        Clock.schedule_once(_resize_scroll, 0)
 
     def _build_choice_widgets(self):
         label = MDLabel(text="Choose an option", halign="center")
@@ -229,7 +300,7 @@ class AddMetricPopup(MDDialog):
             text="New Metric", on_release=self.show_new_metric_form
         )
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
-        content = MDBoxLayout(orientation="vertical", spacing="8dp")
+        content = MDBoxLayout(orientation="vertical", spacing="8dp", size_hint=(1, 1))
         content.add_widget(label)
         buttons = [add_btn, new_btn, cancel_btn]
         return content, buttons, "Metric Options"
@@ -248,14 +319,30 @@ class AddMetricPopup(MDDialog):
         popup.open()
 
     def add_metric(self, name, *args):
-        metric_defs = core.get_all_metric_types()
+        """Attach metric ``name`` to the exercise if it's not already present."""
+
+        metric_defs = metrics.get_all_metric_types()
+        added = False
         for m in metric_defs:
             if m["name"] == name:
-                self.screen.exercise_obj.add_metric(m)
+                added = self.screen.exercise_obj.add_metric(m)
                 break
         self.dismiss()
         self.screen.populate()
         self.screen.save_enabled = self.screen.exercise_obj.is_modified()
+        if not added:
+            dialog = None
+
+            def _close(*_):
+                if dialog:
+                    dialog.dismiss()
+
+            dialog = MDDialog(
+                title="Duplicate Metric",
+                text=f"{name} is already added to this exercise.",
+                buttons=[MDRaisedButton(text="OK", on_release=_close)],
+            )
+            dialog.open()
 
     def save_metric(self, *args):
         errors = []
@@ -307,7 +394,7 @@ class AddMetricPopup(MDDialog):
 
         db_path = DEFAULT_DB_PATH
         try:
-            core.add_metric_type(
+            metrics.add_metric_type(
                 metric["name"],
                 metric["type"],
                 metric["input_timing"],
@@ -344,6 +431,11 @@ class EditMetricPopup(MDDialog):
         self.screen = screen
         self.metric = metric
         self.mode = mode
+        # Ensure dialog uses most of the screen on small devices. ``size_hint_y``
+        # alone has no effect for :class:`MDDialog`, so we also specify the
+        # height directly.
+        kwargs.setdefault("size_hint", (0.95, None))
+        kwargs.setdefault("height", Window.height * 0.9)
         if self.mode == "session":
             content = MDBoxLayout()
             close_btn = MDRaisedButton(
@@ -366,7 +458,7 @@ class EditMetricPopup(MDDialog):
         default_height = dp(48)
         self.input_widgets = {}
 
-        schema = core.get_metric_type_schema()
+        schema = metrics.get_metric_type_schema()
         if not schema:
             schema = [
                 {"name": "name"},
@@ -445,6 +537,18 @@ class EditMetricPopup(MDDialog):
         self.enum_values_field.hint_text_font_size = "12sp"
         enable_auto_resize(self.enum_values_field)
 
+        # Text field for a default metric value. It appears only when editing
+        # metrics that request input during library creation, keeping the UI
+        # compact for other contexts.
+        self.value_field = MDTextField(
+            hint_text="Value",
+            size_hint_y=None,
+            height=default_height,
+            multiline=True,
+        )
+        self.value_field.hint_text_font_size = "12sp"
+        enable_auto_resize(self.value_field)
+
         for key, widget in self.input_widgets.items():
             if key not in self.metric:
                 continue
@@ -466,6 +570,13 @@ class EditMetricPopup(MDDialog):
         else:
             if self.enum_values_field.parent is not None:
                 form.remove_widget(self.enum_values_field)
+
+        # ``MDTextField`` expects a string value. Some metrics store ``None``
+        # for their default, which would raise an ``AttributeError`` when
+        # assigned directly. Convert ``None`` to an empty string to keep the
+        # popup responsive on small devices.
+        value = self.metric.get("value")
+        self.value_field.text = "" if value is None else str(value)
 
         def update_enum_visibility(*args):
             show = self.input_widgets["type"].text == "enum"
@@ -490,6 +601,22 @@ class EditMetricPopup(MDDialog):
 
             self.enum_values_field.input_filter = _filter
 
+        def update_value_visibility(*args):
+            # Value defaults are currently supported only when editing an
+            # exercise from the library. Other contexts will expose this field
+            # in a future iteration.
+            show = (
+                self.mode == "library"
+                and getattr(self.screen, "previous_screen", "") == "exercise_library"
+                and "input_timing" in self.input_widgets
+                and self.input_widgets["input_timing"].text == "library"
+            )
+            has_parent = self.value_field.parent is not None
+            if show and not has_parent:
+                form.add_widget(self.value_field)
+            elif not show and has_parent:
+                form.remove_widget(self.value_field)
+
         if "type" in self.input_widgets:
             self.input_widgets["type"].bind(
                 text=lambda *a: (update_enum_filter(), update_enum_visibility())
@@ -497,7 +624,14 @@ class EditMetricPopup(MDDialog):
             update_enum_visibility()
             update_enum_filter()
 
-        layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        if "input_timing" in self.input_widgets:
+            self.input_widgets["input_timing"].bind(
+                text=lambda *a: update_value_visibility()
+            )
+            update_value_visibility()
+
+        # Allow the form to scroll within the dialog and prevent clipping
+        layout = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         layout.add_widget(form)
 
         save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)
@@ -513,6 +647,12 @@ class EditMetricPopup(MDDialog):
                 updates[key] = bool(widget.active)
             else:
                 updates[key] = widget.text
+
+        if self.value_field.parent is not None:
+            text = self.value_field.text.strip()
+            if not text:
+                errors.append("value")
+            updates["value"] = text
 
         if "type" in updates:
             updates["type"] = updates.pop("type")
@@ -542,6 +682,8 @@ class EditMetricPopup(MDDialog):
                 widget.text_color = red if key in errors else (1, 1, 1, 1)
             elif isinstance(widget, MDTextField):
                 widget.error = key in errors
+        if self.value_field.parent is not None:
+            self.value_field.error = "value" in errors
 
         if errors:
             return
@@ -608,7 +750,7 @@ class EditMetricPopup(MDDialog):
             def on_save(*a):
                 metric_saved = self.screen.exercise_obj.had_metric(self.metric["name"])
                 if cb_type.active:
-                    core.update_metric_type(
+                    metrics.update_metric_type(
                         self.metric["name"],
                         mtype=updates.get("type"),
                         input_timing=updates.get("input_timing"),
@@ -618,16 +760,18 @@ class EditMetricPopup(MDDialog):
                         enum_values=updates.get("values"),
                         db_path=db_path,
                     )
+                    # Ensure overrides are updated if the metric already existed
                     if metric_saved:
-                        core.set_exercise_metric_override(
+                        metrics.set_exercise_metric_override(
                             self.screen.exercise_obj.name,
                             self.metric["name"],
                             is_user_created=self.screen.exercise_obj.is_user_created,
+                            value=updates.get("value"),
                             db_path=db_path,
                         )
                 elif cb_ex.active:
                     if metric_saved:
-                        core.set_exercise_metric_override(
+                        metrics.set_exercise_metric_override(
                             self.screen.exercise_obj.name,
                             self.metric["name"],
                             mtype=updates.get("type"),
@@ -635,12 +779,13 @@ class EditMetricPopup(MDDialog):
                             is_required=updates.get("is_required"),
                             scope=updates.get("scope"),
                             enum_values=updates.get("values"),
+                            value=updates.get("value"),
                             is_user_created=self.screen.exercise_obj.is_user_created,
                             db_path=db_path,
                         )
                 else:
                     preset_name = app.preset_editor.preset_name if app else ""
-                    core.set_section_exercise_metric_override(
+                    metrics.set_section_exercise_metric_override(
                         preset_name,
                         self.screen.section_index,
                         self.screen.exercise_obj.name,
@@ -649,6 +794,7 @@ class EditMetricPopup(MDDialog):
                         is_required=bool(updates.get("is_required")),
                         scope=updates.get("scope", "set"),
                         enum_values=updates.get("values"),
+                        value=updates.get("value"),  # future support
                         db_path=db_path,
                     )
                 cancel_action()
@@ -681,9 +827,9 @@ class EditMetricPopup(MDDialog):
 
             rows = []
             cb_default = None
-            if core.is_metric_type_user_created(
+            if metrics.is_metric_type_user_created(
                 self.metric["name"], db_path=db_path
-            ) and core.uses_default_metric(
+            ) and metrics.uses_default_metric(
                 self.screen.exercise_obj.name,
                 self.metric["name"],
                 is_user_created=self.screen.exercise_obj.is_user_created,
@@ -707,7 +853,7 @@ class EditMetricPopup(MDDialog):
                 )
                 rows.append(row)
 
-            presets = core.find_presets_using_exercise(
+            presets = find_presets_using_exercise(
                 self.screen.exercise_obj.name, db_path=db_path
             )
             cb_presets = None
@@ -742,7 +888,7 @@ class EditMetricPopup(MDDialog):
                         self.metric["name"]
                     )
                     if cb_default and cb_default.active:
-                        core.update_metric_type(
+                        metrics.update_metric_type(
                             self.metric["name"],
                             mtype=updates.get("type"),
                             input_timing=updates.get("input_timing"),
@@ -753,15 +899,16 @@ class EditMetricPopup(MDDialog):
                             db_path=db_path,
                         )
                         if metric_saved:
-                            core.set_exercise_metric_override(
+                            metrics.set_exercise_metric_override(
                                 self.screen.exercise_obj.name,
                                 self.metric["name"],
                                 is_user_created=self.screen.exercise_obj.is_user_created,
+                                value=updates.get("value"),
                                 db_path=db_path,
                             )
                     else:
                         if metric_saved:
-                            core.set_exercise_metric_override(
+                            metrics.set_exercise_metric_override(
                                 self.screen.exercise_obj.name,
                                 self.metric["name"],
                                 mtype=updates.get("type"),
@@ -769,11 +916,12 @@ class EditMetricPopup(MDDialog):
                                 is_required=updates.get("is_required"),
                                 scope=updates.get("scope"),
                                 enum_values=updates.get("values"),
+                                value=updates.get("value"),
                                 is_user_created=self.screen.exercise_obj.is_user_created,
                                 db_path=db_path,
                             )
                     if cb_presets and cb_presets.active:
-                        core.apply_exercise_changes_to_presets(
+                        apply_exercise_changes_to_presets(
                             self.screen.exercise_obj,
                             presets,
                             db_path=db_path,
@@ -802,7 +950,7 @@ class EditMetricPopup(MDDialog):
             else:
                 apply_updates()
 
-        elif core.is_metric_type_user_created(self.metric["name"], db_path=db_path):
+        elif metrics.is_metric_type_user_created(self.metric["name"], db_path=db_path):
             dialog = None
 
             def cancel_action(*a):
@@ -822,7 +970,7 @@ class EditMetricPopup(MDDialog):
             def on_save(*a):
                 metric_saved = self.screen.exercise_obj.had_metric(self.metric["name"])
                 if checkbox.active:
-                    core.update_metric_type(
+                    metrics.update_metric_type(
                         self.metric["name"],
                         mtype=updates.get("type"),
                         input_timing=updates.get("input_timing"),
@@ -833,21 +981,23 @@ class EditMetricPopup(MDDialog):
                         db_path=db_path,
                     )
                     if metric_saved:
-                        core.set_exercise_metric_override(
+                        metrics.set_exercise_metric_override(
                             self.screen.exercise_obj.name,
                             self.metric["name"],
                             is_user_created=self.screen.exercise_obj.is_user_created,
+                            value=updates.get("value"),
                             db_path=db_path,
                         )
                 else:
                     if metric_saved:
-                        core.set_exercise_metric_override(
+                        metrics.set_exercise_metric_override(
                             self.screen.exercise_obj.name,
                             self.metric["name"],
                             mtype=updates.get("type"),
                             input_timing=updates.get("input_timing"),
                             is_required=updates.get("is_required"),
                             scope=updates.get("scope"),
+                            value=updates.get("value"),
                             is_user_created=self.screen.exercise_obj.is_user_created,
                             db_path=db_path,
                         )
@@ -882,23 +1032,33 @@ class PreSessionMetricPopup(MDDialog):
     def __init__(self, metrics: list[dict], on_save, **kwargs):
         self.metrics = metrics
         self.on_save = on_save
+        # Match the behaviour of the other metric popups by having the dialog
+        # consume most of the available screen space on small devices. ``size_hint_y``
+        # is ignored by :class:`MDDialog`, and it resets explicit heights during
+        # construction, so height is assigned after initialization.
+        kwargs.setdefault("size_hint", (0.95, None))
         content, buttons = self._build_widgets()
         super().__init__(
             title="Session Metrics", type="custom", content_cls=content, buttons=buttons, **kwargs
         )
+        Clock.schedule_once(
+            lambda *_: setattr(self, "height", Window.height * 0.9)
+        )
 
     def _build_widgets(self):
-        layout = MDBoxLayout(orientation="vertical", spacing="8dp", size_hint_y=None)
-        layout.bind(minimum_height=layout.setter("height"))
-        self.metric_list = MDList()
+        # Build a list of metric input rows. Binding ``minimum_height`` ensures
+        # the list grows with its children so that it is fully scrollable.
+        self.metric_list = MDList(adaptive_height=True)
+        # Disable vertical size hint so the ``minimum_height`` binding updates
+        # the list's height for scrolling.
+        self.metric_list.bind(minimum_height=self.metric_list.setter("height"))
         for m in self.metrics:
             self.metric_list.add_widget(self._create_row(m))
-        scroll = ScrollView()
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(self.metric_list)
-        layout.add_widget(scroll)
         save_btn = MDRaisedButton(text="Save", on_release=lambda *_: self._on_save())
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *_: self.dismiss())
-        return layout, [save_btn, cancel_btn]
+        return scroll, [save_btn, cancel_btn]
 
     def _create_row(self, metric):
         name = metric.get("name")

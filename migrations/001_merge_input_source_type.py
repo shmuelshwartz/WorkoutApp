@@ -163,7 +163,7 @@ def migrate_preset_preset_metrics(conn):
             preset_id INTEGER NOT NULL,
             library_metric_type_id INTEGER,
             type TEXT NOT NULL CHECK(type IN ('int','float','str','bool','enum','slider')),
-            input_timing TEXT NOT NULL CHECK(input_timing IN ('library','preset','pre_workout','post_workout')),
+            input_timing TEXT NOT NULL CHECK(input_timing IN ('library','preset','pre_session','post_session')),
             scope TEXT NOT NULL CHECK(scope IN ('preset','session')),
             is_required BOOLEAN NOT NULL DEFAULT 0,
             enum_values_json TEXT,

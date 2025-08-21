@@ -22,6 +22,7 @@ from kivy.utils import get_color_from_hex, get_hex_from_color
 import json
 import os
 import copy
+from ui.colors import PINK_BG
 
 
 def _rel_lum(c: float) -> float:
@@ -38,6 +39,7 @@ def _contrast_ratio(a, b) -> float:
 
 
 class EditColorsScreen(MDScreen):
+    md_bg_color = PINK_BG
     """Screen for editing colors."""
 
     active_target = StringProperty("text")
@@ -223,6 +225,7 @@ class EditColorsScreen(MDScreen):
 
 
 class PreviewScreen(MDScreen):
+    md_bg_color = PINK_BG
     """Base class for preview screens."""
 
     label_text = StringProperty("")
@@ -260,6 +263,7 @@ class PreviewScreen(MDScreen):
 
 
 class SnapshotScreen(MDScreen):
+    md_bg_color = PINK_BG
     """Full screen preview of all components."""
 
     def build(self):

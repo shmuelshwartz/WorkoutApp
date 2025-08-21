@@ -26,8 +26,9 @@ from kivymd.uix.dialog import MDDialog
 import os
 import sqlite3
 
-import core
-from core import DEFAULT_DB_PATH
+from backend import metrics, exercises
+from backend.presets import load_workout_presets
+from core import DEFAULT_DB_PATH, DEFAULT_SETS_PER_EXERCISE
 
 
 class SectionWidget(MDBoxLayout):
@@ -265,13 +266,17 @@ class EditPresetScreen(MDScreen):
         if section_index >= len(session.section_starts):
             return False
         start = session.section_starts[section_index]
+        has_next = section_index + 1 < len(session.section_starts)
         end = (
             session.section_starts[section_index + 1]
-            if section_index + 1 < len(session.section_starts)
+            if has_next
             else len(session.exercises)
         )
-        if session.current_exercise >= end:
+        if session.current_exercise > end:
             return True
+        if session.current_exercise == end:
+            if not has_next or session.current_set > 0:
+                return True
         if start <= session.current_exercise < end and session.current_set > 0:
             return True
         return False
@@ -300,69 +305,8 @@ class EditPresetScreen(MDScreen):
         editor = getattr(app, "preset_editor", None)
         if not session or not editor:
             return
-        old_index = session.current_exercise
-        current_id = None
-        if old_index < len(session.exercises):
-            current_id = session.exercises[old_index].get(
-                "preset_section_exercise_id"
-            )
+        session.apply_edited_preset(editor.sections)
 
-        id_map = {
-            ex.get("preset_section_exercise_id"): ex for ex in session.exercises
-        }
-        new_exercises = []
-        new_section_names = []
-        new_section_starts = []
-        new_exercise_sections = []
-        for s_idx, sec in enumerate(editor.sections):
-            new_section_names.append(sec["name"])
-            new_section_starts.append(len(new_exercises))
-            for ex in sec.get("exercises", []):
-                old = id_map.get(ex.get("id"))
-                if old:
-                    results = old.get("results", [])
-                    description = old.get("exercise_description", "")
-                    metric_defs = old.get("metric_defs")
-                else:
-                    results = []
-                    description = ""
-                    metric_defs = core.get_metrics_for_exercise(
-                        ex["name"],
-                        db_path=session.db_path,
-                        preset_name=session.preset_name,
-                    )
-                new_exercises.append(
-                    {
-                        "name": ex.get("name"),
-                        "sets": ex.get("sets") or core.DEFAULT_SETS_PER_EXERCISE,
-                        "rest": ex.get("rest") or session.rest_duration,
-                        "results": results,
-                        "library_exercise_id": ex.get("library_id"),
-                        "preset_section_exercise_id": ex.get("id"),
-                        "exercise_description": description,
-                        "metric_defs": metric_defs,
-                        "section_index": s_idx,
-                        "section_name": sec.get("name"),
-                    }
-                )
-                new_exercise_sections.append(s_idx)
-
-        session.exercises = new_exercises
-        session.section_names = new_section_names
-        session.section_starts = new_section_starts
-        session.exercise_sections = new_exercise_sections
-
-        new_idx = None
-        if current_id is not None:
-            for idx, ex in enumerate(session.exercises):
-                if ex.get("preset_section_exercise_id") == current_id:
-                    new_idx = idx
-                    break
-
-        if new_idx is not None:
-            session.current_exercise = min(old_index, new_idx)
-        else:
-            session.current_exercise = min(old_index, len(session.exercises) - 1)
 
     def refresh_sections(self):
         """Repopulate the section widgets from the preset editor."""
@@ -551,9 +495,9 @@ class EditPresetScreen(MDScreen):
             return
 
         app = MDApp.get_running_app()
-        metrics = []
+        session_metrics = []
         if app and app.preset_editor:
-            metrics = [
+            session_metrics = [
                 m
                 for m in app.preset_editor.preset_metrics
                 if m.get("scope") == "session"
@@ -561,7 +505,7 @@ class EditPresetScreen(MDScreen):
 
         all_defs = {
             m["name"]: m
-            for m in core.get_all_metric_types(include_user_created=True)
+            for m in metrics.get_all_metric_types(include_user_created=True)
         }
 
         rv.data = [
@@ -571,12 +515,10 @@ class EditPresetScreen(MDScreen):
                 "is_user_created": all_defs.get(
                     m.get("metric_name") or m.get("name"),
                     {},
-                ).get(
-                    "is_user_created", False
-                ),
+                ).get("is_user_created", False),
                 "locked": self.mode == "session",
             }
-            for m in metrics
+            for m in session_metrics
         ]
 
     def open_add_preset_metric_popup(self):
@@ -612,7 +554,7 @@ class EditPresetScreen(MDScreen):
         def do_confirm(*args):
             try:
                 app.preset_editor.save()
-                core.load_workout_presets(app.preset_editor.db_path)
+                load_workout_presets(app.preset_editor.db_path)
                 app.selected_preset = app.preset_editor.preset_name
                 if dialog:
                     dialog.dismiss()
@@ -807,22 +749,22 @@ class ExerciseSelectionPanel(MDBoxLayout):
             app and self.cache_version != getattr(app, "exercise_library_version", 0)
         ):
             db_path = DEFAULT_DB_PATH
-            self.all_exercises = core.get_all_exercises(
+            self.all_exercises = exercises.get_all_exercises(
                 db_path, include_user_created=True
             )
             if app:
                 self.cache_version = app.exercise_library_version
 
-        exercises = self.all_exercises or []
+        exercise_rows = self.all_exercises or []
         if self.filter_mode == "user":
-            exercises = [ex for ex in exercises if ex[1]]
+            exercise_rows = [ex for ex in exercise_rows if ex[1]]
         elif self.filter_mode == "premade":
-            exercises = [ex for ex in exercises if not ex[1]]
+            exercise_rows = [ex for ex in exercise_rows if not ex[1]]
         if self.search_text:
             s = self.search_text.lower()
-            exercises = [ex for ex in exercises if s in ex[0].lower()]
+            exercise_rows = [ex for ex in exercise_rows if s in ex[0].lower()]
 
-        for name, is_user in exercises:
+        for name, is_user in exercise_rows:
             item = OneLineListItem(
                 text=name,
                 theme_text_color="Custom",
@@ -898,6 +840,8 @@ class AddPresetMetricPopup(MDDialog):
     def __init__(self, screen: "EditPresetScreen", **kwargs):
         self.screen = screen
         content, buttons = self._build_widgets()
+        # Expand popup to cover most of the screen for better visibility on small devices
+        kwargs.setdefault("size_hint", (0.95, 0.95))
         super().__init__(
             title="Select Metric", type="custom", content_cls=content, buttons=buttons, **kwargs
         )
@@ -910,21 +854,22 @@ class AddPresetMetricPopup(MDDialog):
                 m.get("metric_name") or m.get("name")
                 for m in app.preset_editor.preset_metrics
             }
-        metrics = [
+        available_metrics = [
             m
-            for m in core.get_all_metric_types()
+            for m in metrics.get_all_metric_types()
             if m.get("scope") == "preset" and (
                 m.get("name") not in existing and m.get("metric_name") not in existing
             )
         ]
 
         list_view = MDList()
-        for m in metrics:
+        for m in available_metrics:
             item = OneLineListItem(text=m["name"])
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
 
-        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        # Use available space and make list scrollable so action buttons remain on screen
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(list_view)
 
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
@@ -946,6 +891,8 @@ class AddSessionMetricPopup(MDDialog):
     def __init__(self, screen: "EditPresetScreen", **kwargs):
         self.screen = screen
         content, buttons = self._build_widgets()
+        # Ensure dialog is nearly full screen to avoid hidden buttons
+        kwargs.setdefault("size_hint", (0.95, 0.95))
         super().__init__(
             title="Select Metric",
             type="custom",
@@ -962,21 +909,22 @@ class AddSessionMetricPopup(MDDialog):
                 m.get("metric_name") or m.get("name")
                 for m in app.preset_editor.preset_metrics
             }
-        metrics = [
+        available_metrics = [
             m
-            for m in core.get_all_metric_types()
+            for m in metrics.get_all_metric_types()
             if m.get("scope") == "session" and (
                 m.get("name") not in existing and m.get("metric_name") not in existing
             )
         ]
 
         list_view = MDList()
-        for m in metrics:
+        for m in available_metrics:
             item = OneLineListItem(text=m["name"])
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
 
-        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        # Occupy available space and enable scrolling for small displays
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(list_view)
 
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())

@@ -1,14 +1,14 @@
-from kivy.app import App
-from kivy.uix.screenmanager import Screen
+from kivymd.uix.screen import MDScreen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.label import Label
-from kivy.uix.button import Button
+from ui.colors import PINK_BG
 
 
-class PreviousWorkoutsScreen(Screen):
+class HistoryComparisonScreen(MDScreen):
     """Screen displaying a 2D scrollable comparison of exercise sessions."""
+    md_bg_color = PINK_BG
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -101,17 +101,6 @@ class PreviousWorkoutsScreen(Screen):
         body_layout.add_widget(self.data_scroll)
         body_scroll.add_widget(body_layout)
         root.add_widget(body_scroll)
-
-        # Back button to return to rest screen
-        back_btn = Button(
-            text="Back to Rest",
-            size_hint_y=None,
-            height=40,
-            on_release=lambda *_: App.get_running_app().root.__setattr__(
-                "current", "rest"
-            ),
-        )
-        root.add_widget(back_btn)
 
         # Sync horizontal scrolling between headers and data
         def sync_header_scroll(instance, value):

@@ -4,7 +4,8 @@ import sys
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import core
+from backend import presets
+from backend import metrics, exercises
 
 
 def create_empty_db(path: Path) -> None:
@@ -87,7 +88,7 @@ def sample_db(tmp_db: Path) -> Path:
 
 
 def test_get_metric_type_schema(tmp_db: Path):
-    fields = core.get_metric_type_schema(db_path=tmp_db)
+    fields = metrics.get_metric_type_schema(db_path=tmp_db)
     names = {f["name"] for f in fields}
     assert names == {"name", "type", "input_timing", "is_required", "scope", "description", "enum_values_json"}
     type_opts = next(f["options"] for f in fields if f["name"] == "type")
@@ -95,22 +96,22 @@ def test_get_metric_type_schema(tmp_db: Path):
 
 
 def test_get_all_exercises_and_details(sample_db: Path):
-    all_ex = core.get_all_exercises(db_path=sample_db, include_user_created=True)
+    all_ex = exercises.get_all_exercises(db_path=sample_db, include_user_created=True)
     assert all_ex == [
         ("Bench Press", False),
         ("Push Up", False),
         ("Push Up", True),
     ]
-    details = core.get_exercise_details("Push Up", db_path=sample_db)
+    details = exercises.get_exercise_details("Push Up", db_path=sample_db)
     assert details["is_user_created"] is True
-    details_specific = core.get_exercise_details("Push Up", db_path=sample_db, is_user_created=False)
+    details_specific = exercises.get_exercise_details("Push Up", db_path=sample_db, is_user_created=False)
     assert details_specific["is_user_created"] is False
-    assert core.get_exercise_details("Nope", db_path=sample_db) is None
+    assert exercises.get_exercise_details("Nope", db_path=sample_db) is None
 
 
 def test_load_workout_presets(sample_db: Path):
-    presets = core.load_workout_presets(db_path=sample_db)
-    assert presets == [
+    loaded = presets.load_workout_presets(db_path=sample_db)
+    assert loaded == [
         {
             "name": "Push Day",
             "exercises": [
@@ -122,7 +123,7 @@ def test_load_workout_presets(sample_db: Path):
 
 
 def test_add_and_remove_metric_from_exercise(sample_db: Path):
-    core.add_metric_to_exercise("Bench Press", "Reps", db_path=sample_db)
+    metrics.add_metric_to_exercise("Bench Press", "Reps", db_path=sample_db)
     conn = sqlite3.connect(sample_db)
     cur = conn.cursor()
     cur.execute(
@@ -130,7 +131,7 @@ def test_add_and_remove_metric_from_exercise(sample_db: Path):
     )
     count = cur.fetchone()[0]
     assert count == 1
-    core.remove_metric_from_exercise("Bench Press", "Reps", db_path=sample_db)
+    metrics.remove_metric_from_exercise("Bench Press", "Reps", db_path=sample_db)
     cur.execute(
         """SELECT COUNT(*) FROM library_exercise_metrics em JOIN library_exercises e ON em.exercise_id = e.id JOIN library_metric_types mt ON em.metric_type_id = mt.id WHERE e.name='Bench Press' AND mt.name='Reps' AND em.deleted = 0 AND e.deleted = 0 AND mt.deleted = 0"""
     )

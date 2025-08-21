@@ -1,6 +1,8 @@
 import sqlite3
 import pytest
-import core
+
+from backend.sessions import save_completed_session
+from backend.workout_session import WorkoutSession
 
 
 def _complete_session(db_path):
@@ -16,14 +18,14 @@ def _complete_session(db_path):
         INSERT INTO preset_preset_metrics
             (preset_id, library_metric_type_id, metric_name, metric_description,
              type, input_timing, scope, is_required, position)
-        VALUES (?, ?, 'Session Reps', 'Total session reps', 'int', 'pre_workout', 'session', 1, 0)
+        VALUES (?, ?, 'Session Reps', 'Total session reps', 'int', 'pre_session', 'session', 1, 0)
         """,
         (preset_id, metric_type_id),
     )
     conn.commit()
     conn.close()
 
-    session = core.WorkoutSession("Push Day", db_path=db_path, rest_duration=1)
+    session = WorkoutSession("Push Day", db_path=db_path, rest_duration=1)
     session.set_session_metrics({"Session Reps": 28})
     session.record_metrics(session.current_exercise, session.current_set, {"Reps": 10})
     session.mark_set_completed()
@@ -37,7 +39,7 @@ def _complete_session(db_path):
 
 def test_save_completed_session(sample_db):
     session = _complete_session(sample_db)
-    core.save_completed_session(session, db_path=sample_db)
+    save_completed_session(session, db_path=sample_db)
     conn = sqlite3.connect(sample_db)
     cur = conn.cursor()
     cur.execute("SELECT preset_id FROM session_sessions")
@@ -60,6 +62,6 @@ def test_save_completed_session(sample_db):
 
 
 def test_save_session_validation(sample_db):
-    session = core.WorkoutSession("Push Day", db_path=sample_db)
+    session = WorkoutSession("Push Day", db_path=sample_db)
     with pytest.raises(ValueError):
-        core.save_completed_session(session, db_path=sample_db)
+        save_completed_session(session, db_path=sample_db)

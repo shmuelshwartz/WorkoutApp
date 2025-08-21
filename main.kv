@@ -1,6 +1,9 @@
 #:import NoTransition kivy.uix.screenmanager.NoTransition
 #:import ButtonBehavior kivy.uix.behaviors.button.ButtonBehavior
-ScreenManager:
+#:import PINK_BG ui.colors.PINK_BG
+#:import PURPLE_BG ui.colors.PURPLE_BG
+#:import TempoVisualizer ui.tempo_visualizer.TempoVisualizer
+RootUI:
     WelcomeScreen:
         name: "welcome"
     HomeScreen:
@@ -15,6 +18,8 @@ ScreenManager:
         name: "progress"
     WorkoutHistoryScreen:
         name: "workout_history"
+    ViewPreviousWorkoutScreen:
+        name: "view_previous_workout"
     SettingsScreen:
         name: "settings"
     RestScreen:
@@ -25,8 +30,6 @@ ScreenManager:
         name: "metric_input"
     WorkoutEditScreen:
         name: "workout_edit"
-    WorkoutSettingsScreen:
-        name: "workout_settings"
     WorkoutSummaryScreen:
         name: "workout_summary"
     EditExerciseScreen:
@@ -38,67 +41,66 @@ ScreenManager:
     PreviousWorkoutsScreen:
         name: "previous_workouts"
 
-<HomeScreen@MDScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        spacing: "10dp"
-        padding: "20dp"
-        MDLabel:
-            text: "Home - choose where you want to go"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-        MDRaisedButton:
-            text: "Go to Presets"
-            on_release: app.root.current = "presets"
-        MDRaisedButton:
-            text: "Go to Library"
-            on_release: app.root.current = "exercise_library"
-        MDRaisedButton:
-            text: "Go to Progress"
-            on_release: app.root.current = "progress"
-        MDRaisedButton:
-            text: "Go to Settings"
-            on_release: app.root.current = "settings"
-        MDRaisedButton:
-            text: "Go to Workout History"
-            on_release: app.root.current = "workout_history"
+<HomeScreen>:
+    md_bg_color: PINK_BG
+    ScrollView:
+        do_scroll_x: False
+        MDBoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: self.minimum_height
+            spacing: "10dp"
+            padding: "20dp"
+            MDLabel:
+                text: "Home"
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: 0.2, 0.6, 0.86, 1
+            MDRaisedButton:
+                text: "Presets"
+                on_release: app.root.current = "presets"
+            MDRaisedButton:
+                text: "Library"
+                on_release: app.root.current = "exercise_library"
+            MDRaisedButton:
+                text: "Progress"
+                on_release: app.root.current = "progress"
+            MDRaisedButton:
+                text: "Settings"
+                on_release: app.open_settings('home')
+            MDRaisedButton:
+                text: "History"
+                on_release: app.root.current = "workout_history"
 
 <PresetsScreen>:
     preset_list: preset_list
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: "Presets – Select a workout from a list of predefined presets. Each preset represents a unique workout routine."
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
         ScrollView:
             MDList:
                 id: preset_list
-        MDLabel:
-            text: "Selected: " + root.selected_preset if root.selected_preset else "Select a preset"
-            halign: "center"
-        MDRaisedButton:
-            id: select_btn
-            text: root.selected_preset if root.selected_preset else "Select Preset"
-            disabled: not root.selected_preset
-            on_release: root.confirm_selection()
-        MDRaisedButton:
-            text: "Edit Preset"
-            disabled: not root.selected_preset
-            on_release: app.root.current = "edit_preset"
-        MDRaisedButton:
-            text: "New Preset"
-            on_release: app.start_new_preset(); app.root.current = "edit_preset"
-        MDRaisedButton:
-            text: "Back to Home"
-            on_release: app.root.current = "home"
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: None
+            height: "48dp"
+            spacing: "10dp"
+            MDIconButton:
+                icon: "arrow-left"
+                on_release: app.root.current = "home"
+            MDIconButton:
+                icon: "pencil"
+                disabled: not root.selected_preset
+                on_release: app.root.current = "edit_preset"
+            MDIconButton:
+                icon: "plus"
+                on_release: app.start_new_preset(); app.root.current = "edit_preset"
 
 <PresetDetailScreen>:
     summary_list: summary_list
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -111,15 +113,20 @@ ScreenManager:
         ScrollView:
             MDList:
                 id: summary_list
-        MDRaisedButton:
-            text: "Edit Preset"
-            on_release: app.root.current = "edit_preset"
-        MDRaisedButton:
-            text: "Go to Preset Overview"
-            on_release: app.root.current = "preset_overview"
-        MDRaisedButton:
-            text: "Back to Presets"
-            on_release: app.root.current = "presets"
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: None
+            height: "48dp"
+            spacing: "10dp"
+            MDIconButton:
+                icon: "arrow-left"
+                on_release: app.root.current = "presets"
+            MDIconButton:
+                icon: "pencil"
+                on_release: app.root.current = "edit_preset"
+            MDIconButton:
+                icon: "arrow-right"
+                on_release: app.root.current = "preset_overview"
 
 <ExerciseRow@MDBoxLayout>:
     name: ""
@@ -205,10 +212,11 @@ ScreenManager:
     exercise_list: exercise_list
     metric_list: metric_list
     current_tab: "exercises"
+    md_bg_color: PINK_BG
     FloatLayout:
         MDBoxLayout:
             orientation: "vertical"
-            spacing: "10dp"
+            spacing: "5dp"
             padding: "20dp"
             MDBoxLayout:
                 size_hint_y: None
@@ -231,8 +239,11 @@ ScreenManager:
                     name: "exercises"
                     BoxLayout:
                         orientation: "vertical"
-                        BoxLayout:
-                            orientation: "vertical"
+                        MDBoxLayout:
+                            orientation: "horizontal"
+                            size_hint_y: None
+                            height: "40dp"
+                            spacing: "5dp"
                             MDTextField:
                                 id: search_field
                                 hint_text: "Search exercises"
@@ -240,47 +251,42 @@ ScreenManager:
                                 on_text: root.update_search(self.text)
                                 size_hint_y: None
                                 height: "40dp"
-                            MDBoxLayout:
-                                orientation: "horizontal"
+                                size_hint_x: 1
+                            MDIconButton:
+                                icon: "filter-variant"
+                                on_release: root.open_filter_popup()
+                                size_hint: None, None
+                                size: "40dp", "40dp"
+                        MDRecycleView:
+                            id: exercise_list
+                            viewclass: "ExerciseRow"
+                            RecycleBoxLayout:
+                                default_size: None, dp(56)
+                                default_size_hint: 1, None
                                 size_hint_y: None
                                 height: self.minimum_height
-                                MDLabel:
-                                    text: "Exercise Library - browse all exercises"
-                                    halign: "center"
-                                    theme_text_color: "Custom"
-                                    text_color: 0.2, 0.6, 0.86, 1
-                                    size_hint_x: 0.9
-                                MDIconButton:
-                                    icon: "filter-variant"
-                                    on_release: root.open_filter_popup()
-                            MDRecycleView:
-                                id: exercise_list
-                                viewclass: "ExerciseRow"
-                                RecycleBoxLayout:
-                                    default_size: None, dp(56)
-                                    default_size_hint: 1, None
-                                    size_hint_y: None
-                                    height: self.minimum_height
-                                    orientation: "vertical"
+                                orientation: "vertical"
                         MDBoxLayout:
+                            orientation: "horizontal"
                             size_hint_y: None
-                            height: "56dp"
-                            padding: "10dp"
+                            height: "48dp"
                             spacing: "10dp"
-                            MDRaisedButton:
-                                text: "Back"
+                            MDIconButton:
+                                icon: "arrow-left"
                                 on_release: root.go_back()
                             Widget:
-                            MDFloatingActionButton:
+                            MDIconButton:
                                 icon: "plus"
-                                md_bg_color: app.theme_cls.primary_color
                                 on_release: root.new_exercise()
                 Screen:
                     name: "metrics"
                     BoxLayout:
                         orientation: "vertical"
-                        BoxLayout:
-                            orientation: "vertical"
+                        MDBoxLayout:
+                            orientation: "horizontal"
+                            size_hint_y: None
+                            height: "40dp"
+                            spacing: "5dp"
                             MDTextField:
                                 id: metric_search_field
                                 hint_text: "Search metrics"
@@ -288,43 +294,36 @@ ScreenManager:
                                 on_text: root.update_search(self.text)
                                 size_hint_y: None
                                 height: "40dp"
-                            MDBoxLayout:
-                                orientation: "horizontal"
+                                size_hint_x: 1
+                            MDIconButton:
+                                icon: "filter-variant"
+                                on_release: root.open_filter_popup()
+                                size_hint: None, None
+                                size: "40dp", "40dp"
+                        MDRecycleView:
+                            id: metric_list
+                            viewclass: "MetricRow"
+                            RecycleBoxLayout:
+                                default_size: None, dp(56)
+                                default_size_hint: 1, None
                                 size_hint_y: None
                                 height: self.minimum_height
-                                MDLabel:
-                                    text: "Metric Library - browse all metrics"
-                                    halign: "center"
-                                    theme_text_color: "Custom"
-                                    text_color: 0.2, 0.6, 0.86, 1
-                                    size_hint_x: 0.9
-                                MDIconButton:
-                                    icon: "filter-variant"
-                                    on_release: root.open_filter_popup()
-                            MDRecycleView:
-                                id: metric_list
-                                viewclass: "MetricRow"
-                                RecycleBoxLayout:
-                                    default_size: None, dp(56)
-                                    default_size_hint: 1, None
-                                    size_hint_y: None
-                                    height: self.minimum_height
-                                    orientation: "vertical"
+                                orientation: "vertical"
                         MDBoxLayout:
+                            orientation: "horizontal"
                             size_hint_y: None
-                            height: "56dp"
-                            padding: "10dp"
+                            height: "48dp"
                             spacing: "10dp"
-                            MDRaisedButton:
-                                text: "Back"
+                            MDIconButton:
+                                icon: "arrow-left"
                                 on_release: root.go_back()
                             Widget:
-                            MDFloatingActionButton:
+                            MDIconButton:
                                 icon: "plus"
-                                md_bg_color: app.theme_cls.primary_color
                                 on_release: root.new_metric()
 
 <ProgressScreen@MDScreen>:
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -335,36 +334,98 @@ ScreenManager:
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
         MDRaisedButton:
-            text: "Back to Home"
-            on_release: app.root.current = "home"
+            text: "Back"
+            on_release: app.root.current = root.return_to
 
-<WorkoutHistoryScreen@MDScreen>:
+<WorkoutHistoryScreen>:
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: "Workout History - review past workouts"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
+        ScrollView:
+            do_scroll_x: False
+            MDList:
+                id: history_list
         MDRaisedButton:
-            text: "Back to Home"
-            on_release: app.root.current = "home"
+            text: "Back"
+            on_release: app.root.current = root.return_to
 
-<SettingsScreen@MDScreen>:
+<ViewPreviousWorkoutScreen>:
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: "Settings - configure the app"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
+        ScrollView:
+            do_scroll_x: False
+            MDList:
+                id: details_list
         MDRaisedButton:
-            text: "Back to Home"
-            on_release: app.root.current = "home"
+            text: "Back"
+            on_release: app.root.current = "workout_history"
+
+<SettingsScreen>:
+    md_bg_color: PINK_BG
+    BoxLayout:
+        orientation: "vertical"
+        spacing: "10dp"
+        padding: "20dp"
+        # ScrollView ensures remaining settings are accessible on small screens
+        ScrollView:
+            do_scroll_x: False
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: "10dp"
+                size_hint_y: None
+                height: self.minimum_height
+                MDBoxLayout:
+                    orientation: "horizontal"
+                    size_hint_y: None
+                    height: "40dp"
+                    MDLabel:
+                        text: "Sound"
+                        valign: "center"
+                    MDSwitch:
+                        id: sound_toggle
+                        pos_hint: {"center_y": 0.5}
+                        on_active: root.on_sound_toggle(self, self.active)
+                MDBoxLayout:
+                    orientation: "horizontal"
+                    size_hint_y: None
+                    height: "40dp"
+                    MDLabel:
+                        text: "Sound Level"
+                        valign: "center"
+                    MDSlider:
+                        id: sound_level_slider
+                        min: 0
+                        max: 1
+                        value: 1
+                        on_value: root.on_sound_level(self, self.value)
+                MDBoxLayout:
+                    orientation: "vertical"
+                    spacing: "10dp"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    MDRaisedButton:
+                        text: "Export DB"
+                        size_hint_y: None
+                        height: "40dp"
+                        on_release: root.export_db()
+                    MDRaisedButton:
+                        text: "Export JSON"
+                        size_hint_y: None
+                        height: "40dp"
+                        on_release: root.export_json()
+                    MDRaisedButton:
+                        text: "Import DB"
+                        size_hint_y: None
+                        height: "40dp"
+                        on_release: root.open_import_db()
+        MDRaisedButton:
+            text: "Back"
+            on_release: app.root.current = root.return_to
 
 <IconTextButton@MDCard>:
     on_press: print("IconTextButton pressed:", root.icon)
@@ -372,43 +433,56 @@ ScreenManager:
     text: ""
     text_color: 0, 0, 0, 1
     md_bg_color: 0, 0, 0, 0
-    orientation: "vertical"
-    spacing: "4dp"
     padding: "8dp"
-    size_hint_x: 1
+    size_hint_x: None
+    width: "90dp"
     size_hint_y: None
-    height: "72dp"
+    height: "90dp"
 
-    MDIcon:
-        icon: root.icon
-        font_size: "24sp"
-        size_hint_y: None
-        size_hint_x: None
-        size: self.texture_size
-        pos_hint: {"center_x": 0.5}
-        theme_text_color: "Custom"
-        text_color: root.text_color
+    MDBoxLayout:
+        orientation: "vertical"
+        spacing: "4dp" if root.text else 0
+        size_hint: 1, None
+        height: self.minimum_height
+        pos_hint: {"center_y": 0.5}
 
-    MDLabel:
-        text: root.text
-        font_size: "7sp"
-        halign: "center"
-        text_size: None, None
-        size_hint_y: None
-        height: self.texture_size[1]
-        theme_text_color: "Custom"
-        text_color: root.text_color
+        MDIcon:
+            icon: root.icon
+            font_size: "32sp"
+            size_hint: None, None
+            size: self.texture_size
+            pos_hint: {"center_x": 0.5}
+            theme_text_color: "Custom"
+            text_color: root.text_color
+
+        MDLabel:
+            text: root.text
+            font_size: "10sp"
+            halign: "center"
+            text_size: None, None
+            size_hint_y: None
+            height: self.texture_size[1] if root.text else 0
+            opacity: 1 if root.text else 0
+            theme_text_color: "Custom"
+            text_color: root.text_color
 
 <RestScreen>:
+    md_bg_color: PURPLE_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            text: "Rest – The main screen shown between exercises. Displays a countdown timer while the user rests before the next exercise begins."
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
+        BoxLayout:
+            size_hint_y: None
+            height: self.minimum_height
+            MDLabel:
+                text: root.session_time_label
+                size_hint_y: None
+                height: self.texture_size[1]
+                halign: "left"
+                multiline: False
+                theme_text_color: "Custom"
+                text_color: 0.2, 0.6, 0.86, 1
         BoxLayout:
             orientation: "horizontal"
             size_hint_y: None
@@ -441,40 +515,47 @@ ScreenManager:
         Widget:
             size_hint_y: None
             height: "20dp"
-        MDGridLayout:
-            cols: 6
-            spacing: "10dp"
+        ScrollView:
             size_hint_y: None
-            height: self.minimum_height
-            IconTextButton:
-                icon: "undo"
-                text: "Undo"
-                disabled: root.undo_disabled
-                on_release: root.show_undo_confirmation()
-            IconTextButton:
-                id: record_btn
-                icon: "clipboard"
-                text: "metrics"
-                on_release: root.open_metric_input()
-            IconTextButton:
-                icon: "pencil"
-                text: "edit"
-                on_release: app.edit_active_preset()
-            IconTextButton:
-                icon: "cog"
-                text: "settings"
-                on_release: app.root.current = "workout_settings"
-            IconTextButton:
-                icon: "book"
-                text: "history"
-                on_release: app.root.current = "previous_workouts"
-            IconTextButton:
-                icon: "flag-checkered"
-                text: "finish"
-                on_release: root.confirm_finish()
+            height: "100dp"
+            bar_width: 0
+            do_scroll_y: False
+            do_scroll_x: True
+            MDBoxLayout:
+                orientation: "horizontal"
+                spacing: "10dp"
+                size_hint_y: None
+                height: self.minimum_height
+                size_hint_x: None
+                width: self.minimum_width
+                IconTextButton:
+                    icon: "undo"
+                    disabled: root.undo_disabled
+                    on_release: root.show_undo_confirmation()
+                IconTextButton:
+                    icon: "skip-next"
+                    on_release: root.show_skip_confirmation()
+                IconTextButton:
+                    id: record_btn
+                    icon: "clipboard"
+                    on_release: root.open_metric_input()
+                IconTextButton:
+                    icon: "pencil"
+                    on_release: app.edit_active_preset()
+                IconTextButton:
+                    icon: "cog"
+                    on_release: app.open_settings('rest')
+                IconTextButton:
+                    icon: "book"
+                    on_release: app.root.current = "previous_workouts"
+                IconTextButton:
+                    icon: "flag-checkered"
+                    on_release: root.confirm_finish()
 
 <WorkoutActiveScreen>:
+    tempo_bar: tempo_bar
     on_leave: root.stop_timer()
+    md_bg_color: PURPLE_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -483,15 +564,18 @@ ScreenManager:
             id: stopwatch
             text: root.formatted_time
             halign: "center"
+            font_name: root.digital_font
             font_style: "H2"
+            multiline: False
         MDLabel:
             text: root.exercise_name
             halign: "center"
-        MDLabel:
-            text: "Active Workout Screen – The primary screen shown while the user is performing an exercise. Displays the current exercise details, timer, and any relevant cues or instructions."
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
+        TempoVisualizer:
+            id: tempo_bar
+            size_hint_y: None
+            height: stopwatch.height / 2
+            # Match tempo bar thickness to half the timer's height for better visibility
+            opacity: 0
         MDBoxLayout:
             orientation: "horizontal"
             spacing: "10dp"
@@ -519,28 +603,31 @@ ScreenManager:
 
 <MetricInputScreen>:
     on_pre_enter: root.on_pre_enter()
-    metrics_list: metrics_list
+    exercise_bar: exercise_bar
+    metric_names: metric_names
+    metric_values: metric_values
+    metric_names_scroll: metric_names_scroll
+    metric_values_scroll: metric_values_scroll
+    md_bg_color: PURPLE_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        BoxLayout:
-            orientation: "horizontal"
-            size_hint_y: 0.1
-            MDIconButton:
-                icon: "chevron-left"
-                on_release: root.register_left_tap()
-                disabled: not root.can_nav_left
-            MDLabel:
-                id: nav_label
-                text: root.label_text
-                halign: "center"
-                theme_text_color: "Custom"
-                text_color: 0.2, 0.6, 0.86, 1
-            MDIconButton:
-                icon: "chevron-right"
-                on_release: root.register_right_tap()
-                disabled: not root.can_nav_right
+        ScrollView:
+            id: exercise_scroll
+            size_hint_y: None
+            height: dp(40)
+            do_scroll_x: True
+            do_scroll_y: False
+            bar_width: 0
+            BoxLayout:
+                id: exercise_bar
+                orientation: "horizontal"
+                size_hint_x: None
+                width: self.minimum_width
+                height: dp(40)
+                spacing: dp(10)
+                padding: "0dp", "0dp"
         ScrollView:
             size_hint_y: None
             height: "40dp"
@@ -595,15 +682,49 @@ ScreenManager:
                     md_bg_color: root.post_color
                     text_color: 1, 1, 1, 1
                     on_release: root.toggle_filter('post')
-        ScrollView:
-            MDList:
-                id: metrics_list
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: 1
+            Splitter:
+                id: metric_splitter
+                sizable_from: "right"
+                strip_size: dp(8)
+                min_size: 0
+                size_hint_x: None
+                width: dp(100)
+                ScrollView:
+                    id: metric_names_scroll
+                    size_hint_x: None
+                    width: self.parent.width
+                    do_scroll_x: False
+                    do_scroll_y: True
+                    bar_width: 0
+                    BoxLayout:
+                        id: metric_names
+                        orientation: "vertical"
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(5)
+            ScrollView:
+                id: metric_values_scroll
+                do_scroll_x: True
+                do_scroll_y: True
+                bar_width: 0
+                GridLayout:
+                    id: metric_values
+                    size_hint: None, None
+                    cols: 1
+                    row_default_height: dp(40)
+                    height: self.minimum_height
+                    width: self.minimum_width
+                    spacing: dp(5)
         MDRaisedButton:
             size_hint_y: 0.1
             text: "Back"
             on_release: root.save_metrics()
 
 <WorkoutEditScreen@MDScreen>:
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -617,22 +738,9 @@ ScreenManager:
             text: "Back to Rest"
             on_release: app.root.current = "rest"
 
-<WorkoutSettingsScreen@MDScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        spacing: "10dp"
-        padding: "20dp"
-        MDLabel:
-            text: "Workout Settings - adjust options for this workout"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-        MDRaisedButton:
-            text: "Back to Rest"
-            on_release: app.root.current = "rest"
-
 <WorkoutSummaryScreen>:
     summary_list: summary_list
+    md_bg_color: PURPLE_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
@@ -649,11 +757,19 @@ ScreenManager:
             text: "Back to Home"
             on_release: app.root.current = "home"
 
-<WelcomeScreen@MDScreen>:
+<WelcomeScreen>:
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
+        MDLabel:
+            text: app.app_version
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.5, 0.5, 0.5, 1
+            font_style: "Caption"
+            adaptive_height: True
         MDLabel:
             text: "Welcome - start your fitness journey"
             halign: "center"
@@ -715,6 +831,7 @@ ScreenManager:
     metrics_box: metrics_box
     panel_visible: False
     on_current_tab: edit_tabs.current = self.current_tab
+    md_bg_color: PINK_BG
     FloatLayout:
         MDBoxLayout:
             id: main_content
@@ -723,22 +840,31 @@ ScreenManager:
             padding: "5dp"
             size_hint: 1, 1
 
-            MDBoxLayout:
+            # Wrap navigation buttons in a horizontal ScrollView so they remain
+            # accessible on small screens without altering existing logic.
+            ScrollView:
                 size_hint_y: None
                 height: "40dp"
-                spacing: "10dp"
-                MDRaisedButton:
-                    text: "Sections"
-                    md_bg_color: app.theme_cls.primary_color if root.current_tab == "sections" else (.5, .5, .5, 1)
-                    on_release: root.switch_tab("sections")
-                MDRaisedButton:
-                    text: "Details"
-                    md_bg_color: app.theme_cls.primary_color if root.current_tab == "details" else (.5, .5, .5, 1)
-                    on_release: root.switch_tab("details")
-                MDRaisedButton:
-                    text: "Metrics"
-                    md_bg_color: app.theme_cls.primary_color if root.current_tab == "metrics" else (.5, .5, .5, 1)
-                    on_release: root.switch_tab("metrics")
+                do_scroll_y: False  # only horizontal scrolling is allowed
+                bar_width: 0  # hide scrollbar for cleaner UI
+                MDBoxLayout:
+                    orientation: "horizontal"
+                    size_hint_x: None
+                    height: "40dp"
+                    width: self.minimum_width
+                    spacing: "10dp"
+                    MDRaisedButton:
+                        text: "Sections"
+                        md_bg_color: app.theme_cls.primary_color if root.current_tab == "sections" else (.5, .5, .5, 1)
+                        on_release: root.switch_tab("sections")
+                    MDRaisedButton:
+                        text: "Details"
+                        md_bg_color: app.theme_cls.primary_color if root.current_tab == "details" else (.5, .5, .5, 1)
+                        on_release: root.switch_tab("details")
+                    MDRaisedButton:
+                        text: "Metrics"
+                        md_bg_color: app.theme_cls.primary_color if root.current_tab == "metrics" else (.5, .5, .5, 1)
+                        on_release: root.switch_tab("metrics")
 
             ScreenManager:
                 id: edit_tabs
@@ -764,19 +890,10 @@ ScreenManager:
                                     spacing: "10dp"
                                     size_hint_y: None
                                     height: self.minimum_height
-                        MDBoxLayout:
-                            orientation: "horizontal"
-                            size_hint_y: None
-                            height: "56dp"
-                            padding: "8dp"
-                            Widget:
-                        MDFloatingActionButton:
-                            icon: "plus"
-                            md_bg_color: app.theme_cls.primary_color
-                            pos_hint: {"center_x": 0.5, "center_y": 0.5}
-                            opacity: 1 if root.mode != "session" else 0
-                            disabled: root.mode == "session"
-                            on_release: app.root.get_screen("edit_preset").add_section()
+                        # Removed floating action button to place all actions
+                        # in a single bottom bar for better use of space on
+                        # small screens. Section adding is now handled by the
+                        # plus icon in the bottom bar.
 
 
                 Screen:
@@ -854,18 +971,25 @@ ScreenManager:
                             disabled: root.mode == "session"
                             on_release: root.open_add_session_metric_popup()
 
+            # Bottom action bar: back, add section, save
             MDBoxLayout:
+                orientation: "horizontal"
                 size_hint_y: None
-                height: "40dp"
+                height: "48dp"
                 spacing: "10dp"
-                MDRaisedButton:
-                    text: "Save"
+                MDIconButton:
+                    icon: "arrow-left"
+                    on_release: root.go_back()
+                MDIconButton:
+                    icon: "plus"
+                    disabled: root.mode == "session" or root.current_tab != "sections"
+                    opacity: 1 if root.mode != "session" and root.current_tab == "sections" else 0
+                    on_release: app.root.get_screen("edit_preset").add_section()
+                MDIconButton:
+                    icon: "check"
                     disabled: root.mode == "session" or not root.save_enabled
                     opacity: 1 if root.mode != "session" else 0
                     on_release: root.save_preset()
-                MDRaisedButton:
-                    text: "Back"
-                    on_release: root.go_back()
 
         ExerciseSelectionPanel:
             id: exercise_panel
@@ -972,17 +1096,11 @@ ScreenManager:
 <PresetOverviewScreen>:
     details_list: details_tab.ids.details_list
     workout_list: workout_tab.ids.workout_list
-    preset_label: preset_label
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"
         padding: "20dp"
-        MDLabel:
-            id: preset_label
-            text: ""
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
         MDTabs:
             id: tabs
             DetailsTab:
@@ -991,18 +1109,26 @@ ScreenManager:
             WorkoutTab:
                 id: workout_tab
                 title: "Workout"
-        MDRaisedButton:
-            text: "Back to Detail"
-            on_release: app.root.current = "preset_detail"
-        MDRaisedButton:
-            text: "Start Workout"
-            on_release: root.start_workout()
+        MDBoxLayout:
+            size_hint_y: None
+            height: "40dp"
+            spacing: "10dp"
+            MDIconButton:
+                icon: "chevron-left"
+                on_release: app.root.current = "preset_detail"
+            MDIconButton:
+                icon: "clipboard"
+                on_release: root.open_metric_popup()
+            MDIconButton:
+                icon: "play"
+                on_release: root.start_workout()
 
 <EditExerciseScreen>:
     metrics_list: metrics_list
     name_field: name_field
     description_field: description_field
     current_tab: "metrics"
+    md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
         spacing: "10dp"

@@ -1,3 +1,8 @@
+TESTING = True
+# Feature flag: when True the UI is scaled to half size while staying centered.
+half_screen = False
+import os
+os.environ["KIVY_AUDIO"] = "sdl2"
 from kivymd.app import MDApp
 from kivy.lang import Builder
 from kivy.clock import Clock
@@ -32,33 +37,40 @@ try:
 except Exception:  # pragma: no cover - fallback for tests without kivymd
     from kivy.uix.spinner import Spinner as MDSpinner
 from kivymd.uix.button import MDRaisedButton
-from kivy.uix.screenmanager import NoTransition
-from ui.screens.preset_detail_screen import PresetDetailScreen
-from ui.screens.preset_overview_screen import PresetOverviewScreen
+from kivy.uix.screenmanager import NoTransition, ScreenManager
+from kivy.uix.widget import Widget
+from kivy.uix.scatter import Scatter
+from kivy.uix.gridlayout import GridLayout
+from kivy.graphics import Color, Rectangle
+from kivy.utils import platform
+from ui.screens.general.preset_detail_screen import PresetDetailScreen
+from ui.screens.general.preset_overview_screen import PresetOverviewScreen
+from ui.screens.general.welcome_screen import WelcomeScreen
+from ui.screens.general.home_screen import HomeScreen
 from pathlib import Path
 import os
-import sys
 import re
 import json
 
-from ui.screens import ExerciseLibraryScreen
+from ui.screens.general.exercise_library import ExerciseLibraryScreen
 
-# Import core so we can always reference the up-to-date WORKOUT_PRESETS list
-import core
+from backend.presets import load_workout_presets
+from backend.workout_session import WorkoutSession
 from core import (
-    WorkoutSession,
-    load_workout_presets,
-    get_metrics_for_exercise,
-    PresetEditor,
     DEFAULT_SETS_PER_EXERCISE,
     DEFAULT_REST_DURATION,
     DEFAULT_DB_PATH,
 )
-from ui.screens.metric_input_screen import MetricInputScreen
-from ui.screens.edit_exercise_screen import EditExerciseScreen
+from backend import metrics
+from backend.preset_editor import PresetEditor
+from ui.screens.session.metric_input_screen import MetricInputScreen
+from ui.screens.general.edit_exercise_screen import EditExerciseScreen
 
-from ui.screens.rest_screen import RestScreen
-from ui.screens.previous_workouts_screen import PreviousWorkoutsScreen
+from ui.screens.session.rest_screen import RestScreen
+from ui.screens.general.previous_workouts_screen import PreviousWorkoutsScreen
+from ui.screens.general.workout_history_screen import WorkoutHistoryScreen
+from ui.screens.general.view_previous_workout_screen import ViewPreviousWorkoutScreen
+from ui.screens.general.settings_screen import SettingsScreen
 
 
 
@@ -70,9 +82,9 @@ import math
 from kivy.core.window import Window
 import string
 import sqlite3
-from ui.screens.presets_screen import PresetsScreen
-from ui.screens.workout_active_screen import WorkoutActiveScreen
-from ui.screens.edit_preset_screen import (
+from ui.screens.general.presets_screen import PresetsScreen
+from ui.screens.session.workout_active_screen import WorkoutActiveScreen
+from ui.screens.general.edit_preset_screen import (
     EditPresetScreen,
     SectionWidget,
     SelectedExerciseItem,
@@ -81,30 +93,166 @@ from ui.screens.edit_preset_screen import (
     AddSessionMetricPopup,
 )
 
-from ui.screens.workout_summary_screen import WorkoutSummaryScreen
+from ui.screens.session.workout_summary_screen import WorkoutSummaryScreen
 from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
+from assets.sounds import SoundSystem
+from backend import settings as app_settings
+
+# Set a consistent window size on desktop for predictable layout.
+if os.name == "nt":
+    if half_screen:
+        base_width, base_height = 140, 140 * (20 / 9)
+    else:
+        base_width, base_height = 140 * 2, 140 * 2 * (20 / 9)
+    Window.size = (base_width, base_height)
 
 
-if os.name == "nt" or sys.platform.startswith("win"):
-    Window.size = (280, 280 * (20 / 9))
+class RootUI(ScreenManager):
+    """Screen manager serving as the app's primary widget tree."""
 
-try:
-    from android import mActivity
-    from jnius import autoclass
+class HalfScreenWrapper(GridLayout):
+    """Container that can visually shrink content while preserving layout.
 
-    View = autoclass('android.view.View')
-    decorView = mActivity.getWindow().getDecorView()
+    The wrapper keeps its child ``ScreenManager`` at the real window size so
+    all layouts and size hints behave as though the app were full screen. When
+    ``enabled`` is ``True`` the content is scaled by ``scale_factor`` and
+    centered with optional letterboxing; touch input remains aligned because
+    the transform is applied via a non-interactive :class:`~kivy.uix.scatter.Scatter`.
+    """
 
-    decorView.setSystemUiVisibility(
-        View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-        View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-        View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-        View.SYSTEM_UI_FLAG_FULLSCREEN |
-        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-    )
-except Exception as e:
-    print("Immersive mode failed:", e)
+    enabled = BooleanProperty(False)
+    scale_factor = NumericProperty(0.5)
+    background_color = ListProperty([0, 0, 0, 1])
+
+    def __init__(self, inner_manager: ScreenManager, **kwargs):
+        super().__init__(cols=1, rows=1, **kwargs)
+        self._manager = inner_manager
+        self._adding_internal = True
+        self._scatter = Scatter(
+            do_translation=False,
+            do_rotation=False,
+            do_scale=False,
+        )
+        super().add_widget(self._scatter)
+        self._adding_internal = False
+        self._scatter.add_widget(inner_manager)
+        inner_manager.size_hint = (None, None)
+        Window.bind(size=self.apply_layout)
+        self.bind(enabled=self.apply_layout)
+
+        with self.canvas.before:
+            self._bg_color = Color(0, 0, 0, 0)
+            self._bg_rect = Rectangle(size=self.size, pos=self.pos)
+
+        self.apply_layout()
+
+    def apply_layout(self, *args):
+        """Recompute scatter transform and background."""
+        self.size = Window.size
+        self._manager.size = Window.size
+        self._scatter.scale = self.scale_factor if self.enabled else 1.0
+        self._scatter.center = self.center
+        self._scatter.size = self.size
+        self._bg_rect.size = self.size
+        self._bg_rect.pos = self.pos
+        self._bg_color.rgba = self.background_color if self.enabled else (0, 0, 0, 0)
+
+    # --- ScreenManager pass-throughs ---
+    @property
+    def current(self):
+        return self._manager.current
+
+    @current.setter
+    def current(self, value):
+        self._manager.current = value
+
+    @property
+    def transition(self):
+        return self._manager.transition
+
+    @transition.setter
+    def transition(self, value):
+        self._manager.transition = value
+
+    def add_widget(self, widget, *args, **kwargs):  # delegate new screens
+        if getattr(self, "_adding_internal", False):
+            return super().add_widget(widget, *args, **kwargs)
+        return self._manager.add_widget(widget, *args, **kwargs)
+
+    def remove_widget(self, widget, *args, **kwargs):
+        if widget is self._scatter:
+            return super().remove_widget(widget, *args, **kwargs)
+        return self._manager.remove_widget(widget, *args, **kwargs)
+
+    def get_screen(self, name):
+        return self._manager.get_screen(name)
+
+    def has_screen(self, name):
+        return self._manager.has_screen(name)
+
+    def switch_to(self, screen, **options):
+        return self._manager.switch_to(screen, **options)
+
+
+def apply_half_screen(enabled: bool):
+    """Toggle half-screen mode.
+
+    Call ``apply_half_screen(True/False)`` when the user flips the feature.
+    Wrap your root ``ScreenManager`` in :class:`HalfScreenWrapper` on mobile to
+    participate in the scaling. On mobile the window stays full screen; on
+    desktop the window is resized.
+    """
+
+    from kivy.utils import platform
+    app = MDApp.get_running_app()
+
+    if platform in ("android", "ios"):
+        root = app.root
+        if isinstance(root, HalfScreenWrapper):
+            root.enabled = enabled
+            root.apply_layout()
+    else:
+        state = getattr(apply_half_screen, "_restore", None)
+        if enabled:
+            if state is None:
+                apply_half_screen._restore = {
+                    "size": Window.size,
+                    "left": Window.left,
+                    "top": Window.top,
+                    "fullscreen": Window.fullscreen,
+                }
+            if Window.fullscreen:
+                Window.fullscreen = False
+            sw, sh = Window.system_size
+            new_w, new_h = sw / 2, sh / 2
+            Window.size = (new_w, new_h)
+            Window.left = (sw - new_w) / 2
+            Window.top = (sh - new_h) / 2
+        elif state is not None:
+            Window.size = state["size"]
+            Window.left = state["left"]
+            Window.top = state["top"]
+            Window.fullscreen = state["fullscreen"]
+            apply_half_screen._restore = None
+
+if not TESTING:
+    try:
+        from android import mActivity
+        from jnius import autoclass
+
+        View = autoclass('android.view.View')
+        decorView = mActivity.getWindow().getDecorView()
+
+        decorView.setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+            View.SYSTEM_UI_FLAG_FULLSCREEN |
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        )
+    except Exception as e:
+        print("Immersive mode failed:", e)
 
 class Tab(MDBoxLayout, MDTabsBase):
     """A basic tab for use with :class:`~kivymd.uix.tab.MDTabs`."""
@@ -141,6 +289,11 @@ class EditMetricTypePopup(MDDialog):
         self.metric_name = metric_name
         self.is_user_created = is_user_created
         self.metric = None
+        # Default to nearly full-screen to keep buttons visible on small devices.
+        # ``MDDialog`` does not respect vertical ``size_hint`` values, so specify
+        # the height explicitly to occupy most of the window.
+        kwargs.setdefault("size_hint", (0.95, None))
+        kwargs.setdefault("height", Window.height * 0.9)
         if metric_name:
             for m in screen.all_metrics or []:
                 if (
@@ -157,7 +310,7 @@ class EditMetricTypePopup(MDDialog):
     def _build_widgets(self):
         default_height = dp(48)
         self.input_widgets = {}
-        schema = core.get_metric_type_schema()
+        schema = metrics.get_metric_type_schema()
         if not schema:
             schema = [
                 {"name": "name"},
@@ -296,7 +449,8 @@ class EditMetricTypePopup(MDDialog):
             update_enum_visibility()
             update_enum_filter()
 
-        layout = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(400))
+        # Fill the dialog space and allow scrolling for compact screens
+        layout = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         info_widgets = []
         if self.metric and not self.is_user_created:
             has_copy = False
@@ -318,7 +472,7 @@ class EditMetricTypePopup(MDDialog):
             info_widgets.append(MDLabel(text=msg, halign="center"))
 
         if self.metric:
-            affected = core.find_exercises_using_metric_type(self.metric_name)
+            affected = metrics.find_exercises_using_metric_type(self.metric_name)
             if affected:
                 label = MDLabel(
                     text=f"Affects {len(affected)} exercises", halign="center"
@@ -358,7 +512,7 @@ class EditMetricTypePopup(MDDialog):
 
         db_path = DEFAULT_DB_PATH
         if self.metric and self.is_user_created:
-            core.update_metric_type(
+            metrics.update_metric_type(
                 self.metric_name,
                 mtype=data.get("type"),
                 input_timing=data.get("input_timing"),
@@ -371,7 +525,7 @@ class EditMetricTypePopup(MDDialog):
             )
         else:
             try:
-                core.add_metric_type(
+                metrics.add_metric_type(
                     data.get("name"),
                     data.get("type"),
                     data.get("input_timing"),
@@ -408,16 +562,65 @@ class WorkoutApp(MDApp):
     exercise_library_version: int = 0
     # Incremented when a metric type is added or edited
     metric_library_version: int = 0
+    # Displayed application version on the welcome screen
+    app_version = StringProperty("1.0.0")
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.sound = SoundSystem()
+        # Initialize sound system with persisted settings.
+        self.sound.set_volume(app_settings.get_value("sound_level") or 1.0)
+        sound_on = app_settings.get_value("sound_on")
+        self.sound.set_enabled(True if sound_on is None else sound_on)
+        self._settings_origin = ""
 
     def build(self):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
         Window.bind(on_keyboard=self._on_keyboard)
+        if platform in ("android", "ios"):
+            root = HalfScreenWrapper(root)
+        Clock.schedule_once(lambda dt: apply_half_screen(half_screen))
         return root
 
     def _on_keyboard(self, window, key, scancode, codepoint, modifiers):
-        if key in (27, 1001):
+        if key in (27, 1001) and not TESTING:
             return True
         return False
+
+    def on_pause(self):
+        """Ensure rest timer isn't marked ready when app is backgrounded."""
+        # ``rest_screen`` must always be defined to avoid an ``UnboundLocalError``
+        # when the app is paused on screens other than ``rest``.
+        rest_screen = None
+        if self.root and self.root.current == "rest":
+            try:
+                rest_screen = self.root.get_screen("rest")
+            except Exception:
+                rest_screen = None
+        if rest_screen and getattr(rest_screen, "is_ready", False):
+            if hasattr(rest_screen, "unready"):
+                rest_screen.unready()
+            else:
+                rest_screen.is_ready = False
+        return True
+
+    def open_settings(self, return_to: str) -> None:
+        """Show the settings screen and remember where to return.
+
+        Parameters
+        ----------
+        return_to:
+            Name of the screen to resume when settings closes.
+        """
+        if not self.root:
+            return
+        try:
+            settings = self.root.get_screen("settings")
+        except Exception:
+            return
+        settings.return_to = return_to
+        self._settings_origin = return_to
+        self.root.current = "settings"
 
     def init_preset_editor(self, force_reload: bool = False):
         """Create or reload the ``PresetEditor`` for the selected preset."""
@@ -457,6 +660,7 @@ class WorkoutApp(MDApp):
             self.workout_session = WorkoutSession(preset_name, db_path=DEFAULT_DB_PATH)
         else:
             self.workout_session = None
+            WorkoutSession.clear_recovery_files()
 
         # ensure metric input doesn't accidentally advance sets
         self.record_new_set = False
