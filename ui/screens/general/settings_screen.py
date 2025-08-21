@@ -65,20 +65,32 @@ class SettingsScreen(MDScreen):
         try:
             path = db_io.export_database()
             logging.info("Database exported to %s", path)
-            toast("Database exported")
-        except Exception as exc:  # pragma: no cover - defensive
-            logging.error("Database export failed: %s", exc)
-            toast("Export failed")
+            toast(f"Exported to {path}")
+        except FileNotFoundError:
+            logging.exception("Database export failed: source missing")
+            toast("Export failed: database missing")
+        except PermissionError:
+            logging.exception("Database export failed: permission denied")
+            toast("Export failed: permission denied")
+        except OSError as exc:
+            logging.exception("Database export failed")
+            toast(f"Export failed: {exc}")
 
     def export_json(self) -> None:
         """Export the SQLite database as a JSON file."""
         try:
             path = db_io.export_database_json()
             logging.info("Database JSON exported to %s", path)
-            toast("JSON exported")
-        except Exception as exc:  # pragma: no cover - defensive
-            logging.error("JSON export failed: %s", exc)
-            toast("Export failed")
+            toast(f"Exported to {path}")
+        except FileNotFoundError:
+            logging.exception("JSON export failed: destination missing")
+            toast("Export failed: destination missing")
+        except PermissionError:
+            logging.exception("JSON export failed: permission denied")
+            toast("Export failed: permission denied")
+        except OSError as exc:
+            logging.exception("JSON export failed")
+            toast(f"Export failed: {exc}")
 
     def open_import_db(self) -> None:
         """Open a file picker to select a database for import."""
@@ -93,7 +105,7 @@ class SettingsScreen(MDScreen):
             downloads_dir = db_io.get_downloads_dir()
         except Exception as exc:  # pragma: no cover - defensive
             logging.error("Downloads directory lookup failed: %s", exc)
-            toast("Import unavailable")
+            toast(f"Import unavailable: {exc}")
             return
         self.file_manager.show(str(downloads_dir))
 
@@ -105,7 +117,18 @@ class SettingsScreen(MDScreen):
     def select_import_file(self, path: str) -> None:
         """Validate and import the selected database file."""
         self.close_file_manager()
-        if db_io.import_database(Path(path)):
+        try:
+            db_io.import_database(Path(path))
             toast("Import successful")
-        else:
-            toast("Import failed")
+        except FileNotFoundError:
+            logging.exception("Import failed: file not found")
+            toast("Import failed: file not found")
+        except PermissionError:
+            logging.exception("Import failed: permission denied")
+            toast("Import failed: permission denied")
+        except ValueError as exc:
+            logging.exception("Import failed validation")
+            toast(f"Import failed: {exc}")
+        except OSError as exc:
+            logging.exception("Import failed")
+            toast(f"Import failed: {exc}")

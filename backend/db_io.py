@@ -24,50 +24,44 @@ REQUIRED_TABLES = [
 
 
 def get_downloads_dir() -> Path:
-    """Return a user-accessible Downloads directory.
+    """Return a directory suitable for user-facing exports.
 
-    The function first checks whether the runtime exposes the Android
-    ``PythonActivity`` class or appears to be running inside Pydroid. If
-    either condition is not met, Android-specific permission logic is skipped
-    and ``Path.home() / "Downloads"`` is returned. On a full Android
-    environment the function requests the necessary storage permissions and
-    resolves the path to the system's shared ``Download`` directory.
-
-
-    The directory is created if it does not already exist and a
-    :class:`~pathlib.Path` to it is returned.
+    The function attempts to use Android's public ``Download`` directory after
+    requesting :class:`android.permissions.Permission.MANAGE_EXTERNAL_STORAGE` at
+    runtime. If the permission is denied or the Android APIs are unavailable,
+    a private app directory ``exports`` is returned instead. The chosen
+    directory is always created and returned as an absolute
+    :class:`~pathlib.Path`.
     """
-    android_api_available = True
-    if "PYDROID_HOME" in os.environ:
-        android_api_available = False
-    else:
-        try:
-            # ``PythonActivity`` is provided by python-for-android builds but is
-            # absent in environments like Pydroid. Attempting to access it is a
-            # lightweight way to detect full Android support.
-            from jnius import autoclass  # type: ignore
 
-            autoclass("org.kivy.android.PythonActivity")
-        except Exception:
-            android_api_available = False
+    try:  # pragma: no cover - imports require Android
+        from android.permissions import (
+            request_permissions,
+            check_permission,
+            Permission,
+        )
+        from android.storage import (
+            app_storage_path,
+            primary_external_storage_path,
+        )
+    except Exception as exc:  # Android APIs not available
+        logging.warning("Android APIs unavailable: %s", exc)
+        fallback = Path.cwd() / "exports"
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback.resolve()
 
-    if not android_api_available:
-        downloads = Path.home() / "Downloads"
-    else:
+    request_permissions([Permission.MANAGE_EXTERNAL_STORAGE])
+    if check_permission(Permission.MANAGE_EXTERNAL_STORAGE):
+        downloads = Path(primary_external_storage_path()) / "Download"
+        downloads.mkdir(parents=True, exist_ok=True)
+        return downloads.resolve()
 
-        try:
-            request_permissions(
-                [Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE]
-            )
-            downloads = Path(primary_external_storage_path()) / "Download"
-        except Exception as exc:  # pragma: no cover - Android only
-            logging.warning(
-                "Falling back to home Downloads directory: %s", exc
-            )
-            downloads = Path.home() / "Downloads"
-
-    downloads.mkdir(parents=True, exist_ok=True)
-    return downloads
+    logging.warning(
+        "MANAGE_EXTERNAL_STORAGE denied; using app private exports directory"
+    )
+    fallback = Path(app_storage_path()) / "exports"
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback.resolve()
 
 
 def sqlite_to_json(db_path: Path) -> Dict[str, List[Dict[str, Any]]]:
@@ -95,32 +89,55 @@ def sqlite_to_json(db_path: Path) -> Dict[str, List[Dict[str, Any]]]:
 def export_database(db_path: Path = DB_PATH, dest_dir: Path | None = None) -> Path:
     """Export ``db_path`` to ``dest_dir`` as a ``.db`` file.
 
-    The destination file is named ``workout_<EPOCH>.db`` and stored in the
-    user's Downloads directory by default. A :class:`pathlib.Path` pointing to
-    the exported file is returned.
+    On success the absolute path to the exported file is returned. Specific
+    file-system errors are logged with full stack traces and re-raised so the
+    caller can present a meaningful error to the user.
     """
+
     dest_dir = dest_dir or get_downloads_dir()
     filename = f"workout_{int(time.time())}.db"
-    dest = dest_dir / filename
-    shutil.copy2(db_path, dest)
+    dest = (dest_dir / filename).resolve()
+    try:
+        shutil.copy2(db_path, dest)
+    except FileNotFoundError:
+        logging.exception("Database file not found: %s", db_path)
+        raise
+    except PermissionError:
+        logging.exception("Permission denied writing export to %s", dest)
+        raise
+    except OSError:
+        logging.exception("OS error exporting database to %s", dest)
+        raise
     logging.info("Exported database to %s", dest)
     return dest
 
 
-def export_database_json(db_path: Path = DB_PATH, dest_dir: Path | None = None) -> Path:
+def export_database_json(
+    db_path: Path = DB_PATH, dest_dir: Path | None = None
+) -> Path:
     """Export ``db_path`` to ``dest_dir`` as a JSON file.
 
-    The JSON document captures the entire contents of the database without
-    relying on any hard-coded schema information. The destination file is named
-    ``workout_<EPOCH>.json``. A :class:`pathlib.Path` to the exported file is
-    returned.
+    Returns the absolute path to the exported JSON document. File-system
+    problems are logged and re-raised to allow the caller to inform the user of
+    the specific failure.
     """
+
     dest_dir = dest_dir or get_downloads_dir()
     data = sqlite_to_json(db_path)
     filename = f"workout_{int(time.time())}.json"
-    dest = dest_dir / filename
-    with dest.open("w", encoding="utf-8") as fh:
-        json.dump(data, fh)
+    dest = (dest_dir / filename).resolve()
+    try:
+        with dest.open("w", encoding="utf-8") as fh:
+            json.dump(data, fh)
+    except FileNotFoundError:
+        logging.exception("Destination not found for JSON export: %s", dest)
+        raise
+    except PermissionError:
+        logging.exception("Permission denied writing JSON export to %s", dest)
+        raise
+    except OSError:
+        logging.exception("OS error exporting JSON database to %s", dest)
+        raise
     logging.info("Exported database JSON to %s", dest)
     return dest
 
@@ -149,21 +166,34 @@ def validate_database(db_path: Path) -> Tuple[bool, List[str]]:
     return (len(errors) == 0, errors)
 
 
-def import_database(src_path: Path, db_path: Path = DB_PATH, backup_dir: Path = BACKUP_DIR) -> bool:
+def import_database(
+    src_path: Path, db_path: Path = DB_PATH, backup_dir: Path = BACKUP_DIR
+) -> None:
     """Validate and replace the current database with ``src_path``.
 
     A backup of the existing database is created in ``backup_dir`` before the
-    replacement occurs. If validation fails the operation is aborted and the
-    current database is left untouched. ``True`` is returned on success.
+    replacement occurs. Validation and file-system errors are logged and
+    re-raised so callers receive the underlying failure reason.
     """
+
     valid, errors = validate_database(src_path)
     if not valid:
-        logging.error("Import failed validation: %s", "; ".join(errors))
-        return False
+        message = "; ".join(errors)
+        logging.error("Import failed validation: %s", message)
+        raise ValueError(message)
 
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    backup_path = backup_dir / f"workout_{int(time.time())}.db.bak"
-    shutil.copy2(db_path, backup_path)
-    shutil.copy2(src_path, db_path)
+    try:
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup_path = backup_dir / f"workout_{int(time.time())}.db.bak"
+        shutil.copy2(db_path, backup_path)
+        shutil.copy2(src_path, db_path)
+    except FileNotFoundError:
+        logging.exception("Import failed, file not found")
+        raise
+    except PermissionError:
+        logging.exception("Import failed, permission denied")
+        raise
+    except OSError:
+        logging.exception("Import failed due to OS error")
+        raise
     logging.info("Replaced database with %s (backup: %s)", src_path, backup_path)
-    return True
