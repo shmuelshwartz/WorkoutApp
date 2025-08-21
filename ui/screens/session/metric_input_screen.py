@@ -28,6 +28,7 @@ class MetricInputScreen(MDScreen):
     metric_values = ObjectProperty(None)
     metric_names_scroll = ObjectProperty(None)
     metric_values_scroll = ObjectProperty(None)
+    set_header_scroll = ObjectProperty(None)
     set_headers = ObjectProperty(None)
 
     show_required = BooleanProperty(True)
@@ -66,6 +67,7 @@ class MetricInputScreen(MDScreen):
         self.metric_values = None
         self.metric_names_scroll = None
         self.metric_values_scroll = None
+        self.set_header_scroll = None
         self.set_headers = None
         self.metric_cells = {}
 
@@ -74,6 +76,9 @@ class MetricInputScreen(MDScreen):
         if self.metric_values_scroll and self.metric_names_scroll:
             self.metric_values_scroll.bind(scroll_y=self._sync_scroll_y)
             self.metric_names_scroll.bind(scroll_y=self._sync_scroll_names)
+        if self.metric_values_scroll and self.set_header_scroll:
+            self.metric_values_scroll.bind(scroll_x=self._sync_scroll_x)
+            self.set_header_scroll.bind(scroll_x=self._sync_scroll_headers)
 
     def _sync_scroll_y(self, instance, value):
         if self.metric_names_scroll:
@@ -82,6 +87,16 @@ class MetricInputScreen(MDScreen):
     def _sync_scroll_names(self, instance, value):
         if self.metric_values_scroll:
             self.metric_values_scroll.scroll_y = value
+
+    def _sync_scroll_x(self, instance, value):
+        """Keep set headers aligned with horizontal metric scrolling."""
+        if self.set_header_scroll:
+            self.set_header_scroll.scroll_x = value
+
+    def _sync_scroll_headers(self, instance, value):
+        """Update metric cells when headers are scrolled."""
+        if self.metric_values_scroll:
+            self.metric_values_scroll.scroll_x = value
 
     # ------------------------------------------------------------------
     # Navigation
