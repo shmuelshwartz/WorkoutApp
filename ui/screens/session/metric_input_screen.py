@@ -335,22 +335,26 @@ class MetricInputScreen(MDScreen):
         self.metric_values.cols = max(1, set_count)
 
         # Header row: blank cell on the left and set labels in the grid.
-        header_placeholder = MDLabel(size_hint_y=None, height=dp(30))
+        header_placeholder = MDLabel(size_hint=(None, None), height=dp(30))
+        self._add_border(header_placeholder, ("top", "bottom", "left"))
         self.metric_names.add_widget(header_placeholder)
         self.row_controller.register(0, header_placeholder)
         for s in range(set_count):
             lbl = MDLabel(
-                text=f"Set {s + 1}", size_hint=(None, None), width=dp(80)
+                text=f"Set {s + 1}", size_hint=(None, None), width=dp(80), height=dp(30)
             )
-            self._add_border(lbl)
+            sides = ("top", "bottom", "right")
+            if s == 0:
+                sides += ("left",)
+            self._add_border(lbl, sides)
             self.metric_values.add_widget(lbl)
             self.row_controller.register(0, lbl)
 
         results = exercise.get("results", [])
         for row, metric in enumerate(metrics, start=1):
             name = metric.get("name")
-            name_lbl = MDLabel(text=name, size_hint_y=None)
-            self._add_border(name_lbl)
+            name_lbl = MDLabel(text=name, size_hint=(None, None))
+            self._add_border(name_lbl, ("top", "bottom", "left"))
             self.metric_names.add_widget(name_lbl)
             self.row_controller.register(row, name_lbl)
             for s in range(set_count):
@@ -482,25 +486,44 @@ class MetricInputScreen(MDScreen):
         widget.size_hint = (None, None)
         widget.height = dp(40)
         widget.width = dp(80)
-        self._add_border(widget)
+        sides = ("top", "bottom", "right")
+        if set_idx == 0:
+            sides += ("left",)
+        self._add_border(widget, sides)
         return widget
 
     # ------------------------------------------------------------------
-    def _add_border(self, widget):
-        """Draw a 1px border around *widget* for grid delineation."""
+    def _add_border(self, widget, sides=("left", "right", "top", "bottom")):
+        """Draw a 1px border around *widget* limited to ``sides``."""
 
         try:
             from kivy.graphics import Color, Line  # type: ignore
         except Exception:
             return
+
+        lines = {}
         with widget.canvas.after:
             Color(0, 0, 0, 1)
-            line = Line(rectangle=(0, 0, widget.width, widget.height), width=1)
+            if "left" in sides:
+                lines["left"] = Line(points=[0, 0, 0, widget.height], width=1)
+            if "right" in sides:
+                lines["right"] = Line(points=[widget.width, 0, widget.width, widget.height], width=1)
+            if "top" in sides:
+                lines["top"] = Line(points=[0, widget.height, widget.width, widget.height], width=1)
+            if "bottom" in sides:
+                lines["bottom"] = Line(points=[0, 0, widget.width, 0], width=1)
 
         def _update(_inst, _val):
-            line.rectangle = (0, 0, widget.width, widget.height)
+            if "left" in lines:
+                lines["left"].points = [0, 0, 0, widget.height]
+            if "right" in lines:
+                lines["right"].points = [widget.width, 0, widget.width, widget.height]
+            if "top" in lines:
+                lines["top"].points = [0, widget.height, widget.width, widget.height]
+            if "bottom" in lines:
+                lines["bottom"].points = [0, 0, widget.width, 0]
 
-        widget.bind(size=_update)
+        widget.bind(size=_update, pos=_update)
 
     # ------------------------------------------------------------------
     def save_metrics(self):
