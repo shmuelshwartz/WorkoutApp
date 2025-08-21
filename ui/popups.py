@@ -7,6 +7,7 @@ from kivy.core.window import Window
 from kivy.clock import Clock
 from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.modalview import ModalView
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
@@ -48,13 +49,13 @@ class AddMetricPopup(MDDialog):
         self.screen = screen
         self.mode = mode
         self.popup_mode = popup_mode
-        # The dialog should nearly fill the screen on small devices. MDDialog
-        # ignores vertical ``size_hint`` values and resets explicit heights
-        # during ``__init__``, so we assign the height after initialization
-        # using ``Clock.schedule_once``.
+        self._scroll_view = None  # set in builder methods for later sizing
+        # ``MDDialog`` overwrites explicit heights during ``__init__``. Disable
+        # vertical size hints now and apply the desired height in ``on_open``.
         kwargs.setdefault("size_hint", (0.95, None))
         if self.mode == "session":
-            content = MDBoxLayout()
+            content = MDBoxLayout(size_hint=(1, None))
+            content.bind(minimum_height=content.setter("height"))
             close_btn = MDRaisedButton(
                 text="Close", on_release=lambda *a: self.dismiss()
             )
@@ -65,9 +66,7 @@ class AddMetricPopup(MDDialog):
                 buttons=[close_btn],
                 **kwargs,
             )
-            Clock.schedule_once(
-                lambda *_: setattr(self, "height", Window.height * 0.9)
-            )
+            self.bind(on_open=self._apply_dialog_sizing)
             return
 
         if popup_mode == "select":
@@ -78,11 +77,54 @@ class AddMetricPopup(MDDialog):
             content, buttons, title = self._build_choice_widgets()
 
         super().__init__(
-            title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
+            title=title,
+            type="custom",
+            content_cls=content,
+            buttons=buttons,
+            **kwargs,
         )
-        Clock.schedule_once(
-            lambda *_: setattr(self, "height", Window.height * 0.9)
-        )
+        self.bind(on_open=self._apply_dialog_sizing)
+
+    # ------------------------------------------------------------------
+    # Sizing helpers
+    # ------------------------------------------------------------------
+    def _apply_dialog_sizing(self, *_):
+        """Resize dialog and scroll content after the dialog opens.
+
+        ``MDDialog`` recalculates its size during ``open`` which can collapse
+        child layouts on some platforms. This handler reapplies the desired
+        height (~90% of the window) and resizes the active :class:`ScrollView`.
+        If the dialog still collapses (e.g. Pydroid3 issue), a fallback
+        ``ModalView`` is shown instead so the content remains visible."""
+
+        target = Window.height * 0.9
+        self.height = target
+        if self._scroll_view is not None:
+            # Reserve space for the button bar and apply remaining height.
+            button_height = self.ids.button_box.height if "button_box" in self.ids else 0
+            self._scroll_view.height = max(0, target - button_height)
+        # Give Kivy a frame to layout widgets before checking the result.
+        Clock.schedule_once(lambda *_: self._ensure_visible(target), 0)
+
+    def _ensure_visible(self, target, *_):
+        if self.height < target * 0.7:
+            # Dialog failed to size correctly; fallback to ModalView.
+            content = MDBoxLayout(orientation="vertical", padding="8dp", spacing="8dp")
+            content.add_widget(self.content_cls)
+            buttons = MDBoxLayout(
+                orientation="horizontal",
+                size_hint_y=None,
+                height=self.ids.button_box.height if "button_box" in self.ids else dp(52),
+                spacing="8dp",
+            )
+            for btn in self.buttons:
+                buttons.add_widget(btn)
+            content.add_widget(buttons)
+            modal = ModalView(size_hint=(0.98, 0.98))
+            modal.add_widget(content)
+            modal.open()
+            # Ensure dialog closes so only the ModalView remains.
+            self.dismiss()
 
     # ------------------------------------------------------------------
     # Building widgets for both modes
@@ -95,24 +137,28 @@ class AddMetricPopup(MDDialog):
             for m in metric_types
             if m["name"] not in existing and m.get("scope") in ("set", "exercise")
         ]
-        list_view = MDList(adaptive_height=True)
-        # Disable vertical size hint so ``minimum_height`` binding adjusts the
-        # list's height and the surrounding ScrollView can size properly.
+        list_view = MDList(adaptive_height=True, size_hint_y=None)
+        # Bind ``minimum_height`` so the list expands and the ScrollView can
+        # allocate space without collapsing.
         list_view.bind(minimum_height=list_view.setter("height"))
         for m in metric_types:
             item = OneLineListItem(text=m["name"])
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
-        # Use full available space and allow scrolling so buttons remain visible
-        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
-        scroll.add_widget(list_view)
+        # Wrap the list in a ScrollView that will be sized after the dialog
+        # opens. ``size_hint_y`` must be disabled or the view collapses.
+        self._scroll_view = ScrollView(do_scroll_y=True, size_hint=(1, None))
+        self._scroll_view.add_widget(list_view)
+        content = MDBoxLayout(orientation="vertical", size_hint=(1, None))
+        content.bind(minimum_height=content.setter("height"))
+        content.add_widget(self._scroll_view)
 
         new_btn = MDRaisedButton(
             text="New Metric", on_release=self.show_new_metric_form
         )
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
         buttons = [new_btn, cancel_btn]
-        return scroll, buttons, "Select Metric"
+        return content, buttons, "Select Metric"
 
     def _build_new_metric_widgets(self):
         default_height = dp(48)
@@ -146,7 +192,9 @@ class AddMetricPopup(MDDialog):
                 order_map[name] for name in METRIC_FIELD_ORDER if name in order_map
             ] + [field for field in schema if field["name"] not in METRIC_FIELD_ORDER]
 
-        form = MDBoxLayout(orientation="vertical", spacing="8dp", size_hint_y=None)
+        form = MDBoxLayout(
+            orientation="vertical", spacing="8dp", size_hint_y=None
+        )
         form.bind(minimum_height=form.setter("height"))
 
         def enable_auto_resize(text_field: MDTextField):
@@ -239,14 +287,18 @@ class AddMetricPopup(MDDialog):
             update_enum_visibility()
             update_enum_filter()
 
-        # Fill dialog area and enable scrolling for small screens
-        layout = ScrollView(do_scroll_y=True, size_hint=(1, 1))
-        layout.add_widget(form)
+        # Fill dialog area and enable scrolling for small screens. Disable
+        # vertical size hint so we can control the height after ``open``.
+        self._scroll_view = ScrollView(do_scroll_y=True, size_hint=(1, None))
+        self._scroll_view.add_widget(form)
+        content = MDBoxLayout(orientation="vertical", size_hint=(1, None))
+        content.bind(minimum_height=content.setter("height"))
+        content.add_widget(self._scroll_view)
 
         save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)
         back_btn = MDRaisedButton(text="Back", on_release=lambda *a: self.dismiss())
         buttons = [save_btn, back_btn]
-        return layout, buttons, "New Metric"
+        return content, buttons, "New Metric"
 
     def _build_choice_widgets(self):
         label = MDLabel(text="Choose an option", halign="center")
@@ -255,7 +307,8 @@ class AddMetricPopup(MDDialog):
             text="New Metric", on_release=self.show_new_metric_form
         )
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
-        content = MDBoxLayout(orientation="vertical", spacing="8dp")
+        content = MDBoxLayout(orientation="vertical", spacing="8dp", size_hint=(1, None))
+        content.bind(minimum_height=content.setter("height"))
         content.add_widget(label)
         buttons = [add_btn, new_btn, cancel_btn]
         return content, buttons, "Metric Options"
