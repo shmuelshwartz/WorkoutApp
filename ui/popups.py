@@ -109,7 +109,11 @@ class AddMetricPopup(MDDialog):
     def _ensure_visible(self, target, *_):
         if self.height < target * 0.7:
             # Dialog failed to size correctly; fallback to ModalView.
+            # Widgets cannot be added to multiple parents in Kivy, so detach
+            # the current content and action buttons before reusing them.
             content = MDBoxLayout(orientation="vertical", padding="8dp", spacing="8dp")
+            if self.content_cls.parent:
+                self.content_cls.parent.remove_widget(self.content_cls)
             content.add_widget(self.content_cls)
             buttons = MDBoxLayout(
                 orientation="horizontal",
@@ -118,6 +122,8 @@ class AddMetricPopup(MDDialog):
                 spacing="8dp",
             )
             for btn in self.buttons:
+                if btn.parent:
+                    btn.parent.remove_widget(btn)
                 buttons.add_widget(btn)
             content.add_widget(buttons)
             modal = ModalView(size_hint=(0.98, 0.98))
