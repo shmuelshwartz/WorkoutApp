@@ -16,6 +16,7 @@ except Exception:  # pragma: no cover - minimal stubs for testing
         pass
 
 from kivy.properties import StringProperty
+import json
 import logging
 
 from backend import settings as app_settings
@@ -58,21 +59,14 @@ class SettingsScreen(MDScreen):
             toast(f"Export failed: {exc}")
 
     def export_json(self) -> None:
-        """Export the SQLite database as a JSON file."""
+        """Export the SQLite database as a JSON file via SAF."""
         try:
-            path = db_io.export_database_json()
-            logging.info("Database JSON exported to %s", path)
-            toast(f"Exported to {path}")
-        except FileNotFoundError:
-            logging.exception("JSON export failed: destination missing")
-            toast("Export failed: destination missing")
-        except PermissionError:
-            logging.exception("JSON export failed: permission denied")
-            toast(
-                "Export failed: All files access not granted. "
-                "Please enable 'All files access' for Workout App in system settings."
-            )
-        except OSError as exc:
+            data = db_io.sqlite_to_json(DB_PATH)
+            temp_json = DB_PATH.with_name("workout_export.json")
+            with open(temp_json, "w", encoding="utf-8") as fh:
+                json.dump(data, fh)
+            saf_backup.start_export(temp_json, suggested_name="workout.json")
+        except Exception as exc:
             logging.exception("JSON export failed")
             toast(f"Export failed: {exc}")
 
