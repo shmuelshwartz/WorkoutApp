@@ -54,10 +54,14 @@ class AddMetricPopup(MDDialog):
         # screens. By tracking the ScrollView we can later apply a height that
         # fills most of the window while leaving room for the action buttons.
         self._scroll_view = None
-        # Disable vertical size hints so we can explicitly control the dialog's
-        # height after it opens. Without this step the popup may appear with a
-        # very small height on some platforms.
-        kwargs.setdefault("size_hint", (0.95, None))
+        # Disable the vertical size hint so the dialog height can be set
+        # explicitly on ``on_open``. Using a full width size hint ensures the
+        # popup occupies the entire screen which prevents long metric lists from
+        # extending beyond the visible area on small devices.
+        kwargs.setdefault("size_hint", (1, None))
+        # Remove rounded corners; otherwise the dialog leaves small gaps at the
+        # screen edges which looks odd for a full-screen overlay.
+        kwargs.setdefault("radius", [0, 0, 0, 0])
         md_bg = MDApp.get_running_app().theme_cls.bg_light
         kwargs.setdefault("md_bg_color", md_bg)
         if self.mode == "session":
@@ -88,8 +92,9 @@ class AddMetricPopup(MDDialog):
             buttons=buttons,
             **kwargs,
         )
-        # Apply final sizing once the dialog is visible so the ScrollView fills
-        # roughly 90% of the screen height.
+        # Apply final sizing once the dialog is visible. This ensures the
+        # dialog covers the entire screen and the ScrollView consumes all
+        # remaining vertical space.
         self.bind(on_open=self._apply_dialog_sizing)
 
     # ------------------------------------------------------------------
@@ -269,10 +274,15 @@ class AddMetricPopup(MDDialog):
     # Sizing helpers
     # ------------------------------------------------------------------
     def _apply_dialog_sizing(self, *_):
-        """Resize dialog and active scroll view to fit on small screens."""
+        """Resize the dialog and its scroll view so it covers the entire
+        window. The metric list then occupies all remaining space below the
+        action buttons, preventing content from being clipped on small screens."""
 
-        target = Window.height * 0.9
+        target = Window.height
         self.height = target
+        # ``size_hint_x`` is 1 so width follows the window; however MDDialog may
+        # still report a smaller width until it is explicitly set.
+        self.width = Window.width
         if self._scroll_view is None:
             return
 
