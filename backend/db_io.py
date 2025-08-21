@@ -24,14 +24,14 @@ REQUIRED_TABLES = [
 
 
 def get_downloads_dir() -> Path:
-    """Return a directory suitable for user-facing exports.
+    """Return the public ``Download`` directory.
 
-    The function attempts to use Android's public ``Download`` directory after
-    requesting :class:`android.permissions.Permission.MANAGE_EXTERNAL_STORAGE` at
-    runtime. If the permission is denied or the Android APIs are unavailable,
-    a private app directory ``exports`` is returned instead. The chosen
-    directory is always created and returned as an absolute
-    :class:`~pathlib.Path`.
+    Requests :class:`android.permissions.Permission.MANAGE_EXTERNAL_STORAGE` at
+    runtime and returns the path to the shared ``Download`` folder. If the
+    permission is denied or the Android APIs are unavailable a
+    :class:`PermissionError` is raised. Callers must handle this error and
+    inform the user that "All files access" is required. No fallback to
+    private directories is provided.
     """
 
     try:  # pragma: no cover - imports require Android
@@ -40,15 +40,10 @@ def get_downloads_dir() -> Path:
             check_permission,
             Permission,
         )
-        from android.storage import (
-            app_storage_path,
-            primary_external_storage_path,
-        )
-    except Exception as exc:  # Android APIs not available
-        logging.warning("Android APIs unavailable: %s", exc)
-        fallback = Path.cwd() / "exports"
-        fallback.mkdir(parents=True, exist_ok=True)
-        return fallback.resolve()
+        from android.storage import primary_external_storage_path
+    except Exception as exc:
+        logging.exception("Android APIs unavailable: %s", exc)
+        raise PermissionError("All files access not granted") from exc
 
     request_permissions([Permission.MANAGE_EXTERNAL_STORAGE])
     if check_permission(Permission.MANAGE_EXTERNAL_STORAGE):
@@ -56,12 +51,7 @@ def get_downloads_dir() -> Path:
         downloads.mkdir(parents=True, exist_ok=True)
         return downloads.resolve()
 
-    logging.warning(
-        "MANAGE_EXTERNAL_STORAGE denied; using app private exports directory"
-    )
-    fallback = Path(app_storage_path()) / "exports"
-    fallback.mkdir(parents=True, exist_ok=True)
-    return fallback.resolve()
+    raise PermissionError("All files access not granted")
 
 
 def sqlite_to_json(db_path: Path) -> Dict[str, List[Dict[str, Any]]]:
@@ -91,7 +81,9 @@ def export_database(db_path: Path = DB_PATH, dest_dir: Path | None = None) -> Pa
 
     On success the absolute path to the exported file is returned. Specific
     file-system errors are logged with full stack traces and re-raised so the
-    caller can present a meaningful error to the user.
+    caller can present a meaningful error to the user. If the required storage
+    permission is missing a :class:`PermissionError` is propagated to the
+    caller.
     """
 
     dest_dir = dest_dir or get_downloads_dir()
@@ -119,7 +111,8 @@ def export_database_json(
 
     Returns the absolute path to the exported JSON document. File-system
     problems are logged and re-raised to allow the caller to inform the user of
-    the specific failure.
+    the specific failure. A :class:`PermissionError` is raised if access to the
+    public Downloads folder is not granted.
     """
 
     dest_dir = dest_dir or get_downloads_dir()
