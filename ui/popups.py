@@ -333,14 +333,30 @@ class AddMetricPopup(MDDialog):
         popup.open()
 
     def add_metric(self, name, *args):
+        """Attach metric ``name`` to the exercise if it's not already present."""
+
         metric_defs = metrics.get_all_metric_types()
+        added = False
         for m in metric_defs:
             if m["name"] == name:
-                self.screen.exercise_obj.add_metric(m)
+                added = self.screen.exercise_obj.add_metric(m)
                 break
         self.dismiss()
         self.screen.populate()
         self.screen.save_enabled = self.screen.exercise_obj.is_modified()
+        if not added:
+            dialog = None
+
+            def _close(*_):
+                if dialog:
+                    dialog.dismiss()
+
+            dialog = MDDialog(
+                title="Duplicate Metric",
+                text=f"{name} is already added to this exercise.",
+                buttons=[MDRaisedButton(text="OK", on_release=_close)],
+            )
+            dialog.open()
 
     def save_metric(self, *args):
         errors = []
