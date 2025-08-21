@@ -525,7 +525,12 @@ class EditMetricPopup(MDDialog):
             if self.enum_values_field.parent is not None:
                 form.remove_widget(self.enum_values_field)
 
-        self.value_field.text = self.metric.get("value", "")
+        # ``MDTextField`` expects a string value. Some metrics store ``None``
+        # for their default, which would raise an ``AttributeError`` when
+        # assigned directly. Convert ``None`` to an empty string to keep the
+        # popup responsive on small devices.
+        value = self.metric.get("value")
+        self.value_field.text = "" if value is None else str(value)
 
         def update_enum_visibility(*args):
             show = self.input_widgets["type"].text == "enum"
