@@ -63,6 +63,8 @@ from core import (
 )
 from backend import metrics
 from backend.preset_editor import PresetEditor
+from backend.db_io import DB_PATH, import_database
+from backend import saf_backup
 from ui.screens.session.metric_input_screen import MetricInputScreen
 from ui.screens.general.edit_exercise_screen import EditExerciseScreen
 
@@ -78,6 +80,30 @@ from ui.screens.general.settings_screen import SettingsScreen
 load_workout_presets(DEFAULT_DB_PATH)
 import time
 import math
+
+
+def _on_activity_result(request_code, result_code, data):
+    """Handle results from SAF file picker intents."""
+
+    handled = saf_backup.handle_export_result(
+        request_code,
+        result_code,
+        data,
+        db_path=DB_PATH,
+        on_success=lambda msg: toast(msg),
+        on_error=lambda msg: toast(msg),
+    )
+    if handled:
+        return
+    saf_backup.handle_import_result(
+        request_code,
+        result_code,
+        data,
+        dest_db_path=DB_PATH,
+        validate_and_replace=lambda tmp: import_database(Path(tmp)),
+        on_success=lambda msg: toast(msg),
+        on_error=lambda msg: toast(msg),
+    )
 
 from kivy.core.window import Window
 import string
@@ -97,6 +123,15 @@ from ui.screens.session.workout_summary_screen import WorkoutSummaryScreen
 from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
 from assets.sounds import SoundSystem
 from backend import settings as app_settings
+try:
+    from kivymd.toast import toast
+except Exception:  # pragma: no cover - fallback when KivyMD toast missing
+    def toast(*_, **__):
+        pass
+try:  # pragma: no cover - Android APIs unavailable on non-Android hosts
+    from android import activity  # type: ignore
+except Exception:
+    activity = None  # type: ignore
 
 # Set a consistent window size on desktop for predictable layout.
 if os.name == "nt":
@@ -573,6 +608,16 @@ class WorkoutApp(MDApp):
         sound_on = app_settings.get_value("sound_on")
         self.sound.set_enabled(True if sound_on is None else sound_on)
         self._settings_origin = ""
+
+    def on_start(self):
+        """Bind activity result callback for SAF operations."""
+        super().on_start()
+        if activity:
+            try:
+                activity.unbind(on_activity_result=_on_activity_result)
+            except Exception:
+                pass
+            activity.bind(on_activity_result=_on_activity_result)
 
     def build(self):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
