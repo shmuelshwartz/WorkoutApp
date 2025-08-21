@@ -535,6 +535,18 @@ class EditMetricPopup(MDDialog):
         self.enum_values_field.hint_text_font_size = "12sp"
         enable_auto_resize(self.enum_values_field)
 
+        # Text field for a default metric value. It appears only when editing
+        # metrics that request input during library creation, keeping the UI
+        # compact for other contexts.
+        self.value_field = MDTextField(
+            hint_text="Value",
+            size_hint_y=None,
+            height=default_height,
+            multiline=True,
+        )
+        self.value_field.hint_text_font_size = "12sp"
+        enable_auto_resize(self.value_field)
+
         for key, widget in self.input_widgets.items():
             if key not in self.metric:
                 continue
