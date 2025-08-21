@@ -53,10 +53,19 @@ class RowController:
 
         if height <= 0:
             return
-        if height > self._heights.get(row, 0):
-            self._heights[row] = height
+        # Recalculate the maximum height for the row to allow shrinking when
+        # widgets become smaller.  ``height`` is included in case the updated
+        # widget is not yet stored in ``_widgets``.
+        current = [getattr(w, "height", 0) for w in self._widgets[row]]
+        if height not in current:
+            current.append(height)
+        max_height = max(current) if current else 0
+        if max_height <= 0:
+            return
+        if max_height != self._heights.get(row, 0):
+            self._heights[row] = max_height
             for w in self._widgets[row]:
-                w.height = height
+                w.height = max_height
 
     # ------------------------------------------------------------------
     def clear(self) -> None:
