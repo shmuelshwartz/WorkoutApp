@@ -71,7 +71,10 @@ class SettingsScreen(MDScreen):
             toast("Export failed: database missing")
         except PermissionError:
             logging.exception("Database export failed: permission denied")
-            toast("Export failed: permission denied")
+            toast(
+                "Export failed: All files access not granted. "
+                "Please enable 'All files access' for Workout App in system settings."
+            )
         except OSError as exc:
             logging.exception("Database export failed")
             toast(f"Export failed: {exc}")
@@ -87,7 +90,10 @@ class SettingsScreen(MDScreen):
             toast("Export failed: destination missing")
         except PermissionError:
             logging.exception("JSON export failed: permission denied")
-            toast("Export failed: permission denied")
+            toast(
+                "Export failed: All files access not granted. "
+                "Please enable 'All files access' for Workout App in system settings."
+            )
         except OSError as exc:
             logging.exception("JSON export failed")
             toast(f"Export failed: {exc}")
@@ -103,8 +109,17 @@ class SettingsScreen(MDScreen):
         try:
             # The downloads directory may be unavailable on some platforms.
             downloads_dir = db_io.get_downloads_dir()
+        except PermissionError:
+            logging.exception(
+                "Downloads directory lookup failed: permission denied"
+            )
+            toast(
+                "Import failed: All files access not granted. "
+                "Please enable 'All files access' for Workout App in system settings."
+            )
+            return
         except Exception as exc:  # pragma: no cover - defensive
-            logging.error("Downloads directory lookup failed: %s", exc)
+            logging.exception("Downloads directory lookup failed: %s", exc)
             toast(f"Import unavailable: {exc}")
             return
         self.file_manager.show(str(downloads_dir))
@@ -125,7 +140,10 @@ class SettingsScreen(MDScreen):
             toast("Import failed: file not found")
         except PermissionError:
             logging.exception("Import failed: permission denied")
-            toast("Import failed: permission denied")
+            toast(
+                "Import failed: All files access not granted. "
+                "Please enable 'All files access' for Workout App in system settings."
+            )
         except ValueError as exc:
             logging.exception("Import failed validation")
             toast(f"Import failed: {exc}")
