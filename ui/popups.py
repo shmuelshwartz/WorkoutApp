@@ -50,6 +50,7 @@ class AddMetricPopup(MDDialog):
         self.mode = mode
         self.popup_mode = popup_mode
         self._scroll_view = None  # set in builder methods for later sizing
+        self._modal = None  # fallback ModalView when MDDialog fails to size
         # ``MDDialog`` overwrites explicit heights during ``__init__``. Disable
         # vertical size hints now and apply the desired height in ``on_open``.
         kwargs.setdefault("size_hint", (0.95, None))
@@ -127,14 +128,35 @@ class AddMetricPopup(MDDialog):
                 buttons.add_widget(btn)
             content.add_widget(buttons)
             modal = ModalView(size_hint=(0.98, 0.98))
+            # Remove dark overlay so content uses app theme colors
+            modal.background = ""
+            modal.background_color = (0, 0, 0, 0)
             modal.add_widget(content)
             modal.open()
-            # Ensure dialog closes so only the ModalView remains.
-            self.dismiss()
+            # Store reference so subsequent dismiss() calls close the ModalView
+            self._modal = modal
+            # Ensure dialog closes so only the ModalView remains. Call base
+            # class ``dismiss`` to avoid triggering our override which would
+            # immediately close the ModalView again.
+            super(AddMetricPopup, self).dismiss()
 
     # ------------------------------------------------------------------
     # Building widgets for both modes
     # ------------------------------------------------------------------
+    def dismiss(self, *args, **kwargs):
+        """Close the dialog and any fallback modal view.
+
+        When ``MDDialog`` fails to size correctly on some platforms, this
+        class falls back to showing the content inside a :class:`ModalView`.
+        Action buttons still call ``self.dismiss`` so this override ensures
+        the modal is also closed when requested by the user.
+        """
+
+        if self._modal is not None:
+            self._modal.dismiss()
+            self._modal = None
+        super().dismiss(*args, **kwargs)
+
     def _build_select_widgets(self):
         metric_types = metrics.get_all_metric_types()
         existing = {m.get("name") for m in self.screen.exercise_obj.metrics}
