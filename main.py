@@ -100,6 +100,7 @@ from backend import settings as app_settings
 
 # Set a consistent window size on desktop for predictable layout.
 if os.name == "nt":
+    half_screen = True
     if half_screen:
         base_width, base_height = 140, 140 * (20 / 9)
     else:
