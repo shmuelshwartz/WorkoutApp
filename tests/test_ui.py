@@ -476,6 +476,33 @@ def test_edit_metric_popup_no_duplicate_field():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_metric_popup_shows_value_field():
+    """Metrics with library input timing expose the value field."""
+
+    class DummyExercise:
+        metrics = [
+            {
+                "name": "Tempo",
+                "input_timing": "library",
+                "type": "int",
+            }
+        ]
+
+    class DummyScreen:
+        exercise_obj = DummyExercise()
+        previous_screen = "exercise_library"
+
+    metric = DummyScreen.exercise_obj.metrics[0]
+    popup = EditMetricPopup(DummyScreen(), metric, mode="library")
+    children = popup.content_cls.children[0].children
+    value_fields = [
+        c for c in children if getattr(c, "hint_text", "") == "Value"
+    ]
+    assert len(value_fields) == 1
+    popup.dismiss()
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_add_metric_popup_filters_scope(monkeypatch):
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
