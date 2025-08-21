@@ -48,7 +48,16 @@ class AddMetricPopup(MDDialog):
         self.screen = screen
         self.mode = mode
         self.popup_mode = popup_mode
-        kwargs.setdefault("size_hint", (0.95, 0.95))
+        # Store a reference to the active ScrollView so it can be resized once
+        # the dialog opens. ``MDDialog`` recalculates its height during
+        # ``open`` which can cause scrollable content to collapse on small
+        # screens. By tracking the ScrollView we can later apply a height that
+        # fills most of the window while leaving room for the action buttons.
+        self._scroll_view = None
+        # Disable vertical size hints so we can explicitly control the dialog's
+        # height after it opens. Without this step the popup may appear with a
+        # very small height on some platforms.
+        kwargs.setdefault("size_hint", (0.95, None))
         md_bg = MDApp.get_running_app().theme_cls.bg_light
         kwargs.setdefault("md_bg_color", md_bg)
         if self.mode == "session":
@@ -79,6 +88,9 @@ class AddMetricPopup(MDDialog):
             buttons=buttons,
             **kwargs,
         )
+        # Apply final sizing once the dialog is visible so the ScrollView fills
+        # roughly 90% of the screen height.
+        self.bind(on_open=self._apply_dialog_sizing)
 
     # ------------------------------------------------------------------
     # Building widgets for both modes
@@ -101,8 +113,12 @@ class AddMetricPopup(MDDialog):
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
 
-        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, None))
         scroll.add_widget(list_view)
+        # Remember the ScrollView so we can adjust its height after the dialog
+        # opens. ``size_hint_y`` is disabled to prevent the view from collapsing
+        # when ``MDDialog`` recalculates its own height.
+        self._scroll_view = scroll
 
         new_btn = MDRaisedButton(
             text="New Metric", on_release=self.show_new_metric_form
@@ -239,13 +255,33 @@ class AddMetricPopup(MDDialog):
             update_enum_filter()
 
         # Make form scrollable so content fits on small screens.
-        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, None))
         scroll.add_widget(form)
+        # Store reference for later resizing in ``_apply_dialog_sizing``.
+        self._scroll_view = scroll
 
         save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)
         back_btn = MDRaisedButton(text="Back", on_release=lambda *a: self.dismiss())
         buttons = [save_btn, back_btn]
         return scroll, buttons, "New Metric"
+
+    # ------------------------------------------------------------------
+    # Sizing helpers
+    # ------------------------------------------------------------------
+    def _apply_dialog_sizing(self, *_):
+        """Resize dialog and active scroll view to fit on small screens."""
+
+        target = Window.height * 0.9
+        self.height = target
+        if self._scroll_view is None:
+            return
+
+        def _resize_scroll(*_args):
+            button_height = self.ids.button_box.height if "button_box" in self.ids else 0
+            self._scroll_view.height = max(0, target - button_height)
+
+        # Defer until next frame so ``button_box`` has a valid height.
+        Clock.schedule_once(_resize_scroll, 0)
 
     def _build_choice_widgets(self):
         label = MDLabel(text="Choose an option", halign="center")
