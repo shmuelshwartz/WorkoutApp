@@ -14,20 +14,50 @@ from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDFlatButton
+from kivy.uix.boxlayout import BoxLayout
 from ui.row_controller import GridController
 
 
-class MetricSlider(MDSlider):
-    """Slider showing its value with two decimal places."""
+class MetricSlider(BoxLayout):
+    """Composite slider with an adjacent value label.
 
-    def __init__(self, **kwargs):
+    The widget arranges an :class:`MDSlider` and a small :class:`MDLabel`
+    horizontally so the current slider value is always visible.  Only the
+    minimal width required to fit both controls is used to keep layouts
+    compact on small screens.
+    """
+
+    def __init__(self, min: float = 0, max: float = 1, value: float = 0, **kwargs):
         super().__init__(**kwargs)
-        # Ensure initial hint text reflects current value.
-        self.hint_text = f"{self.value:.2f}"
+        self.orientation = "horizontal"
+        self.size_hint = (None, None)
+        self.height = dp(40)
+        self.width = dp(100)
 
-    def on_value(self, instance, value):
-        """Display the current value in the hint bubble with two decimals."""
-        self.hint_text = f"{value:.2f}"
+        # Slider occupies most of the space while remaining touch friendly.
+        self.slider = MDSlider(min=min, max=max, value=value, hint=False)
+        self.slider.size_hint = (None, None)
+        self.slider.height = dp(40)
+        self.slider.width = dp(74)
+
+        # Label shows the value to two decimal places to the right of the slider.
+        self.label = MDLabel(
+            text=f"{value:.2f}",
+            size_hint=(None, None),
+            width = dp(26),
+            height = dp(40),
+        )
+
+        self.add_widget(self.slider)
+        self.add_widget(self.label)
+
+        # Keep the label in sync when the slider value changes.
+        self.slider.bind(value=self._on_slider_value)
+
+    # ------------------------------------------------------------------
+    def _on_slider_value(self, _inst, value: float) -> None:
+        """Update the value label when *value* changes."""
+        self.label.text = f"{value:.2f}"
 
 
 class MetricInputScreen(MDScreen):
@@ -462,12 +492,11 @@ class MetricInputScreen(MDScreen):
         values = metric.get("values", [])
         if mtype == "slider":
             widget = MetricSlider(min=0, max=1, value=value or 0)
-            widget.hint = True
 
             def _value_change(inst, val, name=name, mtype=mtype, set_idx=set_idx):
                 self._on_cell_change(name, mtype, set_idx, inst)
 
-            widget.bind(
+            widget.slider.bind(
                 value=_value_change,
                 on_touch_down=self.on_slider_touch_down,
                 on_touch_up=self.on_slider_touch_up,
