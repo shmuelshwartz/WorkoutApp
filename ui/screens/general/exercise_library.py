@@ -50,6 +50,12 @@ class ExerciseLibraryScreen(MDScreen):
 
     def on_pre_enter(self, *args):
         """Populate the list widgets when the screen is shown."""
+        if self.loading_dialog:
+            # A loading dialog is already active, so avoid repopulating the
+            # lists. This prevents the spinner from reopening when returning
+            # from other dialogs that temporarily obscure the screen.
+            return super().on_pre_enter(*args)
+
         app = MDApp.get_running_app()
         if self.all_exercises is None or (
             app and self.cache_version != getattr(app, "exercise_library_version", 0)
