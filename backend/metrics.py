@@ -10,6 +10,28 @@ from backend.utils import _to_db_timing, _from_db_timing
 from .db_backup import create_backup
 
 
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+# Allowed scope values for different tables. These mirror the CHECK constraints
+# defined in ``data/workout_schema.sql``.
+_MT_SCOPES = {"preset", "session", "exercise", "set"}
+_EXERCISE_SCOPES = {"exercise", "set"}
+
+
+def _sanitize_scope(scope: str | None, allowed: set[str], *, default: str | None = None) -> str | None:
+    """Return ``scope`` if it is in ``allowed`` otherwise ``default``.
+
+    This prevents ``sqlite3.IntegrityError`` exceptions when user input contains
+    an invalid scope value.
+    """
+
+    if scope in allowed:
+        return scope
+    return default
+
+
 def get_metrics_for_exercise(
     exercise_name: str,
     db_path: Path = DEFAULT_DB_PATH,
@@ -405,7 +427,7 @@ def add_metric_type(
                 mtype,
                 input_timing,
                 int(is_required),
-                scope,
+                _sanitize_scope(scope, _MT_SCOPES, default="exercise"),
                 description,
                 json.dumps(enum_values) if enum_values is not None else None,
             ),
@@ -533,8 +555,10 @@ def update_metric_type(
             updates.append("is_required = ?")
             params.append(int(is_required))
         if scope is not None:
-            updates.append("scope = ?")
-            params.append(scope)
+            scope = _sanitize_scope(scope, _MT_SCOPES)
+            if scope is not None:
+                updates.append("scope = ?")
+                params.append(scope)
         if description is not None:
             updates.append("description = ?")
             params.append(description)
@@ -564,6 +588,8 @@ def set_section_exercise_metric_override(
     db_path: Path = DEFAULT_DB_PATH,
 ) -> None:
     """Apply an override for ``metric_type_name`` for a specific exercise in a preset."""
+
+    scope = _sanitize_scope(scope, _EXERCISE_SCOPES, default="set")
 
     with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
@@ -619,6 +645,7 @@ def set_section_exercise_metric_override(
                  WHERE id = ?
                 """,
                 (
+                    def_type,
                     input_timing,
                     int(is_required),
                     scope,
@@ -722,8 +749,10 @@ def set_exercise_metric_override(
             updates.append("is_required = ?")
             params.append(int(is_required))
         if scope is not None:
-            updates.append("scope = ?")
-            params.append(scope)
+            scope = _sanitize_scope(scope, _EXERCISE_SCOPES)
+            if scope is not None:
+                updates.append("scope = ?")
+                params.append(scope)
         if enum_values is not None:
             updates.append("enum_values_json = ?")
             params.append(json.dumps(enum_values))

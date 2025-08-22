@@ -116,7 +116,7 @@ class EditMetricPopup(MDScreen):
                         "post_set",
                     ],
                 },
-                {"name": "scope", "options": ["session", "section", "exercise", "set"]},
+                {"name": "scope", "options": ["preset", "session", "exercise", "set"]},
                 {"name": "is_required"},
             ]
         else:
