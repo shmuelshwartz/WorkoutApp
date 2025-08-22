@@ -8,6 +8,7 @@ from kivy.clock import Clock
 from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.dialog import MDDialog
+from tiny_dialog import SafeDialogMixin  # TINY-SCREEN: dialog safety
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.selectioncontrol import MDCheckbox
@@ -418,7 +419,7 @@ class AddMetricPopup(MDDialog):
         self.show_metric_list()
 
 
-class EditMetricPopup(MDDialog):
+class EditMetricPopup(SafeDialogMixin, MDDialog):
     """Popup for editing an existing metric."""
 
     def __init__(

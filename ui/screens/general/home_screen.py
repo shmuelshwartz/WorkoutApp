@@ -25,10 +25,15 @@ except Exception:  # pragma: no cover - simple stubs
         pass
 
 from backend.workout_session import WorkoutSession
+from tiny_screen import apply_safe_area_padding  # TINY-SCREEN: safe area
 
 
 class HomeScreen(MDScreen):
     """Primary screen that prompts to resume a recovered session if available."""
+
+    def on_kv_post(self, base_widget):
+        apply_safe_area_padding(self.ids.content_box, top=True, bottom=True)  # TINY-SCREEN: safe area padding
+        return super().on_kv_post(base_widget)
 
     def on_enter(self, *args):
         """Attempt to restore any previous workout session."""
