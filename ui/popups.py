@@ -100,7 +100,7 @@ class AddMetricPopup(FullScreenDialog):
             item.bind(on_release=lambda inst, name=m["name"]: self.add_metric(name))
             list_view.add_widget(item)
 
-        scroll = ScrollView(do_scroll_y=True, size_hint=(1, None))
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(list_view)
         # ``FullScreenDialog`` uses this reference to adjust the height on open.
         self._scroll_view = scroll
@@ -240,7 +240,7 @@ class AddMetricPopup(FullScreenDialog):
             update_enum_filter()
 
         # Make form scrollable so content fits on small screens.
-        scroll = ScrollView(do_scroll_y=True, size_hint=(1, None))
+        scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(form)
         # ``FullScreenDialog`` uses this reference to adjust the height on open.
         self._scroll_view = scroll
@@ -390,6 +390,8 @@ class EditMetricPopup(FullScreenDialog):
         self.screen = screen
         self.metric = metric
         self.mode = mode
+        # Track the active ScrollView so ``FullScreenDialog`` can size it on open.
+        self._scroll_view = None
         # ``FullScreenDialog`` handles full-screen sizing.
         if self.mode == "session":
             content = MDBoxLayout()
@@ -568,7 +570,7 @@ class EditMetricPopup(FullScreenDialog):
                 self.mode == "library"
                 and getattr(self.screen, "previous_screen", "") == "exercise_library"
                 and "input_timing" in self.input_widgets
-                and self.input_widgets["input_timing"].text == "library"
+                and self.input_widgets["input_timing"].text == "preset"
             )
             has_parent = self.value_field.parent is not None
             if show and not has_parent:
@@ -993,6 +995,8 @@ class PreSessionMetricPopup(FullScreenDialog):
     def __init__(self, metrics: list[dict], on_save, **kwargs):
         self.metrics = metrics
         self.on_save = on_save
+        # Track the active ScrollView so ``FullScreenDialog`` can size it on open.
+        self._scroll_view = None
         # ``FullScreenDialog`` handles full-screen sizing.
         content, buttons = self._build_widgets()
         super().__init__(
