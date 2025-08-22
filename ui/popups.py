@@ -6,6 +6,7 @@ from kivy.metrics import dp
 from kivy.core.window import Window
 from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
+
 from ui.dialogs import FullScreenDialog
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
@@ -373,6 +374,7 @@ class AddMetricPopup(FullScreenDialog):
         self.screen.populate()
         self.screen.save_enabled = self.screen.exercise_obj.is_modified()
         self.show_metric_list()
+
 
 
 class EditMetricPopup(FullScreenDialog):

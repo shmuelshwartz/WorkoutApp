@@ -3,6 +3,8 @@ TESTING = True
 half_screen = False
 import os
 os.environ["KIVY_AUDIO"] = "sdl2"
+import tiny_screen  # TINY-SCREEN: env overrides
+tiny_screen.apply_env_overrides()
 from kivymd.app import MDApp
 from kivy.lang import Builder
 from kivy.clock import Clock
@@ -31,6 +33,8 @@ from kivymd.uix.card import MDSeparator
 from ui.dialogs import FullScreenDialog
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.tab import MDTabsBase
+from tiny_overlay import enable_overlay, toggle_overlay  # TINY-SCREEN: dev overlay
+from tiny_perf import log_first_paint, perf_timer  # TINY-SCREEN: perf logging
 
 try:
     from kivymd.uix.spinner import MDSpinner
@@ -231,7 +235,8 @@ class HalfScreenWrapper(GridLayout):
         return self._manager.has_screen(name)
 
     def switch_to(self, screen, **options):
-        return self._manager.switch_to(screen, **options)
+        with perf_timer("switch_to"):  # TINY-SCREEN: perf logging
+            return self._manager.switch_to(screen, **options)
 
 
 def apply_half_screen(enabled: bool):
@@ -636,7 +641,12 @@ class WorkoutApp(MDApp):
 
     def build(self):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
+        tiny_screen.bind_window()  # TINY-SCREEN: update compact flag
         Window.bind(on_keyboard=self._on_keyboard)
+        Window.bind(on_key_down=self._dev_key_down)  # TINY-SCREEN: overlay toggle
+        if tiny_screen._OVERLAY_STARTUP:
+            enable_overlay()
+        log_first_paint()  # TINY-SCREEN: perf
         if platform in ("android", "ios"):
             root = HalfScreenWrapper(root)
         Clock.schedule_once(lambda dt: apply_half_screen(half_screen))
@@ -647,6 +657,12 @@ class WorkoutApp(MDApp):
             if self._dialog_stack:
                 # Close the most recently opened dialog screen.
                 self._dialog_stack[-1].dismiss()
+            return True
+        return False
+
+    def _dev_key_down(self, window, key, scancode, codepoint, modifiers):
+        if key == ord("o") and "ctrl" in modifiers:
+            toggle_overlay()  # TINY-SCREEN: toggle metrics overlay
             return True
         return False
 

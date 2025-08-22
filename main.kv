@@ -3,6 +3,7 @@
 #:import PINK_BG ui.colors.PINK_BG
 #:import PURPLE_BG ui.colors.PURPLE_BG
 #:import TempoVisualizer ui.tempo_visualizer.TempoVisualizer
+#:import scaled_sp tiny_screen.scaled_sp  # TINY-SCREEN: font scaling helper
 RootUI:
     WelcomeScreen:
         name: "welcome"
@@ -46,6 +47,7 @@ RootUI:
     ScrollView:
         do_scroll_x: False
         MDBoxLayout:
+            id: content_box  # TINY-SCREEN: safe-area padding
             orientation: "vertical"
             size_hint_y: None
             height: self.minimum_height
@@ -53,6 +55,7 @@ RootUI:
             padding: "20dp"
             MDLabel:
                 text: "Home"
+                font_size: scaled_sp(20)  # TINY-SCREEN: apply font scale
                 halign: "center"
                 theme_text_color: "Custom"
                 text_color: 0.2, 0.6, 0.86, 1
