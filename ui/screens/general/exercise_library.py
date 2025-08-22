@@ -177,11 +177,11 @@ class ExerciseLibraryScreen(MDScreen):
         if self.metric_search_text:
             s = self.metric_search_text.lower()
             metrics = [m for m in metrics if s in m["name"].lower()]
-        # Sort metrics so that user-created types appear first and each group
-        # is ordered alphabetically. ``not m['is_user_created']`` ensures
-        # user metrics sort before the premade ones.
+        # Sort metrics so that predefined types appear first and each group
+        # is ordered alphabetically. ``m['is_user_created']`` places
+        # user-created metrics after the predefined ones.
         metrics = sorted(
-            metrics, key=lambda m: (not m["is_user_created"], m["name"].lower())
+            metrics, key=lambda m: (m["is_user_created"], m["name"].lower())
         )
         data = []
         for m in metrics:
