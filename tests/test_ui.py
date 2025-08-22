@@ -34,7 +34,7 @@ if kivy_available:
         PresetDetailScreen,
         PresetOverviewScreen,
     )
-    from ui.popups import EditMetricPopup
+    from ui.dialogs.edit_metric_popup import EditMetricPopup
     from ui.dialogs.add_metric_popup import AddMetricPopup
     from ui.expandable_list_item import ExerciseSummaryItem
     import time
@@ -412,7 +412,7 @@ def test_edit_metric_popup_has_single_enum_field():
         exercise_obj = DummyExercise()
 
     metric = DummyScreen.exercise_obj.metrics[0]
-    popup = EditMetricPopup(DummyScreen(), metric)
+    popup = EditMetricPopup(DummyScreen(), metric, previous_screen="prev")
     children = popup.content_cls.children[0].children
     enum_fields = [
         c
@@ -454,7 +454,7 @@ def test_edit_metric_popup_no_duplicate_field():
         exercise_obj = DummyExercise()
 
     metric = DummyScreen.exercise_obj.metrics[0]
-    popup1 = EditMetricPopup(DummyScreen(), metric)
+    popup1 = EditMetricPopup(DummyScreen(), metric, previous_screen="prev")
     count1 = len(
         [
             c
@@ -462,9 +462,9 @@ def test_edit_metric_popup_no_duplicate_field():
             if getattr(c, "hint_text", "") == "Enum Values (comma separated)"
         ]
     )
-    popup1.dismiss()
+    popup1.close()
 
-    popup2 = EditMetricPopup(DummyScreen(), metric)
+    popup2 = EditMetricPopup(DummyScreen(), metric, previous_screen="prev")
     count2 = len(
         [
             c
@@ -494,13 +494,13 @@ def test_edit_metric_popup_shows_value_field():
         previous_screen = "exercise_library"
 
     metric = DummyScreen.exercise_obj.metrics[0]
-    popup = EditMetricPopup(DummyScreen(), metric, mode="library")
+    popup = EditMetricPopup(DummyScreen(), metric, mode="library", previous_screen="prev")
     children = popup.content_cls.children[0].children
     value_fields = [
         c for c in children if getattr(c, "hint_text", "") == "Value"
     ]
     assert len(value_fields) == 1
-    popup.dismiss()
+    popup.close()
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
@@ -1010,7 +1010,7 @@ def test_edit_metric_duplicate_name(monkeypatch):
         exercise_obj = DummyExercise()
 
     metric = DummyScreen.exercise_obj.metrics[0]
-    popup = EditMetricPopup(DummyScreen(), metric)
+    popup = EditMetricPopup(DummyScreen(), metric, previous_screen="prev")
     popup.input_widgets["name"].text = "Weight"
     monkeypatch.setattr(metrics, "is_metric_type_user_created", lambda *a, **k: False)
     popup.save_metric()

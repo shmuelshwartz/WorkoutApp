@@ -23,7 +23,7 @@ from kivymd.uix.button import MDIconButton, MDRaisedButton
 from kivymd.uix.card import MDSeparator
 from ui.dialogs import FullScreenDialog
 from kivymd.uix.label import MDIcon
-from ui.popups import EditMetricPopup
+from ui.dialogs.edit_metric_popup import EditMetricPopup
 from ui.dialogs.add_metric_popup import AddMetricPopup
 
 import os
@@ -299,7 +299,7 @@ class EditExerciseScreen(MDScreen):
     def open_edit_metric_popup(self, metric):
         if self.mode == "session":
             return
-        popup = EditMetricPopup(self, metric, mode=self.mode)
+        popup = EditMetricPopup(self, metric, mode=self.mode, previous_screen=self.manager.current if self.manager else "")
         popup.open()
 
     def save_exercise(self):
