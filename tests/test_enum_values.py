@@ -31,4 +31,13 @@ def test_enum_values_default_and_override(sample_db: Path) -> None:
 
     metrics_bench2 = metrics.get_metrics_for_exercise("Bench Press", db_path=sample_db)
     vals_bench2 = next(m["values"] for m in metrics_bench2 if m["name"] == "Machine")
-    assert vals_bench2 == ["A"]
+    assert vals_bench2 == ["A", "B"]
+
+    # The override lives on the user-created variant.
+    metrics_bench_override = metrics.get_metrics_for_exercise(
+        "Bench Press", db_path=sample_db, is_user_created=True
+    )
+    vals_bench_override = next(
+        m["values"] for m in metrics_bench_override if m["name"] == "Machine"
+    )
+    assert vals_bench_override == ["A"]

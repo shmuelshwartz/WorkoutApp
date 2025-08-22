@@ -27,7 +27,8 @@ def get_metrics_for_exercise(
 
         if is_user_created is None:
             cursor.execute(
-                "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
+                # Prefer predefined exercises before user-created variants.
+                "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created ASC LIMIT 1",
                 (exercise_name,),
             )
         else:
@@ -507,7 +508,8 @@ def update_metric_type(
         cursor = conn.cursor()
         if is_user_created is None:
             cursor.execute(
-                "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
+                # Prefer predefined metric types before user-created variants.
+                "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0 ORDER BY is_user_created ASC LIMIT 1",
                 (metric_type_name,),
             )
         else:
@@ -667,7 +669,7 @@ def set_exercise_metric_override(
     """Apply an override for ``metric_type_name`` for a specific exercise.
 
     ``is_user_created`` selects between predefined and user-created copies of
-    the exercise.  If ``None`` (the default), the user-created variant will be
+    the exercise.  If ``None`` (the default), the predefined variant will be
     chosen when it exists.
     """
 
@@ -676,7 +678,8 @@ def set_exercise_metric_override(
 
         if is_user_created is None:
             cursor.execute(
-                "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
+                # Prefer predefined exercises before user-created variants.
+                "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created ASC LIMIT 1",
                 (exercise_name,),
             )
         else:
@@ -828,7 +831,8 @@ def uses_default_metric(
         cursor = conn.cursor()
         if is_user_created is None:
             cursor.execute(
-                "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created DESC LIMIT 1",
+                # Prefer predefined exercises before user-created variants.
+                "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created ASC LIMIT 1",
                 (exercise_name,),
             )
         else:
