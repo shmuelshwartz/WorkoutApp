@@ -25,11 +25,10 @@ RECOVERY_FILE_2 = RECOVERY_DIR / "session_recovery_2.json"
 class WorkoutSession:
     """In-memory representation of a workout session.
 
-    The entire preset is fetched from the database when the session is
-    created.  Once initialized all workout progress is kept purely in
-    memory and the database is not accessed again.  Future versions may
-    consult the database when adding unplanned exercises, but that
-    functionality is not yet implemented.
+    Only minimal metadata is loaded when the session is created. Detailed
+    information such as metric definitions or exercise descriptions is
+    retrieved on demand via :meth:`load_exercise_details` to keep memory usage
+    low on small devices.
     """
 
     def __init__(
@@ -61,8 +60,7 @@ class WorkoutSession:
                        se.exercise_name,
                        se.number_of_sets,
                        se.rest_time,
-                       se.library_exercise_id,
-                       se.exercise_description
+                       se.library_exercise_id
                   FROM preset_preset_sections ps
                   JOIN preset_section_exercises se
                         ON se.section_id = ps.id AND se.deleted = 0
@@ -83,18 +81,12 @@ class WorkoutSession:
                 sets,
                 rest,
                 lib_ex_id,
-                desc,
             ) in cursor.fetchall():
                 if sec_name != current_section:
                     self.section_starts.append(len(exercises))
                     self.section_names.append(sec_name)
                     current_section = sec_name
                 section_index = len(self.section_starts) - 1
-                metric_defs = get_metrics_for_exercise(
-                    name,
-                    db_path=self.db_path,
-                    preset_name=preset_name,
-                )
                 exercises.append(
                     {
                         "name": name,
@@ -102,8 +94,8 @@ class WorkoutSession:
                         "rest": rest or rest_duration,
                         "library_exercise_id": lib_ex_id,
                         "preset_section_exercise_id": se_id,
-                        "exercise_description": desc or "",
-                        "metric_defs": metric_defs,
+                        "exercise_description": None,
+                        "metric_defs": None,
                         "section_index": section_index,
                         "section_name": sec_name,
                     }
@@ -111,7 +103,7 @@ class WorkoutSession:
                 exercise_sections.append(section_index)
 
             self.exercise_sections = exercise_sections
-            
+
         self.preset_snapshot = exercises
         self.session_data = [
             {"exercise_info": None, "results": []} for _ in self.preset_snapshot
@@ -121,13 +113,14 @@ class WorkoutSession:
         )
 
         # build storage for all exercise metrics
+        # individual exercise details are added on demand, so the metric store
+        # starts empty for each set and expands when details are loaded
         self.metric_store: dict[tuple[int, int], dict[str, object]] = {}
         # dedicated storage for per-set notes
         self.set_notes: dict[tuple[int, int], str] = {}
         for ex_idx, ex in enumerate(self.preset_snapshot):
-            template = {m["name"]: None for m in ex.get("metric_defs", [])}
             for set_idx in range(ex["sets"]):
-                self.metric_store[(ex_idx, set_idx)] = template.copy()
+                self.metric_store[(ex_idx, set_idx)] = {}
 
         # Precompute merged exercise data so screens can access it instantly
         # without repeatedly building dictionaries. Each entry contains the
@@ -188,6 +181,46 @@ class WorkoutSession:
                 **entry["exercise_info"],
                 "results": entry["results"],
             }
+
+    def load_exercise_details(self, index: int) -> dict:
+        """Load full details for the exercise at ``index`` if needed.
+
+        The initial preset snapshot only contains identifiers and basic
+        metadata. This method fetches the description and metric definitions
+        from the database on demand and updates internal stores accordingly.
+        The populated exercise info dictionary is returned.
+        """
+
+        if index < 0 or index >= len(self.preset_snapshot):
+            raise IndexError("Invalid exercise index")
+        info = self.preset_snapshot[index]
+        if (
+            info.get("exercise_description") is not None
+            and info.get("metric_defs") is not None
+        ):
+            return info
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT exercise_description FROM preset_section_exercises WHERE id = ?",
+                (info.get("preset_section_exercise_id"),),
+            )
+            row = cursor.fetchone()
+            description = row[0] if row and row[0] else ""
+        metric_defs = get_metrics_for_exercise(
+            info["name"], db_path=self.db_path, preset_name=self.preset_name
+        )
+        info["exercise_description"] = description
+        info["metric_defs"] = metric_defs
+        template = {m["name"]: None for m in metric_defs}
+        for set_idx in range(info["sets"]):
+            store = self.metric_store.setdefault((index, set_idx), {})
+            for name in template:
+                store.setdefault(name, None)
+        self._ensure_session_entry(index)
+        self.session_data[index]["exercise_info"] = info
+        self._exercises[index] = {**info, "results": self.session_data[index]["results"]}
+        return info
 
     @property
     def exercises(self) -> list[dict]:
@@ -372,16 +405,21 @@ class WorkoutSession:
     # --------------------------------------------------------------
 
     def required_pre_set_metric_names(self) -> list[str]:
-        """Return names of required pre-set metrics for the next set."""
+        """Return names of required pre-set metrics for the next set.
 
-        metrics = get_metrics_for_exercise(
-            self.next_exercise_name(),
-            db_path=self.db_path,
-            preset_name=self.preset_name,
+        Exercise details are loaded lazily; ensure the current exercise has
+        its definitions populated before evaluating requirements.
+        """
+
+        if self.current_exercise >= len(self.preset_snapshot):
+            return []
+        self.load_exercise_details(self.current_exercise)
+        metric_defs = (
+            self.preset_snapshot[self.current_exercise].get("metric_defs") or []
         )
         return [
             m["name"]
-            for m in metrics
+            for m in metric_defs
             if m.get("input_timing") == "pre_set" and m.get("is_required")
         ]
 
@@ -397,7 +435,10 @@ class WorkoutSession:
 
         if exercise_index >= len(self.preset_snapshot):
             return None
-        metric_defs = self.preset_snapshot[exercise_index].get("metric_defs", [])
+        self.load_exercise_details(exercise_index)
+        metric_defs = (
+            self.preset_snapshot[exercise_index].get("metric_defs") or []
+        )
         tempo_name = next(
             (
                 m["name"]
@@ -429,15 +470,11 @@ class WorkoutSession:
             ex_idx = self.current_exercise
         if ex_idx < 0:
             return []
-        ex_name = self.preset_snapshot[ex_idx]["name"]
-        metrics = get_metrics_for_exercise(
-            ex_name,
-            db_path=self.db_path,
-            preset_name=self.preset_name,
-        )
+        self.load_exercise_details(ex_idx)
+        metric_defs = self.preset_snapshot[ex_idx].get("metric_defs") or []
         return [
             m["name"]
-            for m in metrics
+            for m in metric_defs
             if m.get("input_timing") == "post_set" and m.get("is_required")
         ]
 
@@ -459,6 +496,7 @@ class WorkoutSession:
 
         ex = self.current_exercise if exercise_index is None else exercise_index
         st = self.current_set if set_index is None else set_index
+        self.load_exercise_details(ex)
         store = self.metric_store.get((ex, st))
         if store is None:
             return
@@ -503,6 +541,7 @@ class WorkoutSession:
             self.save_recovery_state()
             return True
 
+        self.load_exercise_details(exercise_index)
         key = (exercise_index, set_index)
         store = self.metric_store.get(key)
         if store is None:
@@ -604,7 +643,10 @@ class WorkoutSession:
                 data.pop("skipped_sets", None)
             template = {
                 m["name"]: None
-                for m in self.preset_snapshot[self.current_exercise].get("metric_defs", [])
+                for m in (
+                    self.preset_snapshot[self.current_exercise].get("metric_defs")
+                    or []
+                )
             }
             for set_idx in range(self.current_set, original_sets):
                 self.metric_store[(self.current_exercise, set_idx)] = template.copy()
@@ -722,17 +764,14 @@ class WorkoutSession:
                 ex_rest = ex.get("rest", self.rest_duration)
                 ex_lib_id = ex.get("library_id") or ex.get("library_exercise_id")
                 ex_id = ex.get("id") or ex.get("preset_section_exercise_id")
-                metric_defs = get_metrics_for_exercise(
-                    ex_name, db_path=self.db_path, preset_name=self.preset_name
-                )
                 ex_copy = {
                     "name": ex_name,
                     "sets": ex_sets,
                     "rest": ex_rest,
                     "library_exercise_id": ex_lib_id,
                     "preset_section_exercise_id": ex_id,
-                    "exercise_description": ex.get("exercise_description", ""),
-                    "metric_defs": metric_defs,
+                    "exercise_description": ex.get("exercise_description"),
+                    "metric_defs": None,
                     "section_index": sec_idx,
                     "section_name": sec_name,
                 }
@@ -752,16 +791,13 @@ class WorkoutSession:
                         if key_old in self.metric_store:
                             new_metric_store[key_new] = self.metric_store[key_old].copy()
                         else:
-                            new_metric_store[key_new] = {
-                                m["name"]: None for m in metric_defs
-                            }
+                            new_metric_store[key_new] = {}
                         if key_old in self.set_notes:
                             new_set_notes[key_new] = self.set_notes[key_old]
                 else:
                     new_session_data.append({"exercise_info": None, "results": []})
-                    template = {m["name"]: None for m in metric_defs}
                     for set_idx in range(ex_sets):
-                        new_metric_store[(new_ex_idx, set_idx)] = template.copy()
+                        new_metric_store[(new_ex_idx, set_idx)] = {}
 
                 new_ex_idx += 1
 
@@ -775,6 +811,10 @@ class WorkoutSession:
 
         # Refresh cached exercise list to include edited preset structure
         self._rebuild_exercises()
+        # Ensure metric definitions are available for the updated preset so
+        # callers see a consistent view after editing
+        for idx in range(len(self.preset_snapshot)):
+            self.load_exercise_details(idx)
 
         # Ensure current indices remain within bounds
         if self.current_exercise >= len(self.preset_snapshot):
