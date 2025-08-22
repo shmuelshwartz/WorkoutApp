@@ -509,23 +509,34 @@ class EditMetricTypePopup(FullScreenDialog):
                         has_copy = True
                         break
             if has_copy:
-                msg = "Built-in metric. Saving will overwrite your existing user copy."
+                msg = (
+                    "Built-in metric. Saving will overwrite your existing user copy."
+                )
             else:
-                msg = "Built-in metric. Saving will create a user copy you can edit."
-            info_widgets.append(MDLabel(text=msg, halign="center"))
+                msg = (
+                    "Built-in metric. Saving will create a user copy you can edit."
+                )
+            label = MDLabel(text=msg, halign="center", size_hint_y=None)
+            label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
+            info_widgets.append(label)
         elif self.metric and self.is_user_created:
             msg = (
                 "Changes here update the metric defaults. Exercises using this "
                 "metric without overrides will reflect the changes."
             )
-            info_widgets.append(MDLabel(text=msg, halign="center"))
+            label = MDLabel(text=msg, halign="center", size_hint_y=None)
+            label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
+            info_widgets.append(label)
 
         if self.metric:
             affected = metrics.find_exercises_using_metric_type(self.metric_name)
             if affected:
                 label = MDLabel(
-                    text=f"Affects {len(affected)} exercises", halign="center"
+                    text=f"Affects {len(affected)} exercises",
+                    halign="center",
+                    size_hint_y=None,
                 )
+                label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
                 info_widgets.append(label)
         layout.add_widget(form)
         buttons = [
@@ -536,9 +547,8 @@ class EditMetricTypePopup(FullScreenDialog):
             wrapper = MDBoxLayout(
                 orientation="vertical",
                 spacing="8dp",
-                size_hint_y=None,
+                size_hint=(1, 1),
             )
-            wrapper.bind(minimum_height=wrapper.setter("height"))
             for widget in info_widgets:
                 wrapper.add_widget(widget)
             wrapper.add_widget(layout)
