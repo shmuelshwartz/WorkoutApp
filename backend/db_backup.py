@@ -44,7 +44,13 @@ def create_backup(conn: sqlite3.Connection | None = None) -> None:
     else:
         with sqlite3.connect(str(tmp_backup)) as dst:
             conn.backup(dst)
-    os.replace(tmp_backup, BACKUP_PATH)
+    try:
+        os.replace(tmp_backup, BACKUP_PATH)
+    except PermissionError:
+        # On Windows the destination may be locked if opened by another process.
+        with open(tmp_backup, "rb") as src, open(BACKUP_PATH, "wb") as dst:
+            shutil.copyfileobj(src, dst)
+        os.remove(tmp_backup)
 
 
 def restore_if_corrupt() -> None:
