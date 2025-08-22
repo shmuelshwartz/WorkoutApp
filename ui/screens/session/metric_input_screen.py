@@ -298,19 +298,16 @@ class MetricInputScreen(MDScreen):
         set_count = exercise.get("sets", 0)
         self.metric_grid.cols = max(1, set_count + 1)
 
-        # Header row: blank cell on the left and set labels to the right.
+        # Header row: blank cell on the left and set labels to the right.  Any
+        # decorative borders have been intentionally omitted so only the
+        # widgets themselves are rendered.
         header_placeholder = MDLabel(size_hint=(None, None), height=dp(30))
-        self._add_border(header_placeholder, ("top", "bottom", "left"))
         self.metric_grid.add_widget(header_placeholder)
         self.grid_controller.register(0, 0, header_placeholder)
         for s in range(set_count):
             lbl = MDLabel(
                 text=f"Set {s + 1}", size_hint=(None, None), width=dp(80), height=dp(30)
             )
-            sides = ("top", "bottom", "right")
-            if s == 0:
-                sides += ("left",)
-            self._add_border(lbl, sides)
             self.metric_grid.add_widget(lbl)
             self.grid_controller.register(0, s + 1, lbl)
 
@@ -318,7 +315,7 @@ class MetricInputScreen(MDScreen):
         for row, metric in enumerate(metrics, start=1):
             name = metric.get("name")
             name_lbl = MDLabel(text=name, size_hint=(None, None))
-            self._add_border(name_lbl, ("top", "bottom", "left"))
+            # Borders removed here as well to avoid unintended outlines.
             self.metric_grid.add_widget(name_lbl)
             self.grid_controller.register(row, 0, name_lbl)
             for s in range(set_count):
@@ -450,44 +447,9 @@ class MetricInputScreen(MDScreen):
         widget.size_hint = (None, None)
         widget.height = dp(40)
         widget.width = dp(80)
-        sides = ("top", "bottom", "right")
-        if set_idx == 0:
-            sides += ("left",)
-        self._add_border(widget, sides)
+        # Borders previously drawn here introduced unwanted visual clutter.
+        # Removing them simplifies the interface without altering layout.
         return widget
-
-    # ------------------------------------------------------------------
-    def _add_border(self, widget, sides=("left", "right", "top", "bottom")):
-        """Draw a 1px border around *widget* limited to ``sides``."""
-
-        try:
-            from kivy.graphics import Color, Line  # type: ignore
-        except Exception:
-            return
-
-        lines = {}
-        with widget.canvas.after:
-            Color(0, 0, 0, 1)
-            if "left" in sides:
-                lines["left"] = Line(points=[0, 0, 0, widget.height], width=1)
-            if "right" in sides:
-                lines["right"] = Line(points=[widget.width, 0, widget.width, widget.height], width=1)
-            if "top" in sides:
-                lines["top"] = Line(points=[0, widget.height, widget.width, widget.height], width=1)
-            if "bottom" in sides:
-                lines["bottom"] = Line(points=[0, 0, widget.width, 0], width=1)
-
-        def _update(_inst, _val):
-            if "left" in lines:
-                lines["left"].points = [0, 0, 0, widget.height]
-            if "right" in lines:
-                lines["right"].points = [widget.width, 0, widget.width, widget.height]
-            if "top" in lines:
-                lines["top"].points = [0, widget.height, widget.width, widget.height]
-            if "bottom" in lines:
-                lines["bottom"].points = [0, 0, widget.width, 0]
-
-        widget.bind(size=_update, pos=_update)
 
     # ------------------------------------------------------------------
     def save_metrics(self):
