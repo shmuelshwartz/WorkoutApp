@@ -227,7 +227,8 @@ def test_undo_skip_stays_on_rest(monkeypatch, sample_db):
     monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
 
     screen.show_undo_confirmation()
-    assert screen._undo_dialog.text == "Undo skipped exercise?"
+    # The dialog now stores its label separately for message updates.
+    assert screen._undo_dialog_label.text == "Undo skipped exercise?"
     screen._perform_undo()
     assert dummy_manager.current == "rest"
     assert session.current_exercise == 0

@@ -470,7 +470,6 @@ class EditMetricPopup(MDScreen):
             from ui.dialogs import FullScreenDialog
             dialog = FullScreenDialog(
                 title="Save Metric",
-                type="custom",
                 content_cls=content,
                 buttons=[
                     MDRaisedButton(text="Cancel", on_release=cancel_action),
@@ -587,7 +586,6 @@ class EditMetricPopup(MDScreen):
                 from ui.dialogs import FullScreenDialog
                 dialog = FullScreenDialog(
                     title="Save Metric",
-                    type="custom",
                     content_cls=content,
                     buttons=[
                         MDRaisedButton(text="Cancel", on_release=cancel_action),
@@ -663,7 +661,6 @@ class EditMetricPopup(MDScreen):
             from ui.dialogs import FullScreenDialog
             dialog = FullScreenDialog(
                 title="Save Metric",
-                type="custom",
                 content_cls=content,
                 buttons=[
                     MDRaisedButton(text="Cancel", on_release=cancel_action),

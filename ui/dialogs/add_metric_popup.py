@@ -303,9 +303,14 @@ class AddMetricPopup(MDScreen):
                 if dialog:
                     dialog.dismiss()
 
+            # ``FullScreenDialog`` expects content widgets rather than a ``text``
+            # keyword; show the message using a centered label.
             dialog = FullScreenDialog(
                 title="Duplicate Metric",
-                text=f"{name} is already added to this exercise.",
+                content_cls=MDLabel(
+                    text=f"{name} is already added to this exercise.",
+                    halign="center",
+                ),
                 buttons=[MDRaisedButton(text="OK", on_release=_close)],
             )
             dialog.open()

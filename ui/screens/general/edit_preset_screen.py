@@ -150,7 +150,10 @@ class SectionWidget(MDBoxLayout):
 
         dialog = FullScreenDialog(
             title="Remove Section?",
-            text=f"Delete {self.section_name}?",
+            content_cls=MDLabel(
+                text=f"Delete {self.section_name}?",
+                halign="center",
+            ),
             buttons=[
                 MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
                 MDRaisedButton(text="Delete", on_release=do_delete),
@@ -541,7 +544,7 @@ class EditPresetScreen(MDScreen):
 
             dialog = FullScreenDialog(
                 title="Error",
-                text=str(exc),
+                content_cls=MDLabel(text=str(exc), halign="center"),
                 buttons=[
                     MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())
                 ],
@@ -563,7 +566,7 @@ class EditPresetScreen(MDScreen):
             except Exception as err:
                 err_dialog = FullScreenDialog(
                     title="Error",
-                    text=str(err),
+                    content_cls=MDLabel(text=str(err), halign="center"),
                     buttons=[
                         MDRaisedButton(
                             text="OK", on_release=lambda *a: err_dialog.dismiss()
@@ -574,7 +577,10 @@ class EditPresetScreen(MDScreen):
 
         dialog = FullScreenDialog(
             title="Confirm Save",
-            text=f"Save changes to {app.preset_editor.preset_name}?",
+            content_cls=MDLabel(
+                text=f"Save changes to {app.preset_editor.preset_name}?",
+                halign="center",
+            ),
             buttons=[
                 MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
                 MDRaisedButton(text="Save", on_release=do_confirm),
@@ -602,7 +608,10 @@ class EditPresetScreen(MDScreen):
 
                 dialog = FullScreenDialog(
                     title="Discard Changes?",
-                    text="You have unsaved changes. Discard them?",
+                    content_cls=MDLabel(
+                        text="You have unsaved changes. Discard them?",
+                        halign="center",
+                    ),
                     buttons=[
                         MDRaisedButton(
                             text="Cancel", on_release=lambda *a: dialog.dismiss()
@@ -715,7 +724,10 @@ class SelectedExerciseItem(MDBoxLayout):
 
         dialog = FullScreenDialog(
             title="Remove Exercise?",
-            text=f"Delete {self.text} from this workout?",
+            content_cls=MDLabel(
+                text=f"Delete {self.text} from this workout?",
+                halign="center",
+            ),
             buttons=[
                 MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
                 MDRaisedButton(text="Delete", on_release=do_delete),
@@ -807,9 +819,9 @@ class ExerciseSelectionPanel(MDBoxLayout):
         close_btn = MDRaisedButton(
             text="Close", on_release=lambda *a: self.filter_dialog.dismiss()
         )
+        # Legacy ``type`` keyword removed; provide just title, content and buttons.
         self.filter_dialog = FullScreenDialog(
             title="Filter Exercises",
-            type="custom",
             content_cls=scroll,
             buttons=[close_btn],
         )
@@ -842,7 +854,6 @@ class AddPresetMetricPopup(FullScreenDialog):
         content, buttons = self._build_widgets()
         super().__init__(
             title="Select Metric",
-            type="custom",
             content_cls=content,
             buttons=buttons,
             **kwargs,
@@ -897,7 +908,6 @@ class AddSessionMetricPopup(FullScreenDialog):
         content, buttons = self._build_widgets()
         super().__init__(
             title="Select Metric",
-            type="custom",
             content_cls=content,
             buttons=buttons,
             **kwargs,

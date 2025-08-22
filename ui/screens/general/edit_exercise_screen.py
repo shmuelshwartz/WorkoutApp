@@ -114,7 +114,10 @@ class EditExerciseScreen(MDScreen):
 
         dialog = FullScreenDialog(
             title="Discard Changes?",
-            text="You have unsaved changes. Discard them?",
+            content_cls=MDLabel(
+                text="You have unsaved changes. Discard them?",
+                halign="center",
+            ),
             buttons=[
                 MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
                 MDRaisedButton(text="Discard", on_release=do_nav),
@@ -272,7 +275,10 @@ class EditExerciseScreen(MDScreen):
 
         dialog = FullScreenDialog(
             title="Remove Metric?",
-            text=f"Delete {metric_name}?",
+            content_cls=MDLabel(
+                text=f"Delete {metric_name}?",
+                halign="center",
+            ),
             buttons=[
                 MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
                 MDRaisedButton(text="Delete", on_release=do_delete),
@@ -346,7 +352,7 @@ class EditExerciseScreen(MDScreen):
             conn.close()
             dialog = FullScreenDialog(
                 title="Error",
-                text="Name cannot be empty",
+                content_cls=MDLabel(text="Name cannot be empty", halign="center"),
                 buttons=[
                     MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())
                 ],
@@ -368,7 +374,7 @@ class EditExerciseScreen(MDScreen):
             conn.close()
             dialog = FullScreenDialog(
                 title="Error",
-                text="Duplicate name",
+                content_cls=MDLabel(text="Duplicate name", halign="center"),
                 buttons=[
                     MDRaisedButton(text="OK", on_release=lambda *a: dialog.dismiss())
                 ],
@@ -482,7 +488,7 @@ class EditExerciseScreen(MDScreen):
 
                 err = FullScreenDialog(
                     title="Save Failed",
-                    text=str(exc),
+                    content_cls=MDLabel(text=str(exc), halign="center"),
                     buttons=[MDRaisedButton(text="OK", on_release=_dismiss)],
                 )
                 err.open()
@@ -508,11 +514,17 @@ class EditExerciseScreen(MDScreen):
             )
             content.add_widget(checkbox)
             content.add_widget(label)
+            # Combine message and extra content in a vertical box layout.
+            box = MDBoxLayout(
+                orientation="vertical",
+                spacing=dp(8),
+                size_hint_y=None,
+            )
+            box.add_widget(MDLabel(text=msg, halign="center"))
+            box.add_widget(content)
             dialog = FullScreenDialog(
                 title="Confirm Save",
-                type="custom",
-                text=msg,
-                content_cls=content,
+                content_cls=box,
                 buttons=[
                     MDRaisedButton(
                         text="Cancel", on_release=lambda *a: dialog.dismiss()
@@ -540,11 +552,17 @@ class EditExerciseScreen(MDScreen):
                     )
                     extra_content.add_widget(checkbox)
                     extra_content.add_widget(label)
+            box = MDBoxLayout(
+                orientation="vertical",
+                spacing=dp(8),
+                size_hint_y=None,
+            )
+            box.add_widget(MDLabel(text=msg, halign="center"))
+            if extra_content:
+                box.add_widget(extra_content)
             dialog = FullScreenDialog(
                 title="Confirm Save",
-                type="custom" if extra_content else "simple",
-                text=msg,
-                content_cls=extra_content,
+                content_cls=box,
                 buttons=[
                     MDRaisedButton(
                         text="Cancel", on_release=lambda *a: dialog.dismiss()
@@ -567,7 +585,10 @@ class EditExerciseScreen(MDScreen):
 
             dialog = FullScreenDialog(
                 title="Discard Changes?",
-                text="You have unsaved changes. Discard them?",
+                content_cls=MDLabel(
+                    text="You have unsaved changes. Discard them?",
+                    halign="center",
+                ),
                 buttons=[
                     MDRaisedButton(
                         text="Cancel", on_release=lambda *a: dialog.dismiss()
