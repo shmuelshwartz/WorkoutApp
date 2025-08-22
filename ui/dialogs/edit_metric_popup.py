@@ -530,6 +530,13 @@ class EditMetricPopup(MDScreen):
                 rows.append(row)
 
             if rows:
+                dialog = None  # holds the confirmation dialog instance
+
+                def cancel_action(*a):
+                    """Dismiss the confirmation dialog if it is open."""
+                    if dialog:
+                        dialog.dismiss()
+
                 content = MDBoxLayout(
                     orientation="vertical", spacing="8dp", size_hint_y=None
                 )
@@ -582,7 +589,6 @@ class EditMetricPopup(MDScreen):
                     cancel_action()
                     apply_updates()
 
-                dialog = None
                 from ui.dialogs import FullScreenDialog
                 dialog = FullScreenDialog(
                     title="Save Metric",
