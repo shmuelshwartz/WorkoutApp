@@ -124,7 +124,8 @@ from ui.screens.general.edit_preset_screen import (
 )
 
 from ui.screens.session.workout_summary_screen import WorkoutSummaryScreen
-from ui.popups import AddMetricPopup, EditMetricPopup, METRIC_FIELD_ORDER
+from ui.popups import AddMetricPopup, METRIC_FIELD_ORDER
+from ui.dialogs.edit_metric_popup import EditMetricPopup
 from assets.sounds import SoundSystem
 from backend import settings as app_settings
 try:
