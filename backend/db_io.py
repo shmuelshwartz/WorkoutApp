@@ -10,6 +10,8 @@ import time
 import logging
 from typing import Any, Dict, List, Tuple
 
+from .export_utils import make_export_name
+
 # Path to the application's SQLite database.
 DB_PATH = Path(__file__).resolve().parents[1] / "data" / "workout.db"
 # Directory where database backups are stored.
@@ -79,6 +81,7 @@ def sqlite_to_json(db_path: Path) -> Dict[str, List[Dict[str, Any]]]:
 def export_database(db_path: Path = DB_PATH, dest_dir: Path | None = None) -> Path:
     """Export ``db_path`` to ``dest_dir`` as a ``.db`` file.
 
+    The filename is generated automatically using :func:`make_export_name`.
     On success the absolute path to the exported file is returned. Specific
     file-system errors are logged with full stack traces and re-raised so the
     caller can present a meaningful error to the user. If the required storage
@@ -87,7 +90,7 @@ def export_database(db_path: Path = DB_PATH, dest_dir: Path | None = None) -> Pa
     """
 
     dest_dir = dest_dir or get_downloads_dir()
-    filename = f"workout_{int(time.time())}.db"
+    filename = make_export_name()
     dest = (dest_dir / filename).resolve()
     try:
         shutil.copy2(db_path, dest)
@@ -109,15 +112,16 @@ def export_database_json(
 ) -> Path:
     """Export ``db_path`` to ``dest_dir`` as a JSON file.
 
-    Returns the absolute path to the exported JSON document. File-system
-    problems are logged and re-raised to allow the caller to inform the user of
-    the specific failure. A :class:`PermissionError` is raised if access to the
-    public Downloads folder is not granted.
+    The filename is derived from :func:`make_export_name` with a ``.json``
+    extension. Returns the absolute path to the exported JSON document.
+    File-system problems are logged and re-raised to allow the caller to
+    inform the user of the specific failure. A :class:`PermissionError` is
+    raised if access to the public Downloads folder is not granted.
     """
 
     dest_dir = dest_dir or get_downloads_dir()
     data = sqlite_to_json(db_path)
-    filename = f"workout_{int(time.time())}.json"
+    filename = make_export_name().replace(".db", ".json")
     dest = (dest_dir / filename).resolve()
     try:
         with dest.open("w", encoding="utf-8") as fh:

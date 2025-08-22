@@ -93,7 +93,6 @@ def _on_activity_result(request_code, result_code, data):
         request_code,
         result_code,
         data,
-        db_path=DB_PATH,
         on_success=lambda msg: toast(msg),
         on_error=lambda msg: toast(msg),
     )
