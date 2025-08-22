@@ -13,11 +13,21 @@ class PresetOverviewScreen(MDScreen):
     details_list = ObjectProperty(None)
     workout_list = ObjectProperty(None)
     _pre_session_metric_data = None
+    _current_preset = None
+    _pre_metrics_prompted = False
 
     def on_pre_enter(self, *args):
+        """Populate lists and prompt for session metrics once per preset."""
+        app = MDApp.get_running_app()
+        preset_name = app.selected_preset
+        if preset_name != self._current_preset:
+            self._current_preset = preset_name
+            self._pre_session_metric_data = None
+            self._pre_metrics_prompted = False
         self.populate()
-        self._pre_session_metric_data = None
-        self._prompt_pre_session_metrics()
+        if not self._pre_metrics_prompted:
+            self._prompt_pre_session_metrics()
+            self._pre_metrics_prompted = True
         return super().on_pre_enter(*args)
 
     def populate(self):

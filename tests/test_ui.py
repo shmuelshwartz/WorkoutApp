@@ -975,6 +975,66 @@ def test_pre_session_metrics_prompt_before_start(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_pre_session_popup_not_repeated(monkeypatch):
+    """The pre-session popup only appears once per preset."""
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    class DummyList:
+        def clear_widgets(self):
+            pass
+
+        def add_widget(self, widget):
+            pass
+
+    screen = PresetOverviewScreen()
+    screen.details_list = DummyList()
+    screen.workout_list = DummyList()
+
+    class DummyApp:
+        selected_preset = "Test"
+
+        def init_preset_editor(self):
+            self.preset_editor = type("PE", (), {"sections": [], "preset_metrics": []})()
+
+    dummy_app = DummyApp()
+    monkeypatch.setattr(App, "get_running_app", lambda: dummy_app)
+
+    monkeypatch.setattr(
+        presets,
+        "get_metrics_for_preset",
+        lambda name: [{"name": "M1", "input_timing": "pre_session"}],
+    )
+
+    popup_calls = []
+
+    class DummyPopup:
+        def __init__(self, metrics, callback, previous_screen, **kwargs):
+            popup_calls.append(metrics)
+
+        def open(self):
+            pass  # simulate user cancel
+
+    monkeypatch.setattr(
+        "ui.dialogs.pre_session_metric_popup.PreSessionMetricPopup", DummyPopup
+    )
+
+    screen.on_pre_enter()
+    assert len(popup_calls) == 1
+
+    # Returning to the same preset should not show the popup again
+    screen.on_pre_enter()
+    assert len(popup_calls) == 1
+
+    # Changing preset resets the prompt flag
+    dummy_app.selected_preset = "Other"
+    screen.on_pre_enter()
+    assert len(popup_calls) == 2
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
     """Saving with a duplicate user-defined name shows an error."""
     import sqlite3
