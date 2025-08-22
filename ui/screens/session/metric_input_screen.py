@@ -306,8 +306,12 @@ class MetricInputScreen(MDScreen):
         self.grid_controller.register(0, 0, header_placeholder)
         for s in range(set_count):
             lbl = MDLabel(
-                text=f"Set {s + 1}", size_hint=(None, None), width=dp(80), height=dp(30)
+                text=f"Set {s + 1}",
+                size_hint=(None, None),
+                width=dp(100),
+                height=dp(30),
             )
+            # Wider labels keep column widths consistent with enlarged inputs.
             self.metric_grid.add_widget(lbl)
             self.grid_controller.register(0, s + 1, lbl)
 
@@ -446,7 +450,7 @@ class MetricInputScreen(MDScreen):
             )
         widget.size_hint = (None, None)
         widget.height = dp(40)
-        widget.width = dp(80)
+        widget.width = dp(100)  # Increased for easier data entry on small screens.
         # Borders previously drawn here introduced unwanted visual clutter.
         # Removing them simplifies the interface without altering layout.
         return widget
