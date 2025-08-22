@@ -317,7 +317,9 @@ class LoadingDialog(FullScreenDialog):
         spinner.pos_hint = {"center_x": 0.5}
         box.add_widget(spinner)
         box.add_widget(MDLabel(text=text, halign="center"))
-        super().__init__(type="custom", content_cls=box, **kwargs)
+        # ``FullScreenDialog`` ignores the old ``MDDialog`` ``type`` parameter,
+        # so only pass the spinner layout as ``content_cls``.
+        super().__init__(content_cls=box, **kwargs)
 
 
 class EditMetricTypePopup(FullScreenDialog):
@@ -344,9 +346,10 @@ class EditMetricTypePopup(FullScreenDialog):
                     self.metric = m
                     break
         content, buttons, title = self._build_widgets()
+        # ``FullScreenDialog`` supersedes the old ``MDDialog`` interface and
+        # doesn't require a ``type`` argument.
         super().__init__(
             title=title,
-            type="custom",
             content_cls=content,
             buttons=buttons,
             **kwargs,

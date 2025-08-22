@@ -45,6 +45,10 @@ else:
         ----------
         title:
             Optional title displayed at the top of the screen.
+        text:
+            Optional body text displayed above ``content_cls``. This mirrors
+            the older ``MDDialog`` API so existing call sites can pass a
+            message without constructing a custom widget.
         content_cls:
             Main widget displayed in the body of the screen.
         buttons:
@@ -55,10 +59,15 @@ else:
             self,
             *,
             title: str = "",
+            text: str = "",
             content_cls=None,
             buttons: list | tuple | None = None,
             **kwargs,
         ):
+            # ``MDDialog`` accepted a ``type`` kwarg which is irrelevant for the
+            # simplified ``FullScreenDialog``.  Pop it from ``kwargs`` so Kivy
+            # doesn't raise ``TypeError`` for an unknown property.
+            kwargs.pop("type", None)
             super().__init__(**kwargs)
 
             self.ids = {}
@@ -69,6 +78,19 @@ else:
                 layout.add_widget(
                     MDLabel(
                         text=title,
+                        size_hint_y=None,
+                        height=dp(48),
+                        halign="center",
+                        valign="center",
+                    )
+                )
+
+            if text:
+                # ``MDDialog`` allowed a message via ``text``. Re-create that
+                # behaviour with a lightweight label to minimise widget count.
+                layout.add_widget(
+                    MDLabel(
+                        text=text,
                         size_hint_y=None,
                         height=dp(48),
                         halign="center",
