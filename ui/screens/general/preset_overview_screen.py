@@ -3,7 +3,7 @@ from kivymd.uix.screen import MDScreen
 from kivy.properties import ObjectProperty
 from backend import metrics, exercises
 from ui.expandable_list_item import ExpandableListItem, ExerciseSummaryItem
-from ui.popups import PreSessionMetricPopup
+from ui.dialogs.pre_session_metric_popup import PreSessionMetricPopup
 
 
 
@@ -95,7 +95,9 @@ class PresetOverviewScreen(MDScreen):
         pre_metrics = [m for m in metric_defs if m.get("input_timing") == "pre_session"]
         if pre_metrics:
             popup = PreSessionMetricPopup(
-                pre_metrics, lambda data: self._store_session_metrics(data)
+                pre_metrics,
+                lambda data: self._store_session_metrics(data),
+                previous_screen=self.name,
             )
             popup.open()
 

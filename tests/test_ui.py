@@ -936,14 +936,16 @@ def test_pre_session_metrics_prompt_before_start(monkeypatch):
     popup_calls = []
 
     class DummyPopup:
-        def __init__(self, metrics, callback):
+        def __init__(self, metrics, callback, previous_screen, **kwargs):
             popup_calls.append(metrics)
             self.callback = callback
 
         def open(self):
             self.callback({"M1": 5})
 
-    monkeypatch.setattr("ui.popups.PreSessionMetricPopup", DummyPopup)
+    monkeypatch.setattr(
+        "ui.dialogs.pre_session_metric_popup.PreSessionMetricPopup", DummyPopup
+    )
 
     screen.on_pre_enter()
     assert popup_calls and screen._pre_session_metric_data == {"M1": 5}
