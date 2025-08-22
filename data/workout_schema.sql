@@ -208,14 +208,76 @@ CREATE UNIQUE INDEX IF NOT EXISTS "idx_library_exercise_metric_unique_active" ON
 	"exercise_id",
 	"metric_type_id"
 ) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_library_exercise_metrics_type" ON "library_exercise_metrics" (
+	"metric_type_id"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_library_exercises_active" ON "library_exercises" (
+	"is_user_created",
+	"name"
+) WHERE "deleted" = 0;
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_library_exercises_name_user_created" ON "library_exercises" (
 	"name",
 	"is_user_created"
 );
+CREATE INDEX IF NOT EXISTS "idx_library_metric_types_active" ON "library_metric_types" (
+	"name",
+	"is_user_created"
+) WHERE "deleted" = 0;
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_library_metric_types_name_user_created" ON "library_metric_types" (
 	"name",
 	"is_user_created"
 );
+CREATE INDEX IF NOT EXISTS "idx_library_metric_types_required" ON "library_metric_types" (
+	"is_required",
+	"scope"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_preset_exercise_metrics" ON "preset_exercise_metrics" (
+	"section_exercise_id",
+	"position"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_preset_preset_metrics" ON "preset_preset_metrics" (
+	"preset_id",
+	"position"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_preset_preset_sections" ON "preset_preset_sections" (
+	"preset_id",
+	"position"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_preset_presets_name" ON "preset_presets" (
+	"name"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_preset_section_exercises_library" ON "preset_section_exercises" (
+	"library_exercise_id"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_preset_section_exercises_name" ON "preset_section_exercises" (
+	"exercise_name"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_preset_section_exercises_section" ON "preset_section_exercises" (
+	"section_id",
+	"position"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_session_exercise_sets" ON "session_exercise_sets" (
+	"section_exercise_id",
+	"set_number"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_session_section_exercises" ON "session_section_exercises" (
+	"section_id",
+	"position"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_session_session_metrics" ON "session_session_metrics" (
+	"session_id",
+	"position"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_session_session_sections" ON "session_session_sections" (
+	"session_id",
+	"position"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_session_sessions_started_at" ON "session_sessions" (
+	"started_at"
+) WHERE "deleted" = 0;
+CREATE INDEX IF NOT EXISTS "idx_session_set_metrics" ON "session_set_metrics" (
+	"exercise_set_id"
+) WHERE "deleted" = 0;
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_unique_exercise_metric_active" ON "preset_exercise_metrics" (
 	"section_exercise_id",
 	"metric_name"
