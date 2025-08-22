@@ -3,6 +3,7 @@ try:  # pragma: no cover - fallback for environments without Kivy
     from kivymd.uix.screen import MDScreen
     from ui.dialogs import FullScreenDialog
     from kivymd.uix.button import MDFlatButton, MDRaisedButton
+    from kivymd.uix.label import MDLabel
     from kivymd.toast import toast
     from kivy.clock import Clock
     from kivy.properties import (
@@ -31,6 +32,10 @@ except Exception:  # pragma: no cover - simple stubs
 
     class MDRaisedButton(MDFlatButton):
         pass
+
+    class MDLabel:
+        def __init__(self, *a, **k):
+            pass
 
     class _Clock:
         def schedule_interval(self, *a, **k):
@@ -201,15 +206,20 @@ class RestScreen(MDScreen):
             else "Are you sure you want to undo the last set and resume it?"
         )
         if not hasattr(self, "_undo_dialog") or not self._undo_dialog:
+            label = MDLabel(text=text, halign="center")
+            self._undo_dialog_label = label
             self._undo_dialog = FullScreenDialog(
-                text=text,
+                content_cls=label,
                 buttons=[
-                    MDFlatButton(text="Cancel", on_release=lambda *_: self._undo_dialog.dismiss()),
+                    MDFlatButton(
+                        text="Cancel", on_release=lambda *_: self._undo_dialog.dismiss()
+                    ),
                     MDFlatButton(text="Confirm", on_release=self._perform_undo),
                 ],
             )
         else:
-            self._undo_dialog.text = text
+            # Update message when the dialog is reused.
+            self._undo_dialog_label.text = text
         self._undo_dialog.open()
 
     def _perform_undo(self, *args):
@@ -250,10 +260,16 @@ class RestScreen(MDScreen):
             toast("No next exercise")
             return
         if not hasattr(self, "_skip_dialog") or not self._skip_dialog:
-            self._skip_dialog = FullScreenDialog(
+            content = MDLabel(
                 text="Skip this exercise and move to the next?",
+                halign="center",
+            )
+            self._skip_dialog = FullScreenDialog(
+                content_cls=content,
                 buttons=[
-                    MDFlatButton(text="Cancel", on_release=lambda *_: self._skip_dialog.dismiss()),
+                    MDFlatButton(
+                        text="Cancel", on_release=lambda *_: self._skip_dialog.dismiss()
+                    ),
                     MDFlatButton(text="Confirm", on_release=self._perform_skip),
                 ],
             )
@@ -317,7 +333,10 @@ class RestScreen(MDScreen):
 
         dialog = FullScreenDialog(
             title="Finish Workout?",
-            text="Are you sure you want to finish this workout?",
+            content_cls=MDLabel(
+                text="Are you sure you want to finish this workout?",
+                halign="center",
+            ),
             buttons=[
                 MDRaisedButton(text="Cancel", on_release=lambda *_: dialog.dismiss()),
                 MDFlatButton(text="Discard", on_release=do_discard),

@@ -3,6 +3,7 @@ try:  # pragma: no cover - fallback for environments without Kivy
     from kivymd.uix.screen import MDScreen
     from ui.dialogs import FullScreenDialog
     from kivymd.uix.button import MDFlatButton, MDRaisedButton
+    from kivymd.uix.label import MDLabel
 except Exception:  # pragma: no cover - simple stubs
     MDApp = object
     MDScreen = object
@@ -23,6 +24,10 @@ except Exception:  # pragma: no cover - simple stubs
 
     class MDRaisedButton(MDFlatButton):
         pass
+
+    class MDLabel:
+        def __init__(self, *a, **k):
+            pass
 
 from backend.workout_session import WorkoutSession
 from tiny_screen import apply_safe_area_padding  # TINY-SCREEN: safe area
@@ -61,8 +66,14 @@ class HomeScreen(MDScreen):
             session.clear_recovery_files()
             dialog.dismiss()
 
-        dialog = FullScreenDialog(
+        # ``FullScreenDialog`` no longer accepts a ``text`` keyword; use a
+        # simple label as the dialog's content instead.
+        content = MDLabel(
             text="Recover previous workout session?",
+            halign="center",
+        )
+        dialog = FullScreenDialog(
+            content_cls=content,
             buttons=[
                 MDFlatButton(text="No", on_release=discard),
                 MDRaisedButton(text="Yes", on_release=recover),

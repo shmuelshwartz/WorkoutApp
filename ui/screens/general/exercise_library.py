@@ -16,6 +16,7 @@ from kivymd.uix.list import MDList, OneLineListItem
 from kivy.uix.scrollview import ScrollView
 from ui.dialogs import FullScreenDialog
 from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.label import MDLabel
 
 import os
 from backend import metrics, exercises
@@ -198,8 +199,9 @@ class ExerciseLibraryScreen(MDScreen):
         title = (
             "Filter Exercises" if self.current_tab == "exercises" else "Filter Metrics"
         )
+        # ``FullScreenDialog`` does not support the legacy ``type`` keyword.
         self.filter_dialog = FullScreenDialog(
-            title=title, type="custom", content_cls=scroll, buttons=[close_btn]
+            title=title, content_cls=scroll, buttons=[close_btn]
         )
         self.filter_dialog.open()
 
@@ -270,7 +272,10 @@ class ExerciseLibraryScreen(MDScreen):
 
         dialog = FullScreenDialog(
             title="Delete Exercise?",
-            text=f"Delete {exercise_name}?",
+            content_cls=MDLabel(
+                text=f"Delete {exercise_name}?",
+                halign="center",
+            ),
             buttons=[
                 MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
                 MDRaisedButton(text="Delete", on_release=do_delete),
@@ -299,7 +304,10 @@ class ExerciseLibraryScreen(MDScreen):
 
         dialog = FullScreenDialog(
             title="Delete Metric?",
-            text=f"Delete {metric_name}?",
+            content_cls=MDLabel(
+                text=f"Delete {metric_name}?",
+                halign="center",
+            ),
             buttons=[
                 MDRaisedButton(text="Cancel", on_release=lambda *a: dialog.dismiss()),
                 MDRaisedButton(text="Delete", on_release=do_delete),

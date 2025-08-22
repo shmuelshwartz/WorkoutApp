@@ -318,7 +318,9 @@ class LoadingDialog(FullScreenDialog):
         spinner.pos_hint = {"center_x": 0.5}
         box.add_widget(spinner)
         box.add_widget(MDLabel(text=text, halign="center"))
-        super().__init__(type="custom", content_cls=box, **kwargs)
+        # ``FullScreenDialog`` accepts only ``content_cls`` and not the legacy
+        # ``type`` keyword.
+        super().__init__(content_cls=box, **kwargs)
 
 
 class EditMetricTypePopup(FullScreenDialog):
@@ -347,7 +349,6 @@ class EditMetricTypePopup(FullScreenDialog):
         content, buttons, title = self._build_widgets()
         super().__init__(
             title=title,
-            type="custom",
             content_cls=content,
             buttons=buttons,
             **kwargs,
