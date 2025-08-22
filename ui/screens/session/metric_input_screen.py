@@ -26,8 +26,7 @@ class MetricSlider(MDSlider):
         self.hint_text = f"{self.value:.2f}"
 
     def on_value(self, instance, value):
-        """Update the bubble hint when the value changes."""
-        super().on_value(instance, value)
+        """Display the current value in the hint bubble with two decimals."""
         self.hint_text = f"{value:.2f}"
 
 
