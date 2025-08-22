@@ -5,6 +5,7 @@ import sqlite3
 from pathlib import Path
 
 from backend.exercise import Exercise
+from .db_backup import create_backup
 
 # Default path to the bundled SQLite database (relative to repo root)
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "workout.db"
@@ -164,3 +165,5 @@ def apply_exercise_changes_to_presets(
                             ),
                         )
         conn.commit()
+    create_backup()
+

@@ -8,6 +8,7 @@ import copy
 import json
 
 from backend.utils import _to_db_timing, _from_db_timing
+import backend.db_backup  # ensure database is checked for corruption on startup
 
 # Number of sets each exercise defaults to when starting a workout
 DEFAULT_SETS_PER_EXERCISE = 3
