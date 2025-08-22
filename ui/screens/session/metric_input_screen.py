@@ -499,7 +499,6 @@ class MetricInputScreen(MDScreen):
             widget = MDTextField(
                 multiline=False,
                 input_filter=input_filter,
-                text=str(value) if value not in (None, "") else "",
             )
             widget.bind(
                 text=lambda inst,
@@ -508,6 +507,10 @@ class MetricInputScreen(MDScreen):
                 mtype=mtype,
                 set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst)
             )
+            # ``MDTextField`` text is assigned after initialization to mirror
+            # the pattern in ``EditMetricPopup`` and avoid constructor-side
+            # quirks on small devices.
+            widget.text = "" if value in (None, "") else str(value)
         widget.size_hint = (None, None)
         widget.height = dp(40)
         widget.width = dp(100)  # Increased for easier data entry on small screens.
