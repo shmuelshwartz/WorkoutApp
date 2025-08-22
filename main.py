@@ -28,7 +28,7 @@ from kivymd.uix.list import (
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.card import MDSeparator
-from kivymd.uix.dialog import MDDialog
+from ui.dialogs import FullScreenDialog
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.tab import MDTabsBase
 
@@ -293,7 +293,7 @@ class Tab(MDBoxLayout, MDTabsBase):
     """A basic tab for use with :class:`~kivymd.uix.tab.MDTabs`."""
 
 
-class LoadingDialog(MDDialog):
+class LoadingDialog(FullScreenDialog):
     """Simple dialog displaying a spinner while work is performed."""
 
     def __init__(self, text: str = "Loading...", **kwargs):
@@ -310,7 +310,7 @@ class LoadingDialog(MDDialog):
         super().__init__(type="custom", content_cls=box, **kwargs)
 
 
-class EditMetricTypePopup(MDDialog):
+class EditMetricTypePopup(FullScreenDialog):
     """Popup for editing or creating metric types from the library."""
 
     def __init__(
@@ -324,11 +324,7 @@ class EditMetricTypePopup(MDDialog):
         self.metric_name = metric_name
         self.is_user_created = is_user_created
         self.metric = None
-        # Default to nearly full-screen to keep buttons visible on small devices.
-        # ``MDDialog`` does not respect vertical ``size_hint`` values, so specify
-        # the height explicitly to occupy most of the window.
-        kwargs.setdefault("size_hint", (0.95, None))
-        kwargs.setdefault("height", Window.height * 0.9)
+        # ``FullScreenDialog`` handles full-screen sizing.
         if metric_name:
             for m in screen.all_metrics or []:
                 if (
@@ -339,7 +335,11 @@ class EditMetricTypePopup(MDDialog):
                     break
         content, buttons, title = self._build_widgets()
         super().__init__(
-            title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
+            title=title,
+            type="custom",
+            content_cls=content,
+            buttons=buttons,
+            **kwargs,
         )
 
     def _build_widgets(self):
@@ -486,6 +486,8 @@ class EditMetricTypePopup(MDDialog):
 
         # Fill the dialog space and allow scrolling for compact screens
         layout = ScrollView(do_scroll_y=True, size_hint=(1, 1))
+        # ``FullScreenDialog`` uses this reference to adjust height on open.
+        self._scroll_view = layout
         info_widgets = []
         if self.metric and not self.is_user_created:
             has_copy = False
