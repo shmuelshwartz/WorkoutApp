@@ -115,17 +115,20 @@ class PreSessionMetricPopup(MDScreen):
         row.type = mtype
         row.required = metric.get("is_required", False)
         row.add_widget(MDLabel(text=name, size_hint_x=0.4))
+        default = metric.get("value")
         if mtype == "slider":
-            widget = MDSlider(min=0, max=1, value=0)
+            widget = MDSlider(min=0, max=1, value=default or 0)
         elif mtype == "enum":
-            widget = Spinner(text=values[0] if values else "", values=values)
+            text = default if default not in (None, "") else (values[0] if values else "")
+            widget = Spinner(text=text, values=values)
         else:
             input_filter = None
             if mtype == "int":
                 input_filter = "int"
             elif mtype == "float":
                 input_filter = "float"
-            widget = MDTextField(multiline=False, input_filter=input_filter)
+            text = "" if default in (None, "") else str(default)
+            widget = MDTextField(multiline=False, input_filter=input_filter, text=text)
         row.input_widget = widget
         row.add_widget(widget)
         return row

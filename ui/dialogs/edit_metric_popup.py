@@ -177,7 +177,7 @@ class EditMetricPopup(MDScreen):
         enable_auto_resize(self.enum_values_field)
 
         # Text field for a default metric value. It appears only when editing
-        # metrics that request input during library creation, keeping the UI
+        # metrics that expect input during library creation, keeping the UI
         # compact for other contexts.
         self.value_field = MDTextField(
             hint_text="Value",
@@ -241,14 +241,12 @@ class EditMetricPopup(MDScreen):
             self.enum_values_field.input_filter = _filter
 
         def update_value_visibility(*args):
-            # Value defaults are currently supported only when editing an
-            # exercise from the library. Other contexts will expose this field
-            # in a future iteration.
+            # Expose the value field only when the metric requests a library
+            # time value. This avoids consuming precious screen space on small
+            # devices when the field is irrelevant.
             show = (
-                self.mode == "library"
-                and getattr(self.screen, "previous_screen", "") == "exercise_library"
-                and "input_timing" in self.input_widgets
-                and self.input_widgets["input_timing"].text == "preset"
+                "input_timing" in self.input_widgets
+                and self.input_widgets["input_timing"].text == "library"
             )
             has_parent = self.value_field.parent is not None
             if show and not has_parent:

@@ -212,11 +212,11 @@ class WorkoutSession:
         )
         info["exercise_description"] = description
         info["metric_defs"] = metric_defs
-        template = {m["name"]: None for m in metric_defs}
+        template = {m["name"]: m.get("value") for m in metric_defs}
         for set_idx in range(info["sets"]):
             store = self.metric_store.setdefault((index, set_idx), {})
-            for name in template:
-                store.setdefault(name, None)
+            for name, default in template.items():
+                store.setdefault(name, default)
         self._ensure_session_entry(index)
         self.session_data[index]["exercise_info"] = info
         self._exercises[index] = {**info, "results": self.session_data[index]["results"]}

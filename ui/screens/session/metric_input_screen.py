@@ -323,7 +323,7 @@ class MetricInputScreen(MDScreen):
             self.metric_grid.add_widget(name_lbl)
             self.grid_controller.register(row, 0, name_lbl)
             for s in range(set_count):
-                store = self.session.metric_store.get((self.exercise_idx, s), {})
+                store = self.session.metric_store.setdefault((self.exercise_idx, s), {})
                 value = None
                 if s < len(results):
                     value = results[s].get("metrics", {}).get(name)
@@ -331,6 +331,11 @@ class MetricInputScreen(MDScreen):
                     # Fallback to pre-set metrics stored in metric_store so
                     # previously entered values for unfinished sets reappear.
                     value = store.get(name)
+                    if value in (None, ""):
+                        default = metric.get("value")
+                        if default not in (None, ""):
+                            value = default
+                            store[name] = default
                 widget = self._create_input_widget(metric, value, s)
                 self.metric_cells[(name, s)] = widget
                 self.metric_grid.add_widget(widget)
