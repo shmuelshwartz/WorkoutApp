@@ -163,6 +163,20 @@ def test_on_cell_change_updates_session():
     assert dummy_session.pending[(0, 0)] == {"Reps": 5}
 
 
+def test_slider_hint_updates_with_two_decimals():
+    """Slider widgets should display hint text with two decimal places."""
+    screen = MetricInputScreen()
+    metric_module.MDApp.get_running_app = classmethod(lambda cls: None)
+
+    metric = {"name": "RPE", "type": "slider"}
+    widget = screen._create_input_widget(metric, 0.1, 0)
+    assert widget.hint_text == "0.10"
+
+    # Simulate value change via bound callback
+    widget._binding["value"](widget, 0.567)
+    assert widget.hint_text == "0.57"
+
+
 def test_metric_store_fallback_on_rebuild():
     """Widget should prefill metrics from session.metric_store for unfinished sets."""
     screen = MetricInputScreen()

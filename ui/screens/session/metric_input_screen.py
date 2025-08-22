@@ -361,6 +361,11 @@ class MetricInputScreen(MDScreen):
             scroll.do_scroll_y = True
         return False
 
+    @staticmethod
+    def _update_slider_hint(slider, value):
+        """Update slider hint text to show two decimal places."""
+        slider.hint_text = f"{value:.2f}"
+
     def _on_cell_change(self, name, mtype, set_idx, widget):
         app = MDApp.get_running_app()
         session = getattr(app, "workout_session", None)
@@ -400,15 +405,15 @@ class MetricInputScreen(MDScreen):
         values = metric.get("values", [])
         if mtype == "slider":
             widget = MDSlider(min=0, max=1, value=value or 0)
+            widget.hint = True
+            self._update_slider_hint(widget, widget.value)
+
+            def _value_change(inst, val, name=name, mtype=mtype, set_idx=set_idx):
+                self._update_slider_hint(inst, val)
+                self._on_cell_change(name, mtype, set_idx, inst)
+
             widget.bind(
-                # Capture loop variables to ensure each cell updates correctly
-                value=lambda inst,
-                val,
-                name=name,
-                mtype=mtype,
-                set_idx=set_idx: self._on_cell_change(
-                    name, mtype, set_idx, inst
-                ),
+                value=_value_change,
                 on_touch_down=self.on_slider_touch_down,
                 on_touch_up=self.on_slider_touch_up,
             )
