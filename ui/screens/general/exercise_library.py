@@ -193,6 +193,12 @@ class ExerciseLibraryScreen(MDScreen):
         if self.metric_search_text:
             s = self.metric_search_text.lower()
             metrics = [m for m in metrics if s in m["name"].lower()]
+        # Sort metrics so that user-created types appear first and each group
+        # is ordered alphabetically. ``not m['is_user_created']`` ensures
+        # user metrics sort before the premade ones.
+        metrics = sorted(
+            metrics, key=lambda m: (not m["is_user_created"], m["name"].lower())
+        )
         data = []
         for m in metrics:
             data.append(
@@ -202,6 +208,8 @@ class ExerciseLibraryScreen(MDScreen):
                     "is_user_created": m["is_user_created"],
                     "edit_callback": self.open_edit_metric_popup,
                     "delete_callback": self.confirm_delete_metric,
+                    # Lock premade metrics so the pencil icon is hidden.
+                    "locked": not m["is_user_created"],
                 }
             )
         self.metric_list.data = data
