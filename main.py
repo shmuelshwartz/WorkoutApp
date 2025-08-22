@@ -816,26 +816,7 @@ class PresetOverviewScreen(MDScreen):
     def start_workout(self):
         app = MDApp.get_running_app()
         preset_name = app.selected_preset
-
-        # Start the workout session so exercise data is available, then
-        # determine whether any session-scoped metrics need to be collected
-        # before the workout begins.  These "pre_session" metrics should be
-        # prompted only once per session.
         app.start_workout(preset_name)
-
-        if not app.pre_session_metrics_done:
-            metrics = [
-                m
-                for m in core.get_all_metric_types()
-                if m.get("scope") == "session" and m.get("input_timing") == "pre_session"
-            ]
-            if metrics and self.manager:
-                screen = self.manager.get_screen("metric_input")
-                screen.populate_metrics(metrics)
-                app.pre_session_metrics_done = True
-                self.manager.current = "metric_input"
-                return
-
         if self.manager:
             self.manager.current = "rest"
 
@@ -3091,10 +3072,6 @@ class WorkoutApp(MDApp):
     editing_exercise_index: int = -1
     # True when metrics being entered correspond to a newly completed set
     record_new_set = False
-    # Tracks whether pre-session metrics have been collected for the
-    # currently active workout.  This prevents repeatedly showing the
-    # metric input popup when navigating between screens.
-    pre_session_metrics_done: bool = False
     # Incremented whenever an exercise is added, edited or deleted
     exercise_library_version: int = 0
     # Incremented when a metric type is added or edited
@@ -3135,12 +3112,8 @@ class WorkoutApp(MDApp):
         else:
             self.workout_session = None
 
-        # Reset session-level flags whenever a new workout starts.
-        # ``record_new_set`` prevents metric entry from advancing a set
-        # prematurely and ``pre_session_metrics_done`` ensures any
-        # pre-session metric dialog appears at most once.
+        # ensure metric input doesn't accidentally advance sets
         self.record_new_set = False
-        self.pre_session_metrics_done = False
 
     def mark_set_complete(self):
         if self.workout_session:
