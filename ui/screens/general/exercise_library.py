@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from kivymd.app import MDApp
 from kivy.clock import Clock
-from kivy.metrics import dp
 from kivy.properties import (
     NumericProperty,
     StringProperty,
@@ -12,8 +11,6 @@ from kivy.properties import (
     ListProperty,
 )
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.list import MDList, OneLineListItem
-from kivy.uix.scrollview import ScrollView
 from ui.dialogs import FullScreenDialog
 from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.label import MDLabel
@@ -29,9 +26,6 @@ class ExerciseLibraryScreen(MDScreen):
     previous_screen = StringProperty("home")
     exercise_list = ObjectProperty(None)
     metric_list = ObjectProperty(None)
-    filter_mode = StringProperty("both")
-    metric_filter_mode = StringProperty("both")
-    filter_dialog = ObjectProperty(None, allownone=True)
     search_text = StringProperty("")
     metric_search_text = StringProperty("")
     current_tab = StringProperty("exercises")
@@ -148,11 +142,6 @@ class ExerciseLibraryScreen(MDScreen):
                 self.cache_version = app.exercise_library_version
         exercise_rows = self.all_exercises or []
 
-        mode = self.filter_mode
-        if mode == "user":
-            exercise_rows = [ex for ex in exercise_rows if ex[1]]
-        elif mode == "premade":
-            exercise_rows = [ex for ex in exercise_rows if not ex[1]]
         if self.search_text:
             s = self.search_text.lower()
             exercise_rows = [ex for ex in exercise_rows if s in ex[0].lower()]
@@ -185,11 +174,6 @@ class ExerciseLibraryScreen(MDScreen):
             if app:
                 self.metric_cache_version = app.metric_library_version
         metrics = self.all_metrics or []
-        mode = self.metric_filter_mode
-        if mode == "user":
-            metrics = [m for m in metrics if m["is_user_created"]]
-        elif mode == "premade":
-            metrics = [m for m in metrics if not m["is_user_created"]]
         if self.metric_search_text:
             s = self.metric_search_text.lower()
             metrics = [m for m in metrics if s in m["name"].lower()]
@@ -214,32 +198,6 @@ class ExerciseLibraryScreen(MDScreen):
             )
         self.metric_list.data = data
 
-    def open_filter_popup(self):
-        """Open the filter dialog."""
-        list_view = MDList()
-        options = [
-            ("User Created", "user"),
-            ("Premade", "premade"),
-            ("Both", "both"),
-        ]
-        for label, mode in options:
-            item = OneLineListItem(text=label)
-            item.bind(on_release=lambda inst, m=mode: self.apply_filter(m))
-            list_view.add_widget(item)
-        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(200))
-        scroll.add_widget(list_view)
-        close_btn = MDRaisedButton(
-            text="Close", on_release=lambda *a: self.filter_dialog.dismiss()
-        )
-        title = (
-            "Filter Exercises" if self.current_tab == "exercises" else "Filter Metrics"
-        )
-        # ``FullScreenDialog`` does not support the legacy ``type`` keyword.
-        self.filter_dialog = FullScreenDialog(
-            title=title, content_cls=scroll, buttons=[close_btn]
-        )
-        self.filter_dialog.open()
-
     def update_search(self, text):
         """Update search text with debounce to limit populate frequency."""
         if self.current_tab == "exercises":
@@ -262,16 +220,6 @@ class ExerciseLibraryScreen(MDScreen):
                 self.populate()
 
             self._metric_search_event = Clock.schedule_once(do_populate, 0.2)
-
-    def apply_filter(self, mode, *args):
-        if self.current_tab == "exercises":
-            self.filter_mode = mode
-        else:
-            self.metric_filter_mode = mode
-        if self.filter_dialog:
-            self.filter_dialog.dismiss()
-            self.filter_dialog = None
-        self.populate()
 
     def open_edit_exercise_popup(self, exercise_name, is_user_created):
         """Navigate to ``EditExerciseScreen`` with ``exercise_name`` loaded."""

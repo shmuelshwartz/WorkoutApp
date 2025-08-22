@@ -247,7 +247,6 @@ RootUI:
                             orientation: "horizontal"
                             size_hint_y: None
                             height: "40dp"
-                            spacing: "5dp"
                             MDTextField:
                                 id: search_field
                                 hint_text: "Search exercises"
@@ -256,11 +255,6 @@ RootUI:
                                 size_hint_y: None
                                 height: "40dp"
                                 size_hint_x: 1
-                            MDIconButton:
-                                icon: "filter-variant"
-                                on_release: root.open_filter_popup()
-                                size_hint: None, None
-                                size: "40dp", "40dp"
                         MDRecycleView:
                             id: exercise_list
                             viewclass: "ExerciseRow"
@@ -290,7 +284,6 @@ RootUI:
                             orientation: "horizontal"
                             size_hint_y: None
                             height: "40dp"
-                            spacing: "5dp"
                             MDTextField:
                                 id: metric_search_field
                                 hint_text: "Search metrics"
@@ -299,11 +292,6 @@ RootUI:
                                 size_hint_y: None
                                 height: "40dp"
                                 size_hint_x: 1
-                            MDIconButton:
-                                icon: "filter-variant"
-                                on_release: root.open_filter_popup()
-                                size_hint: None, None
-                                size: "40dp", "40dp"
                         MDRecycleView:
                             id: metric_list
                             viewclass: "MetricRow"
