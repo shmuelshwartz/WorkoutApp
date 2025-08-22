@@ -142,6 +142,11 @@ class EditExerciseScreen(MDScreen):
             self._navigate_to(self.exercise_index + 1)
 
     def on_pre_enter(self, *args):
+        # If a loading dialog is already active, avoid reloading the screen
+        # and simply continue with the normal transition.
+        if self.loading_dialog:
+            return super().on_pre_enter(*args)
+
         if self.previous_screen == "edit_preset":
             self.switch_tab("config")
         else:
@@ -157,33 +162,42 @@ class EditExerciseScreen(MDScreen):
         return super().on_pre_enter(*args)
 
     def _load_exercise(self):
-        db_path = DEFAULT_DB_PATH
-        self.exercise_obj = Exercise(
-            self.exercise_name,
-            db_path=db_path,
-            is_user_created=self.is_user_created,
-        )
-        self.is_user_created = self.exercise_obj.is_user_created
-        self.exercise_name = self.exercise_obj.name
-        self.exercise_description = self.exercise_obj.description
-        if self.section_index >= 0 and self.exercise_index >= 0:
-            app = MDApp.get_running_app()
-            if app.preset_editor and self.section_index < len(
-                app.preset_editor.sections
-            ):
-                section_exercises = app.preset_editor.sections[self.section_index]["exercises"]
-                self.section_length = len(section_exercises)
-                if self.exercise_index < len(section_exercises):
-                    ex = section_exercises[self.exercise_index]
-                    self.exercise_sets = ex.get("sets", DEFAULT_SETS_PER_EXERCISE)
-                    self.exercise_rest = ex.get("rest", DEFAULT_REST_DURATION)
-            else:
-                self.section_length = 0
-        self.save_enabled = False
-        self.populate()
-        if self.loading_dialog:
-            self.loading_dialog.dismiss()
-            self.loading_dialog = None
+        """Load exercise data and update the screen.
+
+        Ensures the loading dialog is always dismissed, even if an error
+        occurs while fetching data or populating the UI.
+        """
+        try:
+            db_path = DEFAULT_DB_PATH
+            self.exercise_obj = Exercise(
+                self.exercise_name,
+                db_path=db_path,
+                is_user_created=self.is_user_created,
+            )
+            self.is_user_created = self.exercise_obj.is_user_created
+            self.exercise_name = self.exercise_obj.name
+            self.exercise_description = self.exercise_obj.description
+            if self.section_index >= 0 and self.exercise_index >= 0:
+                app = MDApp.get_running_app()
+                if app.preset_editor and self.section_index < len(
+                    app.preset_editor.sections
+                ):
+                    section_exercises = app.preset_editor.sections[self.section_index]["exercises"]
+                    self.section_length = len(section_exercises)
+                    if self.exercise_index < len(section_exercises):
+                        ex = section_exercises[self.exercise_index]
+                        self.exercise_sets = ex.get("sets", DEFAULT_SETS_PER_EXERCISE)
+                        self.exercise_rest = ex.get("rest", DEFAULT_REST_DURATION)
+                else:
+                    self.section_length = 0
+            self.save_enabled = False
+            self.populate()
+        finally:
+            # Always dismiss the loading dialog to free resources on
+            # low-memory devices.
+            if self.loading_dialog:
+                self.loading_dialog.dismiss()
+                self.loading_dialog = None
 
     def populate(self):
         self.populate_metrics()
