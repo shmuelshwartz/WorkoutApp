@@ -356,7 +356,24 @@ class ExerciseLibraryScreen(MDScreen):
         app.root.current = "edit_exercise"
 
     def open_edit_metric_popup(self, metric_name, is_user_created):
+        """Open a dialog to edit a library metric type.
+
+        Parameters
+        ----------
+        metric_name: str
+            Name of the metric type to edit.
+        is_user_created: bool | str
+            Flag indicating whether the metric is user-defined. Kivy can
+            sometimes deliver this value as a string from the KV language so
+            it is normalised to a proper boolean before use.
+        """
+
         from main import EditMetricTypePopup  # local import to avoid circular dependency
+
+        if isinstance(is_user_created, str):
+            is_user_created = is_user_created.lower() == "true"
+        else:
+            is_user_created = bool(is_user_created)
 
         popup = EditMetricTypePopup(self, metric_name, is_user_created)
         popup.open()
