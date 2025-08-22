@@ -76,7 +76,9 @@ class MetricInputScreen(MDScreen):
         self.metric_grid = None
         self.metric_scroll = None
         self.metric_cells = {}
-        # Controller keeping cells aligned within the grid.
+        # Controller keeping cells aligned within the grid. It equalises row
+        # heights and expands columns to match the widest widget in each
+        # column so inputs and labels line up neatly on narrow screens.
         self.grid_controller = GridController()
 
     # ------------------------------------------------------------------

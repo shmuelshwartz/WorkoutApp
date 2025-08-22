@@ -4,10 +4,11 @@ The original implementation only synchronised row heights.  The metric
 input screen now renders a single grid where both rows and columns must
 align.  This module therefore provides :class:`GridController` which
 normalises row heights and column widths simultaneously.  Every widget in
-the same row shares the *minimum* height observed for that row and every
-widget in the same column shares the *minimum* width observed for that
-column.  Using the minimum keeps the layout compact on the small screens
-targeted by the application.
+the same row shares the *minimum* height observed for that row while
+widgets in the same column expand to match the *maximum* width observed in
+that column.  Using the minimum for height preserves vertical compactness
+on small screens, whereas taking the maximum width ensures columns are wide
+enough for their largest widget.
 """
 
 from collections import defaultdict
@@ -21,7 +22,7 @@ class GridController:
 
     Widgets register with a ``row`` and ``col`` index via :meth:`register`.
     When a widget's size changes the controller recomputes the minimum
-    height for that row and the minimum width for that column, applying
+    height for that row and the maximum width for that column, applying
     those dimensions to all widgets in the same row or column.  Updates
     are scheduled with :class:`~kivy.clock.Clock` so the widget's natural
     size is available before measurements occur.
@@ -74,16 +75,16 @@ class GridController:
 
     # ------------------------------------------------------------------
     def _update_col(self, col: int) -> None:
-        """Apply the minimum width of column *col* to all its widgets."""
+        """Apply the maximum width of column *col* to all its widgets."""
 
         widths = [getattr(w, "width", 0) for w in self._cols[col] if getattr(w, "width", 0) > 0]
         if not widths:
             return
-        min_width = min(widths)
-        if min_width != self._col_widths.get(col):
-            self._col_widths[col] = min_width
+        max_width = max(widths)
+        if max_width != self._col_widths.get(col):
+            self._col_widths[col] = max_width
             for w in self._cols[col]:
-                w.width = min_width
+                w.width = max_width
 
     # ------------------------------------------------------------------
     def _update(self, row: int, col: int) -> None:
