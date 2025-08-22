@@ -34,8 +34,8 @@ if kivy_available:
         PresetDetailScreen,
         PresetOverviewScreen,
     )
-    from ui.popups import AddMetricPopup
     from ui.dialogs.edit_metric_popup import EditMetricPopup
+    from ui.dialogs.add_metric_popup import AddMetricPopup
     from ui.expandable_list_item import ExerciseSummaryItem
     import time
 
@@ -353,7 +353,7 @@ def test_enum_values_accepts_spaces():
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
 
-    popup = AddMetricPopup(DummyScreen(), popup_mode="new")
+    popup = AddMetricPopup(DummyScreen(), "dummy", popup_mode="new")
     popup.input_widgets["type"].text = "str"
     filtered = popup.enum_values_field.input_filter("A B,C", False)
     assert filtered == "A B,C"
@@ -364,7 +364,7 @@ def test_enum_values_strip_spaces_after_comma():
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
 
-    popup = AddMetricPopup(DummyScreen(), popup_mode="new")
+    popup = AddMetricPopup(DummyScreen(), "dummy", popup_mode="new")
     popup.input_widgets["type"].text = "str"
     filtered = popup.enum_values_field.input_filter("A, B ,  C", False)
     assert filtered == "A,B,C"
@@ -375,7 +375,7 @@ def test_add_metric_popup_has_single_enum_field():
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
 
-    popup = AddMetricPopup(DummyScreen(), popup_mode="new")
+    popup = AddMetricPopup(DummyScreen(), "dummy", popup_mode="new")
     children = popup.content_cls.children[0].children
     enum_fields = [
         c
@@ -517,7 +517,7 @@ def test_add_metric_popup_filters_scope(monkeypatch):
 
     monkeypatch.setattr(metrics, "get_all_metric_types", lambda *a, **k: metric_types)
 
-    popup = AddMetricPopup(DummyScreen(), popup_mode="select")
+    popup = AddMetricPopup(DummyScreen(), "dummy", popup_mode="select")
     list_view = popup.content_cls.children[0]
     names = {child.text for child in list_view.children}
 
@@ -1305,7 +1305,7 @@ def test_fallback_input_timing_options(monkeypatch):
         exercise_obj = type("obj", (), {"metrics": []})()
 
     monkeypatch.setattr(metrics, "get_metric_type_schema", lambda *a, **k: [])
-    popup = AddMetricPopup(DummyScreen(), popup_mode="new")
+    popup = AddMetricPopup(DummyScreen(), "dummy", popup_mode="new")
     opts = list(popup.input_widgets["input_timing"].values)
     assert opts == [
         "preset",
