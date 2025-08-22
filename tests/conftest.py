@@ -13,7 +13,7 @@ if importlib.util.find_spec("kivy") is None or importlib.util.find_spec("kivymd"
 
     class RestScreen:
         def confirm_finish(self):
-            dialog = stub.MDDialog()
+            dialog = stub.FullScreenDialog()
             dialog.open()
 
     class DummyDialog:
@@ -27,7 +27,7 @@ if importlib.util.find_spec("kivy") is None or importlib.util.find_spec("kivymd"
             pass
 
     stub.RestScreen = RestScreen
-    stub.MDDialog = DummyDialog
+    stub.FullScreenDialog = DummyDialog
     stub.MDRaisedButton = lambda *a, **k: None
     sys.modules["ui.screens.session.rest_screen"] = stub
     import builtins

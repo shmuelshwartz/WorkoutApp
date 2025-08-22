@@ -194,9 +194,7 @@ def test_metric_store_fallback_on_rebuild():
     metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
 
     screen.session = dummy_session
-    screen.metric_names = _Layout()
-    screen.metric_values = _Layout()
-    screen.set_headers = _Layout()
+    screen.metric_grid = _Layout()
 
     screen.update_metrics()
     screen._on_cell_change("Reps", "int", 0, metric_module.MDTextField(text="5"))

@@ -30,7 +30,7 @@ from kivymd.uix.list import (
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.card import MDSeparator
-from kivymd.uix.dialog import MDDialog
+from ui.dialogs import FullScreenDialog
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.tab import MDTabsBase
 from tiny_overlay import enable_overlay, toggle_overlay  # TINY-SCREEN: dev overlay
@@ -136,6 +136,11 @@ try:  # pragma: no cover - Android APIs unavailable on non-Android hosts
     from android import activity  # type: ignore
 except Exception:
     activity = None  # type: ignore
+
+try:  # pragma: no cover - jnius is only available on Android
+    from jnius import JavaException  # type: ignore
+except Exception:  # pragma: no cover - fallback when jnius missing
+    JavaException = Exception  # type: ignore
 
 # Set a consistent window size on desktop for predictable layout.
 if os.name == "nt":
@@ -298,7 +303,7 @@ class Tab(MDBoxLayout, MDTabsBase):
     """A basic tab for use with :class:`~kivymd.uix.tab.MDTabs`."""
 
 
-class LoadingDialog(MDDialog):
+class LoadingDialog(FullScreenDialog):
     """Simple dialog displaying a spinner while work is performed."""
 
     def __init__(self, text: str = "Loading...", **kwargs):
@@ -315,7 +320,7 @@ class LoadingDialog(MDDialog):
         super().__init__(type="custom", content_cls=box, **kwargs)
 
 
-class EditMetricTypePopup(MDDialog):
+class EditMetricTypePopup(FullScreenDialog):
     """Popup for editing or creating metric types from the library."""
 
     def __init__(
@@ -329,11 +334,7 @@ class EditMetricTypePopup(MDDialog):
         self.metric_name = metric_name
         self.is_user_created = is_user_created
         self.metric = None
-        # Default to nearly full-screen to keep buttons visible on small devices.
-        # ``MDDialog`` does not respect vertical ``size_hint`` values, so specify
-        # the height explicitly to occupy most of the window.
-        kwargs.setdefault("size_hint", (0.95, None))
-        kwargs.setdefault("height", Window.height * 0.9)
+        # ``FullScreenDialog`` handles full-screen sizing.
         if metric_name:
             for m in screen.all_metrics or []:
                 if (
@@ -344,7 +345,11 @@ class EditMetricTypePopup(MDDialog):
                     break
         content, buttons, title = self._build_widgets()
         super().__init__(
-            title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
+            title=title,
+            type="custom",
+            content_cls=content,
+            buttons=buttons,
+            **kwargs,
         )
 
     def _build_widgets(self):
@@ -491,6 +496,8 @@ class EditMetricTypePopup(MDDialog):
 
         # Fill the dialog space and allow scrolling for compact screens
         layout = ScrollView(do_scroll_y=True, size_hint=(1, 1))
+        # ``FullScreenDialog`` uses this reference to adjust height on open.
+        self._scroll_view = layout
         info_widgets = []
         if self.metric and not self.is_user_created:
             has_copy = False
@@ -603,10 +610,14 @@ class WorkoutApp(MDApp):
     # Incremented when a metric type is added or edited
     metric_library_version: int = 0
     # Displayed application version on the welcome screen
-    app_version = StringProperty("1.0.0")
+    app_version = StringProperty("0.1.1")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        # Stack of dialog screens opened via ``FullScreenDialog``.
+        # The stack enables back-button behaviour that mimics dismissing a
+        # popup while using standard screen navigation.
+        self._dialog_stack = []
         self.sound = SoundSystem()
         # Initialize sound system with persisted settings.
         self.sound.set_volume(app_settings.get_value("sound_level") or 1.0)
@@ -622,7 +633,11 @@ class WorkoutApp(MDApp):
                 activity.unbind(on_activity_result=_on_activity_result)
             except Exception:
                 pass
-            activity.bind(on_activity_result=_on_activity_result)
+            try:
+                activity.bind(on_activity_result=_on_activity_result)
+            except JavaException:
+                # Pydroid3's PythonActivity lacks ActivityResultListener support
+                print("Activity result listener unavailable; SAF intents disabled")
 
     def build(self):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
@@ -639,6 +654,9 @@ class WorkoutApp(MDApp):
 
     def _on_keyboard(self, window, key, scancode, codepoint, modifiers):
         if key in (27, 1001) and not TESTING:
+            if self._dialog_stack:
+                # Close the most recently opened dialog screen.
+                self._dialog_stack[-1].dismiss()
             return True
         return False
 

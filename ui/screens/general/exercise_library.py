@@ -14,7 +14,7 @@ from kivy.properties import (
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.list import MDList, OneLineListItem
 from kivy.uix.scrollview import ScrollView
-from kivymd.uix.dialog import MDDialog
+from ui.dialogs import FullScreenDialog
 from kivymd.uix.button import MDRaisedButton
 
 import os
@@ -198,7 +198,7 @@ class ExerciseLibraryScreen(MDScreen):
         title = (
             "Filter Exercises" if self.current_tab == "exercises" else "Filter Metrics"
         )
-        self.filter_dialog = MDDialog(
+        self.filter_dialog = FullScreenDialog(
             title=title, type="custom", content_cls=scroll, buttons=[close_btn]
         )
         self.filter_dialog.open()
@@ -268,7 +268,7 @@ class ExerciseLibraryScreen(MDScreen):
             if dialog:
                 dialog.dismiss()
 
-        dialog = MDDialog(
+        dialog = FullScreenDialog(
             title="Delete Exercise?",
             text=f"Delete {exercise_name}?",
             buttons=[
@@ -297,7 +297,7 @@ class ExerciseLibraryScreen(MDScreen):
             if dialog:
                 dialog.dismiss()
 
-        dialog = MDDialog(
+        dialog = FullScreenDialog(
             title="Delete Metric?",
             text=f"Delete {metric_name}?",
             buttons=[

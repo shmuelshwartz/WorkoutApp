@@ -4,11 +4,10 @@ from __future__ import annotations
 from kivymd.app import MDApp
 from kivy.metrics import dp
 from kivy.core.window import Window
-from kivy.clock import Clock
 from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
-from kivymd.uix.dialog import MDDialog
-from tiny_dialog import SafeDialogMixin  # TINY-SCREEN: dialog safety
+
+from ui.dialogs import FullScreenDialog
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.selectioncontrol import MDCheckbox
@@ -36,7 +35,7 @@ METRIC_FIELD_ORDER = [
 ]
 
 
-class AddMetricPopup(MDDialog):
+class AddMetricPopup(FullScreenDialog):
     """Popup dialog for selecting or creating metrics."""
 
     def __init__(
@@ -49,22 +48,8 @@ class AddMetricPopup(MDDialog):
         self.screen = screen
         self.mode = mode
         self.popup_mode = popup_mode
-        # Store a reference to the active ScrollView so it can be resized once
-        # the dialog opens. ``MDDialog`` recalculates its height during
-        # ``open`` which can cause scrollable content to collapse on small
-        # screens. By tracking the ScrollView we can later apply a height that
-        # fills most of the window while leaving room for the action buttons.
+        # Track the active ScrollView so ``FullScreenDialog`` can size it on open.
         self._scroll_view = None
-        # Disable the vertical size hint so the dialog height can be set
-        # explicitly on ``on_open``. Using a full width size hint ensures the
-        # popup occupies the entire screen which prevents long metric lists from
-        # extending beyond the visible area on small devices.
-        kwargs.setdefault("size_hint", (1, None))
-        # Remove rounded corners; otherwise the dialog leaves small gaps at the
-        # screen edges which looks odd for a full-screen overlay.
-        kwargs.setdefault("radius", [0, 0, 0, 0])
-        md_bg = MDApp.get_running_app().theme_cls.bg_light
-        kwargs.setdefault("md_bg_color", md_bg)
         if self.mode == "session":
             content = MDBoxLayout(size_hint=(1, 1))
             close_btn = MDRaisedButton(
@@ -93,10 +78,6 @@ class AddMetricPopup(MDDialog):
             buttons=buttons,
             **kwargs,
         )
-        # Apply final sizing once the dialog is visible. This ensures the
-        # dialog covers the entire screen and the ScrollView consumes all
-        # remaining vertical space.
-        self.bind(on_open=self._apply_dialog_sizing)
 
     # ------------------------------------------------------------------
     # Building widgets for both modes
@@ -121,9 +102,7 @@ class AddMetricPopup(MDDialog):
 
         scroll = ScrollView(do_scroll_y=True, size_hint=(1, None))
         scroll.add_widget(list_view)
-        # Remember the ScrollView so we can adjust its height after the dialog
-        # opens. ``size_hint_y`` is disabled to prevent the view from collapsing
-        # when ``MDDialog`` recalculates its own height.
+        # ``FullScreenDialog`` uses this reference to adjust the height on open.
         self._scroll_view = scroll
 
         new_btn = MDRaisedButton(
@@ -263,7 +242,7 @@ class AddMetricPopup(MDDialog):
         # Make form scrollable so content fits on small screens.
         scroll = ScrollView(do_scroll_y=True, size_hint=(1, None))
         scroll.add_widget(form)
-        # Store reference for later resizing in ``_apply_dialog_sizing``.
+        # ``FullScreenDialog`` uses this reference to adjust the height on open.
         self._scroll_view = scroll
 
         save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)
@@ -271,28 +250,6 @@ class AddMetricPopup(MDDialog):
         buttons = [save_btn, back_btn]
         return scroll, buttons, "New Metric"
 
-    # ------------------------------------------------------------------
-    # Sizing helpers
-    # ------------------------------------------------------------------
-    def _apply_dialog_sizing(self, *_):
-        """Resize the dialog and its scroll view so it covers the entire
-        window. The metric list then occupies all remaining space below the
-        action buttons, preventing content from being clipped on small screens."""
-
-        target = Window.height
-        self.height = target
-        # ``size_hint_x`` is 1 so width follows the window; however MDDialog may
-        # still report a smaller width until it is explicitly set.
-        self.width = Window.width
-        if self._scroll_view is None:
-            return
-
-        def _resize_scroll(*_args):
-            button_height = self.ids.button_box.height if "button_box" in self.ids else 0
-            self._scroll_view.height = max(0, target - button_height)
-
-        # Defer until next frame so ``button_box`` has a valid height.
-        Clock.schedule_once(_resize_scroll, 0)
 
     def _build_choice_widgets(self):
         label = MDLabel(text="Choose an option", halign="center")
@@ -338,7 +295,7 @@ class AddMetricPopup(MDDialog):
                 if dialog:
                     dialog.dismiss()
 
-            dialog = MDDialog(
+            dialog = FullScreenDialog(
                 title="Duplicate Metric",
                 text=f"{name} is already added to this exercise.",
                 buttons=[MDRaisedButton(text="OK", on_release=_close)],
@@ -419,7 +376,8 @@ class AddMetricPopup(MDDialog):
         self.show_metric_list()
 
 
-class EditMetricPopup(SafeDialogMixin, MDDialog):
+
+class EditMetricPopup(FullScreenDialog):
     """Popup for editing an existing metric."""
 
     def __init__(
@@ -432,11 +390,7 @@ class EditMetricPopup(SafeDialogMixin, MDDialog):
         self.screen = screen
         self.metric = metric
         self.mode = mode
-        # Ensure dialog uses most of the screen on small devices. ``size_hint_y``
-        # alone has no effect for :class:`MDDialog`, so we also specify the
-        # height directly.
-        kwargs.setdefault("size_hint", (0.95, None))
-        kwargs.setdefault("height", Window.height * 0.9)
+        # ``FullScreenDialog`` handles full-screen sizing.
         if self.mode == "session":
             content = MDBoxLayout()
             close_btn = MDRaisedButton(
@@ -452,7 +406,11 @@ class EditMetricPopup(SafeDialogMixin, MDDialog):
             return
         content, buttons, title = self._build_widgets()
         super().__init__(
-            title=title, type="custom", content_cls=content, buttons=buttons, **kwargs
+            title=title,
+            type="custom",
+            content_cls=content,
+            buttons=buttons,
+            **kwargs,
         )
 
     def _build_widgets(self):
@@ -634,6 +592,8 @@ class EditMetricPopup(SafeDialogMixin, MDDialog):
         # Allow the form to scroll within the dialog and prevent clipping
         layout = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         layout.add_widget(form)
+        # ``FullScreenDialog`` uses this reference to adjust height on open.
+        self._scroll_view = layout
 
         save_btn = MDRaisedButton(text="Save", on_release=self.save_metric)
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
@@ -801,7 +761,7 @@ class EditMetricPopup(SafeDialogMixin, MDDialog):
                 cancel_action()
                 apply_updates()
 
-            dialog = MDDialog(
+            dialog = FullScreenDialog(
                 title="Save Metric",
                 type="custom",
                 content_cls=content,
@@ -930,7 +890,7 @@ class EditMetricPopup(SafeDialogMixin, MDDialog):
                     cancel_action()
                     apply_updates()
 
-                dialog = MDDialog(
+                dialog = FullScreenDialog(
                     title="Save Metric",
                     type="custom",
                     content_cls=content,
@@ -1005,7 +965,7 @@ class EditMetricPopup(SafeDialogMixin, MDDialog):
                 cancel_action()
                 apply_updates()
 
-            dialog = MDDialog(
+            dialog = FullScreenDialog(
                 title="Save Metric",
                 type="custom",
                 content_cls=content,
@@ -1027,23 +987,20 @@ class EditMetricPopup(SafeDialogMixin, MDDialog):
             apply_updates()
 
 
-class PreSessionMetricPopup(MDDialog):
+class PreSessionMetricPopup(FullScreenDialog):
     """Popup for entering pre-session metrics."""
 
     def __init__(self, metrics: list[dict], on_save, **kwargs):
         self.metrics = metrics
         self.on_save = on_save
-        # Match the behaviour of the other metric popups by having the dialog
-        # consume most of the available screen space on small devices. ``size_hint_y``
-        # is ignored by :class:`MDDialog`, and it resets explicit heights during
-        # construction, so height is assigned after initialization.
-        kwargs.setdefault("size_hint", (0.95, None))
+        # ``FullScreenDialog`` handles full-screen sizing.
         content, buttons = self._build_widgets()
         super().__init__(
-            title="Session Metrics", type="custom", content_cls=content, buttons=buttons, **kwargs
-        )
-        Clock.schedule_once(
-            lambda *_: setattr(self, "height", Window.height * 0.9)
+            title="Session Metrics",
+            type="custom",
+            content_cls=content,
+            buttons=buttons,
+            **kwargs,
         )
 
     def _build_widgets(self):
@@ -1057,6 +1014,8 @@ class PreSessionMetricPopup(MDDialog):
             self.metric_list.add_widget(self._create_row(m))
         scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(self.metric_list)
+        # ``FullScreenDialog`` uses this reference to adjust height on open.
+        self._scroll_view = scroll
         save_btn = MDRaisedButton(text="Save", on_release=lambda *_: self._on_save())
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *_: self.dismiss())
         return scroll, [save_btn, cancel_btn]

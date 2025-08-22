@@ -1,7 +1,7 @@
 try:  # pragma: no cover - fallback for environments without Kivy
     from kivymd.app import MDApp
     from kivymd.uix.screen import MDScreen
-    from kivymd.uix.dialog import MDDialog
+    from ui.dialogs import FullScreenDialog
     from kivymd.uix.button import MDFlatButton, MDRaisedButton
     from kivymd.toast import toast
     from kivy.clock import Clock
@@ -15,7 +15,7 @@ except Exception:  # pragma: no cover - simple stubs
     MDApp = object
     MDScreen = object
 
-    class MDDialog:  # minimal placeholder
+    class FullScreenDialog:  # minimal placeholder
         def __init__(self, *a, **k):
             pass
 
@@ -201,7 +201,7 @@ class RestScreen(MDScreen):
             else "Are you sure you want to undo the last set and resume it?"
         )
         if not hasattr(self, "_undo_dialog") or not self._undo_dialog:
-            self._undo_dialog = MDDialog(
+            self._undo_dialog = FullScreenDialog(
                 text=text,
                 buttons=[
                     MDFlatButton(text="Cancel", on_release=lambda *_: self._undo_dialog.dismiss()),
@@ -250,7 +250,7 @@ class RestScreen(MDScreen):
             toast("No next exercise")
             return
         if not hasattr(self, "_skip_dialog") or not self._skip_dialog:
-            self._skip_dialog = MDDialog(
+            self._skip_dialog = FullScreenDialog(
                 text="Skip this exercise and move to the next?",
                 buttons=[
                     MDFlatButton(text="Cancel", on_release=lambda *_: self._skip_dialog.dismiss()),
@@ -315,7 +315,7 @@ class RestScreen(MDScreen):
             if dialog:
                 dialog.dismiss()
 
-        dialog = MDDialog(
+        dialog = FullScreenDialog(
             title="Finish Workout?",
             text="Are you sure you want to finish this workout?",
             buttons=[

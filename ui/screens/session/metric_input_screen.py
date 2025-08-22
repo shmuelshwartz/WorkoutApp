@@ -14,7 +14,7 @@ from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDFlatButton
-from ui.row_controller import RowController
+from ui.row_controller import GridController
 
 
 class MetricInputScreen(MDScreen):
@@ -25,15 +25,8 @@ class MetricInputScreen(MDScreen):
     can_nav_left = BooleanProperty(False)
     can_nav_right = BooleanProperty(False)
     exercise_bar = ObjectProperty(None)
-    metric_names = ObjectProperty(None)
-    metric_values = ObjectProperty(None)
-    metric_names_scroll = ObjectProperty(None)
-    metric_values_scroll = ObjectProperty(None)
-    # ``set_headers`` and ``set_header_scroll`` are retained for backward
-    # compatibility with existing tests but are no longer separate widgets in
-    # the redesigned layout where headers live inside ``metric_values``.
-    set_header_scroll = ObjectProperty(None)
-    set_headers = ObjectProperty(None)
+    metric_grid = ObjectProperty(None)
+    metric_scroll = ObjectProperty(None)
 
     show_required = BooleanProperty(True)
     show_additional = BooleanProperty(False)
@@ -67,39 +60,11 @@ class MetricInputScreen(MDScreen):
 
         self._notes_widget = None
         self.exercise_bar = None
-        self.metric_names = None
-        self.metric_values = None
-        self.metric_names_scroll = None
-        self.metric_values_scroll = None
-        self.set_header_scroll = None
-        self.set_headers = None
+        self.metric_grid = None
+        self.metric_scroll = None
         self.metric_cells = {}
-        # Controller keeping metric name/values rows in perfect alignment.
-        self.row_controller = RowController()
-
-    def on_kv_post(self, base_widget):
-        super().on_kv_post(base_widget)
-        if self.metric_values_scroll and self.metric_names_scroll:
-            self.metric_values_scroll.bind(scroll_y=self._sync_scroll_y)
-            self.metric_names_scroll.bind(scroll_y=self._sync_scroll_names)
-
-    def _sync_scroll_y(self, instance, value):
-        if self.metric_names_scroll:
-            self.metric_names_scroll.scroll_y = value
-
-    def _sync_scroll_names(self, instance, value):
-        if self.metric_values_scroll:
-            self.metric_values_scroll.scroll_y = value
-
-    def _sync_scroll_x(self, instance, value):
-        """Keep set headers aligned with horizontal metric scrolling."""
-        if self.set_header_scroll:
-            self.set_header_scroll.scroll_x = value
-
-    def _sync_scroll_headers(self, instance, value):
-        """Update metric cells when headers are scrolled."""
-        if self.metric_values_scroll:
-            self.metric_values_scroll.scroll_x = value
+        # Controller keeping cells aligned within the grid.
+        self.grid_controller = GridController()
 
     # ------------------------------------------------------------------
     # Navigation
@@ -316,11 +281,10 @@ class MetricInputScreen(MDScreen):
         return visible
 
     def update_metrics(self):
-        if not (self.metric_names and self.metric_values):
+        if not self.metric_grid:
             return
-        self.metric_names.clear_widgets()
-        self.metric_values.clear_widgets()
-        self.row_controller.clear()
+        self.metric_grid.clear_widgets()
+        self.grid_controller.clear()
         self.metric_cells.clear()
         if not self.session or self.exercise_idx >= len(self.session.exercises):
             return
@@ -332,31 +296,28 @@ class MetricInputScreen(MDScreen):
         ]
         metrics = self._apply_filters(metrics)
         set_count = exercise.get("sets", 0)
-        self.metric_values.cols = max(1, set_count)
+        self.metric_grid.cols = max(1, set_count + 1)
 
-        # Header row: blank cell on the left and set labels in the grid.
+        # Header row: blank cell on the left and set labels to the right.  Any
+        # decorative borders have been intentionally omitted so only the
+        # widgets themselves are rendered.
         header_placeholder = MDLabel(size_hint=(None, None), height=dp(30))
-        self._add_border(header_placeholder, ("top", "bottom", "left"))
-        self.metric_names.add_widget(header_placeholder)
-        self.row_controller.register(0, header_placeholder)
+        self.metric_grid.add_widget(header_placeholder)
+        self.grid_controller.register(0, 0, header_placeholder)
         for s in range(set_count):
             lbl = MDLabel(
                 text=f"Set {s + 1}", size_hint=(None, None), width=dp(80), height=dp(30)
             )
-            sides = ("top", "bottom", "right")
-            if s == 0:
-                sides += ("left",)
-            self._add_border(lbl, sides)
-            self.metric_values.add_widget(lbl)
-            self.row_controller.register(0, lbl)
+            self.metric_grid.add_widget(lbl)
+            self.grid_controller.register(0, s + 1, lbl)
 
         results = exercise.get("results", [])
         for row, metric in enumerate(metrics, start=1):
             name = metric.get("name")
             name_lbl = MDLabel(text=name, size_hint=(None, None))
-            self._add_border(name_lbl, ("top", "bottom", "left"))
-            self.metric_names.add_widget(name_lbl)
-            self.row_controller.register(row, name_lbl)
+            # Borders removed here as well to avoid unintended outlines.
+            self.metric_grid.add_widget(name_lbl)
+            self.grid_controller.register(row, 0, name_lbl)
             for s in range(set_count):
                 store = self.session.metric_store.get((self.exercise_idx, s), {})
                 value = None
@@ -368,8 +329,8 @@ class MetricInputScreen(MDScreen):
                     value = store.get(name)
                 widget = self._create_input_widget(metric, value, s)
                 self.metric_cells[(name, s)] = widget
-                self.metric_values.add_widget(widget)
-                self.row_controller.register(row, widget)
+                self.metric_grid.add_widget(widget)
+                self.grid_controller.register(row, s + 1, widget)
 
     # ------------------------------------------------------------------
     # Metric row helpers
@@ -486,44 +447,9 @@ class MetricInputScreen(MDScreen):
         widget.size_hint = (None, None)
         widget.height = dp(40)
         widget.width = dp(80)
-        sides = ("top", "bottom", "right")
-        if set_idx == 0:
-            sides += ("left",)
-        self._add_border(widget, sides)
+        # Borders previously drawn here introduced unwanted visual clutter.
+        # Removing them simplifies the interface without altering layout.
         return widget
-
-    # ------------------------------------------------------------------
-    def _add_border(self, widget, sides=("left", "right", "top", "bottom")):
-        """Draw a 1px border around *widget* limited to ``sides``."""
-
-        try:
-            from kivy.graphics import Color, Line  # type: ignore
-        except Exception:
-            return
-
-        lines = {}
-        with widget.canvas.after:
-            Color(0, 0, 0, 1)
-            if "left" in sides:
-                lines["left"] = Line(points=[0, 0, 0, widget.height], width=1)
-            if "right" in sides:
-                lines["right"] = Line(points=[widget.width, 0, widget.width, widget.height], width=1)
-            if "top" in sides:
-                lines["top"] = Line(points=[0, widget.height, widget.width, widget.height], width=1)
-            if "bottom" in sides:
-                lines["bottom"] = Line(points=[0, 0, widget.width, 0], width=1)
-
-        def _update(_inst, _val):
-            if "left" in lines:
-                lines["left"].points = [0, 0, 0, widget.height]
-            if "right" in lines:
-                lines["right"].points = [widget.width, 0, widget.width, widget.height]
-            if "top" in lines:
-                lines["top"].points = [0, widget.height, widget.width, widget.height]
-            if "bottom" in lines:
-                lines["bottom"].points = [0, 0, widget.width, 0]
-
-        widget.bind(size=_update, pos=_update)
 
     # ------------------------------------------------------------------
     def save_metrics(self):

@@ -21,7 +21,7 @@ from kivymd.uix.list import OneLineListItem, MDList
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDIconButton, MDRaisedButton
 from kivymd.uix.card import MDSeparator
-from kivymd.uix.dialog import MDDialog
+from ui.dialogs import FullScreenDialog
 from kivymd.uix.label import MDIcon
 from ui.popups import AddMetricPopup, EditMetricPopup
 
@@ -111,7 +111,7 @@ class EditExerciseScreen(MDScreen):
                 dialog.dismiss()
             self._navigate_to(new_index)
 
-        dialog = MDDialog(
+        dialog = FullScreenDialog(
             title="Discard Changes?",
             text="You have unsaved changes. Discard them?",
             buttons=[
@@ -269,7 +269,7 @@ class EditExerciseScreen(MDScreen):
             if dialog:
                 dialog.dismiss()
 
-        dialog = MDDialog(
+        dialog = FullScreenDialog(
             title="Remove Metric?",
             text=f"Delete {metric_name}?",
             buttons=[
@@ -339,7 +339,7 @@ class EditExerciseScreen(MDScreen):
             if self.name_field:
                 self.name_field.error = True
             conn.close()
-            dialog = MDDialog(
+            dialog = FullScreenDialog(
                 title="Error",
                 text="Name cannot be empty",
                 buttons=[
@@ -361,7 +361,7 @@ class EditExerciseScreen(MDScreen):
             if self.name_field:
                 self.name_field.error = True
             conn.close()
-            dialog = MDDialog(
+            dialog = FullScreenDialog(
                 title="Error",
                 text="Duplicate name",
                 buttons=[
@@ -475,7 +475,7 @@ class EditExerciseScreen(MDScreen):
                     if err:
                         err.dismiss()
 
-                err = MDDialog(
+                err = FullScreenDialog(
                     title="Save Failed",
                     text=str(exc),
                     buttons=[MDRaisedButton(text="OK", on_release=_dismiss)],
@@ -503,7 +503,7 @@ class EditExerciseScreen(MDScreen):
             )
             content.add_widget(checkbox)
             content.add_widget(label)
-            dialog = MDDialog(
+            dialog = FullScreenDialog(
                 title="Confirm Save",
                 type="custom",
                 text=msg,
@@ -535,7 +535,7 @@ class EditExerciseScreen(MDScreen):
                     )
                     extra_content.add_widget(checkbox)
                     extra_content.add_widget(label)
-            dialog = MDDialog(
+            dialog = FullScreenDialog(
                 title="Confirm Save",
                 type="custom" if extra_content else "simple",
                 text=msg,
@@ -560,7 +560,7 @@ class EditExerciseScreen(MDScreen):
                 if self.manager:
                     self.manager.current = self.previous_screen
 
-            dialog = MDDialog(
+            dialog = FullScreenDialog(
                 title="Discard Changes?",
                 text="You have unsaved changes. Discard them?",
                 buttons=[

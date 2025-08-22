@@ -607,10 +607,8 @@ RootUI:
 <MetricInputScreen>:
     on_pre_enter: root.on_pre_enter()
     exercise_bar: exercise_bar
-    metric_names: metric_names
-    metric_values: metric_values
-    metric_names_scroll: metric_names_scroll
-    metric_values_scroll: metric_values_scroll
+    metric_grid: metric_grid
+    metric_scroll: metric_scroll
     md_bg_color: PURPLE_BG
     BoxLayout:
         orientation: "vertical"
@@ -685,42 +683,19 @@ RootUI:
                     md_bg_color: root.post_color
                     text_color: 1, 1, 1, 1
                     on_release: root.toggle_filter('post')
-        BoxLayout:
-            orientation: "horizontal"
-            size_hint_y: 1
-            Splitter:
-                id: metric_splitter
-                sizable_from: "right"
-                strip_size: dp(8)
-                min_size: 0
-                size_hint_x: None
-                width: dp(100)
-                ScrollView:
-                    id: metric_names_scroll
-                    size_hint_x: None
-                    width: self.parent.width
-                    do_scroll_x: False
-                    do_scroll_y: True
-                    bar_width: 0
-                    BoxLayout:
-                        id: metric_names
-                        orientation: "vertical"
-                        size_hint_y: None
-                        height: self.minimum_height
-                        spacing: dp(5)
-            ScrollView:
-                id: metric_values_scroll
-                do_scroll_x: True
-                do_scroll_y: True
-                bar_width: 0
-                GridLayout:
-                    id: metric_values
-                    size_hint: None, None
-                    cols: 1
-                    row_default_height: dp(40)
-                    height: self.minimum_height
-                    width: self.minimum_width
-                    spacing: dp(5)
+        ScrollView:
+            id: metric_scroll
+            do_scroll_x: True
+            do_scroll_y: True
+            bar_width: 0
+            GridLayout:
+                id: metric_grid
+                size_hint: None, None
+                cols: 1
+                row_default_height: dp(40)
+                height: self.minimum_height
+                width: self.minimum_width
+                spacing: dp(5)
         MDRaisedButton:
             size_hint_y: 0.1
             text: "Back"
