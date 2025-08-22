@@ -354,6 +354,25 @@ class MetricInputScreen(MDScreen):
                 self.metric_grid.add_widget(widget)
                 self.grid_controller.register(row, s + 1, widget)
 
+        # Time metric row displayed for all sets.
+        time_row = len(metrics) + 1
+        time_lbl = MDLabel(text="Time", size_hint=(None, None))
+        self.metric_grid.add_widget(time_lbl)
+        self.grid_controller.register(time_row, 0, time_lbl)
+        for s in range(set_count):
+            duration = self.session.get_set_duration(self.exercise_idx, s)
+            text = f"{duration:.1f}" if duration is not None else ""
+            widget = MDTextField(multiline=False, input_filter="float", text=text)
+            widget.size_hint = (None, None)
+            widget.height = dp(40)
+            widget.width = dp(100)
+            widget.bind(
+                text=lambda inst, val, s=s: self._on_time_change(s, inst)
+            )
+            self.metric_cells[("Time", s)] = widget
+            self.metric_grid.add_widget(widget)
+            self.grid_controller.register(time_row, s + 1, widget)
+
     # ------------------------------------------------------------------
     # Metric row helpers
     def _parent_scroll(self, widget):
@@ -411,6 +430,31 @@ class MetricInputScreen(MDScreen):
             session.edit_set_metrics(self.exercise_idx, set_idx, {name: value})
         else:
             session.set_pre_set_metrics({name: value}, self.exercise_idx, set_idx)
+
+    def _on_time_change(self, set_idx: int, widget: MDTextField) -> None:
+        """Validate and store a manually edited set duration.
+
+        The displayed duration represents ``ended_at - started_at`` for the
+        corresponding set.  When the user edits the text field this handler
+        updates the underlying ``ended_at`` via
+        :meth:`WorkoutSession.update_set_duration` so subsequent loads reflect
+        the new value.  Invalid input restores the previous duration and leaves
+        session state unchanged.
+        """
+
+        app = MDApp.get_running_app()
+        session = getattr(app, "workout_session", None)
+        if not session:
+            return
+        try:
+            duration = float(widget.text)
+        except ValueError:
+            # Revert to the last known duration if parsing fails.
+            current = session.get_set_duration(self.exercise_idx, set_idx)
+            widget.text = f"{current:.1f}" if current is not None else ""
+            return
+        session.update_set_duration(self.exercise_idx, set_idx, duration)
+        widget.text = f"{duration:.1f}"
 
     def _create_input_widget(self, metric, value, set_idx):
         name = metric.get("name")

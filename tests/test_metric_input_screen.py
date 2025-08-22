@@ -3,6 +3,7 @@ import types
 import sys
 from pathlib import Path
 import importlib.util
+import pytest
 
 # Stub minimal Kivy/KivyMD modules required by metric_input_screen
 kivy_modules = {
@@ -206,6 +207,9 @@ def test_metric_store_fallback_on_rebuild():
             ]
             self.metric_store = {}
 
+        def get_set_duration(self, ex, st):
+            return None
+
         def set_pre_set_metrics(self, data, ex, st):
             self.metric_store[(ex, st)] = data
 
@@ -245,6 +249,9 @@ def test_metric_defaults_prefilled():
                 }
             ]
             self.metric_store = {}
+
+        def get_set_duration(self, ex, st):
+            return None
 
         def set_pre_set_metrics(self, data, ex, st):
             self.metric_store[(ex, st)] = data
@@ -294,3 +301,58 @@ def test_save_metrics_records_new_set(monkeypatch):
     assert dummy_session.recorded
     assert manager.current == "rest"
     assert dummy_app.record_new_set is False
+
+
+def test_time_metric_autofill_and_edit(monkeypatch):
+    """Time field auto-populates and updates session on edit."""
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [
+                {
+                    "name": "Bench",
+                    "sets": 1,
+                    "metric_defs": [],
+                    "results": [
+                        {"started_at": 0.0, "ended_at": 5.0, "metrics": {}}
+                    ],
+                }
+            ]
+            self.metric_store = {}
+
+        def get_set_duration(self, ex, st):
+            res = self.exercises[ex]["results"][st]
+            return res["ended_at"] - res["started_at"]
+
+        def update_set_duration(self, ex, st, dur):
+            res = self.exercises[ex]["results"][st]
+            res["ended_at"] = res["started_at"] + dur
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(workout_session=dummy_session)
+    monkeypatch.setattr(
+        metric_module.MDApp,
+        "get_running_app",
+        classmethod(lambda cls: dummy_app),
+        raising=False,
+    )
+
+    screen.session = dummy_session
+    screen.metric_grid = _Layout()
+    screen.update_metrics()
+
+    widget = screen.metric_cells[("Time", 0)]
+    assert widget.text == "5.0"
+
+    widget.text = "7.2"
+    screen._on_time_change(0, widget)
+    assert dummy_session.get_set_duration(0, 0) == pytest.approx(7.2)
+    assert widget.text == "7.2"
+
+    widget.text = "oops"
+    screen._on_time_change(0, widget)
+    assert widget.text == "7.2"
+
+    screen.update_metrics()
+    assert screen.metric_cells[("Time", 0)].text == "7.2"
