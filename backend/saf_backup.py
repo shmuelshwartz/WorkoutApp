@@ -12,7 +12,6 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 
-from .export_utils import make_export_name
 
 try:  # pragma: no cover - jnius is only available on Android
     from jnius import autoclass, JavaException  # type: ignore
@@ -98,7 +97,7 @@ def handle_export_result(request_code, result_code, data, on_success, on_error) 
 
         cr = PythonActivity.mActivity.getContentResolver()
         DocumentsContract = autoclass("android.provider.DocumentsContract")
-        name = make_export_name().replace(".db", EXPORT_PATH.suffix)
+        name = EXPORT_PATH.name
         mime = "application/json" if EXPORT_PATH.suffix == ".json" else "application/octet-stream"
         doc_uri = DocumentsContract.createDocument(cr, uri, mime, name)
         if doc_uri is None:
@@ -115,6 +114,11 @@ def handle_export_result(request_code, result_code, data, on_success, on_error) 
         saved_uri = doc_uri.toString()
         logging.info("Exported database to %s", saved_uri)
         on_success(f"Exported to {saved_uri}")
+        try:
+            Path(EXPORT_PATH).unlink()
+        except Exception:
+            pass
+        EXPORT_PATH = None
         return True
     except JavaException:
         logging.exception("Export failed (Java)")
