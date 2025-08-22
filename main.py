@@ -609,6 +609,10 @@ class WorkoutApp(MDApp):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        # Stack of dialog screens opened via ``FullScreenDialog``.
+        # The stack enables back-button behaviour that mimics dismissing a
+        # popup while using standard screen navigation.
+        self._dialog_stack = []
         self.sound = SoundSystem()
         # Initialize sound system with persisted settings.
         self.sound.set_volume(app_settings.get_value("sound_level") or 1.0)
@@ -640,6 +644,9 @@ class WorkoutApp(MDApp):
 
     def _on_keyboard(self, window, key, scancode, codepoint, modifiers):
         if key in (27, 1001) and not TESTING:
+            if self._dialog_stack:
+                # Close the most recently opened dialog screen.
+                self._dialog_stack[-1].dismiss()
             return True
         return False
 

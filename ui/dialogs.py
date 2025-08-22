@@ -1,37 +1,125 @@
-try:
-    from kivymd.uix.dialog import MDDialog
+"""Dialog utilities reimplemented as full screens.
+
+This module previously provided :class:`FullScreenDialog` as an
+``MDDialog`` subclass. Popups proved unreliable on target devices, so the
+project now replaces them with regular screens that behave like popups.
+``FullScreenDialog`` exposes ``open`` and ``dismiss`` methods so existing
+call sites continue to work, but internally it simply navigates to a new
+screen in the application's ``ScreenManager``.
+
+The simplified implementation intentionally avoids complex layout logic in
+order to minimise memory usage and reduce the chance of modal issues. The
+dialog content and buttons are stacked vertically and fill the window.
+
+The back-button behaviour is handled by :class:`WorkoutApp` which keeps a
+stack of open dialog screens. Pressing the Android back button pops the
+stack, giving the appearance of dismissing a popup while using standard
+screen navigation under the hood.
+"""
+
+from __future__ import annotations
+
+try:  # pragma: no cover - Kivy is not available during unit tests
     from kivymd.app import MDApp
-    from kivy.core.window import Window
-    from kivy.clock import Clock
+    from kivymd.uix.boxlayout import MDBoxLayout
+    from kivymd.uix.label import MDLabel
+    from kivymd.uix.screen import MDScreen
+    from kivy.metrics import dp
 except Exception:  # pragma: no cover - fallback when Kivy isn't available
-    class MDDialog:  # minimal stub
-        def __init__(self, *a, **k):
+    class FullScreenDialog:  # minimalist stub used for headless tests
+        def __init__(self, *args, **kwargs):
             pass
-        def open(self, *a, **k):
+
+        def open(self, *args, **kwargs):
             pass
-        def dismiss(self, *a, **k):
+
+        def dismiss(self, *args, **kwargs):
             pass
-    class FullScreenDialog(MDDialog):
-        """Stub used when Kivy isn't installed."""
-        pass
+
 else:
-    class FullScreenDialog(MDDialog):
-        """MDDialog that expands to cover the entire window."""
-        def __init__(self, **kwargs):
-            self._scroll_view = getattr(self, "_scroll_view", None)
-            kwargs.setdefault("size_hint", (1, None))
-            kwargs.setdefault("radius", [0, 0, 0, 0])
-            app = MDApp.get_running_app()
-            bg = getattr(getattr(app, "theme_cls", None), "bg_light", (1, 1, 1, 1))
-            kwargs.setdefault("md_bg_color", bg)
+
+    class FullScreenDialog(MDScreen):
+        """Screen that mimics popup behaviour.
+
+        Parameters
+        ----------
+        title:
+            Optional title displayed at the top of the screen.
+        content_cls:
+            Main widget displayed in the body of the screen.
+        buttons:
+            Iterable of widgets placed in a footer row.
+        """
+
+        def __init__(
+            self,
+            *,
+            title: str = "",
+            content_cls=None,
+            buttons: list | tuple | None = None,
+            **kwargs,
+        ):
             super().__init__(**kwargs)
-            self.bind(on_open=self._resize_to_window)
-        def _resize_to_window(self, *_):
-            self.width = Window.width
-            self.height = Window.height
-            if self._scroll_view is None:
-                return
-            def _adjust(*_):
-                btn_h = self.ids.button_box.height if "button_box" in self.ids else 0
-                self._scroll_view.height = max(0, Window.height - btn_h)
-            Clock.schedule_once(_adjust, 0)
+
+            self.ids = {}
+            layout = MDBoxLayout(orientation="vertical")
+
+            if title:
+                # Basic title label; minimal styling to save resources.
+                layout.add_widget(
+                    MDLabel(
+                        text=title,
+                        size_hint_y=None,
+                        height=dp(48),
+                        halign="center",
+                        valign="center",
+                    )
+                )
+
+            if content_cls is not None:
+                layout.add_widget(content_cls)
+
+            if buttons:
+                button_box = MDBoxLayout(
+                    size_hint_y=None,
+                    height=dp(48),
+                    spacing=dp(8),
+                )
+                for btn in buttons:
+                    button_box.add_widget(btn)
+                layout.add_widget(button_box)
+                self.ids["button_box"] = button_box
+
+            self.add_widget(layout)
+            self._previous_screen = ""
+
+        # ------------------------------------------------------------------
+        # Navigation helpers
+        # ------------------------------------------------------------------
+        def open(self, *_) -> None:
+            """Display the dialog by pushing a new screen.
+
+            The current screen name is saved so ``dismiss`` can return the
+            user to their previous location.
+            """
+
+            app = MDApp.get_running_app()
+            self._previous_screen = app.root.current
+            if not self.name:
+                # Generate a unique name to avoid collisions in the manager.
+                self.name = f"_dialog_{id(self)}"
+            app.root.add_widget(self)
+            app.root.current = self.name
+            # ``WorkoutApp`` maintains this stack to handle the back button.
+            app._dialog_stack.append(self)
+
+        def dismiss(self, *_) -> None:
+            """Close the dialog by returning to the previous screen."""
+
+            app = MDApp.get_running_app()
+            if self._previous_screen:
+                app.root.current = self._previous_screen
+            app.root.remove_widget(self)
+            if app._dialog_stack:
+                app._dialog_stack.pop()
+
