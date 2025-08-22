@@ -35,6 +35,7 @@ if kivy_available:
         PresetOverviewScreen,
     )
     from ui.dialogs.edit_metric_popup import EditMetricPopup
+    from ui.dialogs.pre_session_metric_popup import PreSessionMetricPopup
     from ui.dialogs.add_metric_popup import AddMetricPopup
     from ui.expandable_list_item import ExerciseSummaryItem
     import time
@@ -502,6 +503,22 @@ def test_edit_metric_popup_shows_value_field():
     ]
     assert len(value_fields) == 1
     popup.close()
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_pre_session_popup_prefills_defaults():
+    metric = {"name": "Grip", "type": "str", "value": "wide"}
+
+    collected = {}
+
+    def on_save(data):
+        collected.update(data)
+
+    popup = PreSessionMetricPopup([metric], on_save, previous_screen="prev")
+    widget = popup.metric_list.children[0].input_widget
+    assert widget.text == "wide"
+    popup._on_save()
+    assert collected["Grip"] == "wide"
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")

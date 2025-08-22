@@ -216,6 +216,46 @@ def test_metric_store_fallback_on_rebuild():
     assert screen.metric_cells[("Reps", 0)].text == "5"
 
 
+def test_metric_defaults_prefilled():
+    """Default metric values should populate widgets and the store."""
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [
+                {
+                    "name": "Bench",
+                    "sets": 1,
+                    "metric_defs": [
+                        {
+                            "name": "Grip Width",
+                            "type": "str",
+                            "input_timing": "pre_set",
+                            "is_required": True,
+                            "value": "wide",
+                        }
+                    ],
+                    "results": [],
+                }
+            ]
+            self.metric_store = {}
+
+        def set_pre_set_metrics(self, data, ex, st):
+            self.metric_store[(ex, st)] = data
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(workout_session=dummy_session)
+    metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
+
+    screen.session = dummy_session
+    screen.metric_grid = _Layout()
+
+    screen.update_metrics()
+
+    assert screen.metric_cells[("Grip Width", 0)].text == "wide"
+    assert dummy_session.metric_store[(0, 0)]["Grip Width"] == "wide"
+
+
 def test_save_metrics_records_new_set(monkeypatch):
     """Saving metrics should finalize the recently completed set."""
     screen = MetricInputScreen()
