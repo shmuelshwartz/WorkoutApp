@@ -210,7 +210,7 @@ def test_undo_skip_stays_on_rest(monkeypatch, sample_db):
         def dismiss(self):
             pass
 
-    monkeypatch.setattr(rest_screen_module, "MDDialog", DummyDialog)
+    monkeypatch.setattr(rest_screen_module, "FullScreenDialog", DummyDialog)
     monkeypatch.setattr(rest_screen_module, "MDFlatButton", lambda *a, **k: None)
 
     screen = rest_screen_module.RestScreen()
@@ -268,7 +268,7 @@ def test_confirm_finish_opens_dialog(monkeypatch):
         rest_screen_module = importlib.import_module("ui.screens.session.rest_screen")
     except ModuleNotFoundError:
         pytest.skip("RestScreen module not available")
-    monkeypatch.setattr(rest_screen_module, "MDDialog", DummyDialog)
+    monkeypatch.setattr(rest_screen_module, "FullScreenDialog", DummyDialog)
     monkeypatch.setattr(rest_screen_module, "MDRaisedButton", lambda *a, **k: None)
     if hasattr(rest_screen_module, "MDFlatButton"):
         monkeypatch.setattr(rest_screen_module, "MDFlatButton", lambda *a, **k: None)
@@ -306,7 +306,7 @@ def test_confirm_finish_discard(monkeypatch):
     if not hasattr(rest_screen_module, "MDFlatButton"):
         pytest.skip("RestScreen stub without discard support")
 
-    monkeypatch.setattr(rest_screen_module, "MDDialog", DummyDialog)
+    monkeypatch.setattr(rest_screen_module, "FullScreenDialog", DummyDialog)
     monkeypatch.setattr(rest_screen_module, "MDRaisedButton", dummy_button)
     monkeypatch.setattr(rest_screen_module, "MDFlatButton", dummy_button)
 
@@ -986,7 +986,7 @@ def test_save_exercise_duplicate_name(monkeypatch, tmp_path):
         def open(self_inner):
             opened["value"] = True
 
-    monkeypatch.setattr(sys.modules["main"], "MDDialog", DummyDialog)
+    monkeypatch.setattr(sys.modules["main"], "FullScreenDialog", DummyDialog)
 
     screen.save_exercise()
 

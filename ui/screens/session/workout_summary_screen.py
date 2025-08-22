@@ -2,7 +2,7 @@ from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.list import OneLineListItem
 from kivy.properties import ObjectProperty
-from kivymd.uix.dialog import MDDialog
+from ui.dialogs import FullScreenDialog
 from kivymd.uix.button import MDRaisedButton
 
 from backend.sessions import save_completed_session, validate_workout_session
@@ -49,7 +49,7 @@ class WorkoutSummaryScreen(MDScreen):
         def close_dialog(*_):
             dialog.dismiss()
 
-        dialog = MDDialog(
+        dialog = FullScreenDialog(
             title="Save Error",
             text=message,
             buttons=[MDRaisedButton(text="OK", on_release=close_dialog)],

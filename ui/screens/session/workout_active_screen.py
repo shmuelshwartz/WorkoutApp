@@ -2,7 +2,7 @@ from kivymd.uix.screen import MDScreen
 from kivy.properties import NumericProperty, StringProperty, ObjectProperty
 from kivy.clock import Clock
 from kivymd.app import MDApp
-from kivymd.uix.dialog import MDDialog
+from ui.dialogs import FullScreenDialog
 from kivymd.uix.button import MDFlatButton
 from kivy.core.text import LabelBase
 from kivymd.font_definitions import fonts_path
@@ -100,7 +100,7 @@ class WorkoutActiveScreen(MDScreen):
 
     def show_undo_confirmation(self):
         if not hasattr(self, "_undo_dialog") or not self._undo_dialog:
-            self._undo_dialog = MDDialog(
+            self._undo_dialog = FullScreenDialog(
                 text="Are you sure you want to undo and return to rest?",
                 buttons=[
                     MDFlatButton(text="Cancel", on_release=lambda *_: self._undo_dialog.dismiss()),

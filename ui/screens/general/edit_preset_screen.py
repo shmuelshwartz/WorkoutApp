@@ -22,7 +22,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.list import MDList, OneLineListItem
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDRaisedButton
-from kivymd.uix.dialog import MDDialog
+from ui.dialogs import FullScreenDialog
 import os
 import sqlite3
 
@@ -148,7 +148,7 @@ class SectionWidget(MDBoxLayout):
             if dialog:
                 dialog.dismiss()
 
-        dialog = MDDialog(
+        dialog = FullScreenDialog(
             title="Remove Section?",
             text=f"Delete {self.section_name}?",
             buttons=[
@@ -539,7 +539,7 @@ class EditPresetScreen(MDScreen):
             app.preset_editor.validate()
         except ValueError as exc:
 
-            dialog = MDDialog(
+            dialog = FullScreenDialog(
                 title="Error",
                 text=str(exc),
                 buttons=[
@@ -561,7 +561,7 @@ class EditPresetScreen(MDScreen):
                 if self.manager:
                     self.manager.current = "presets"
             except Exception as err:
-                err_dialog = MDDialog(
+                err_dialog = FullScreenDialog(
                     title="Error",
                     text=str(err),
                     buttons=[
@@ -572,7 +572,7 @@ class EditPresetScreen(MDScreen):
                 )
                 err_dialog.open()
 
-        dialog = MDDialog(
+        dialog = FullScreenDialog(
             title="Confirm Save",
             text=f"Save changes to {app.preset_editor.preset_name}?",
             buttons=[
@@ -600,7 +600,7 @@ class EditPresetScreen(MDScreen):
                     if self.manager:
                         self.manager.current = "presets"
 
-                dialog = MDDialog(
+                dialog = FullScreenDialog(
                     title="Discard Changes?",
                     text="You have unsaved changes. Discard them?",
                     buttons=[
@@ -713,7 +713,7 @@ class SelectedExerciseItem(MDBoxLayout):
             if dialog:
                 dialog.dismiss()
 
-        dialog = MDDialog(
+        dialog = FullScreenDialog(
             title="Remove Exercise?",
             text=f"Delete {self.text} from this workout?",
             buttons=[
@@ -807,7 +807,7 @@ class ExerciseSelectionPanel(MDBoxLayout):
         close_btn = MDRaisedButton(
             text="Close", on_release=lambda *a: self.filter_dialog.dismiss()
         )
-        self.filter_dialog = MDDialog(
+        self.filter_dialog = FullScreenDialog(
             title="Filter Exercises",
             type="custom",
             content_cls=scroll,
@@ -834,16 +834,18 @@ class ExerciseSelectionPanel(MDBoxLayout):
         self.populate_exercises()
 
 
-class AddPresetMetricPopup(MDDialog):
+class AddPresetMetricPopup(FullScreenDialog):
     """Popup for adding preset-level metrics."""
 
     def __init__(self, screen: "EditPresetScreen", **kwargs):
         self.screen = screen
         content, buttons = self._build_widgets()
-        # Expand popup to cover most of the screen for better visibility on small devices
-        kwargs.setdefault("size_hint", (0.95, 0.95))
         super().__init__(
-            title="Select Metric", type="custom", content_cls=content, buttons=buttons, **kwargs
+            title="Select Metric",
+            type="custom",
+            content_cls=content,
+            buttons=buttons,
+            **kwargs,
         )
 
     def _build_widgets(self):
@@ -871,6 +873,8 @@ class AddPresetMetricPopup(MDDialog):
         # Use available space and make list scrollable so action buttons remain on screen
         scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(list_view)
+        # ``FullScreenDialog`` uses this reference to adjust height on open.
+        self._scroll_view = scroll
 
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
         buttons = [cancel_btn]
@@ -885,14 +889,12 @@ class AddPresetMetricPopup(MDDialog):
         self.screen.update_save_enabled()
 
 
-class AddSessionMetricPopup(MDDialog):
+class AddSessionMetricPopup(FullScreenDialog):
     """Popup for adding session-level metrics."""
 
     def __init__(self, screen: "EditPresetScreen", **kwargs):
         self.screen = screen
         content, buttons = self._build_widgets()
-        # Ensure dialog is nearly full screen to avoid hidden buttons
-        kwargs.setdefault("size_hint", (0.95, 0.95))
         super().__init__(
             title="Select Metric",
             type="custom",
@@ -926,6 +928,8 @@ class AddSessionMetricPopup(MDDialog):
         # Occupy available space and enable scrolling for small displays
         scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(list_view)
+        # ``FullScreenDialog`` uses this reference to adjust height on open.
+        self._scroll_view = scroll
 
         cancel_btn = MDRaisedButton(text="Cancel", on_release=lambda *a: self.dismiss())
         buttons = [cancel_btn]

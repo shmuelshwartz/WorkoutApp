@@ -1,13 +1,13 @@
 try:  # pragma: no cover - fallback for environments without Kivy
     from kivymd.app import MDApp
     from kivymd.uix.screen import MDScreen
-    from kivymd.uix.dialog import MDDialog
+    from ui.dialogs import FullScreenDialog
     from kivymd.uix.button import MDFlatButton, MDRaisedButton
 except Exception:  # pragma: no cover - simple stubs
     MDApp = object
     MDScreen = object
 
-    class MDDialog:
+    class FullScreenDialog:
         def __init__(self, *a, **k):
             pass
 
@@ -56,7 +56,7 @@ class HomeScreen(MDScreen):
             session.clear_recovery_files()
             dialog.dismiss()
 
-        dialog = MDDialog(
+        dialog = FullScreenDialog(
             text="Recover previous workout session?",
             buttons=[
                 MDFlatButton(text="No", on_release=discard),
