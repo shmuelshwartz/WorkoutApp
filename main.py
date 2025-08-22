@@ -603,7 +603,7 @@ class WorkoutApp(MDApp):
     # Incremented when a metric type is added or edited
     metric_library_version: int = 0
     # Displayed application version on the welcome screen
-    app_version = StringProperty("1.0.0")
+    app_version = StringProperty("0.1.1")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
