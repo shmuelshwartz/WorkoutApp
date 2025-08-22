@@ -201,6 +201,12 @@ class EditPresetScreen(MDScreen):
             self.save_enabled = False
 
     def on_pre_enter(self, *args):
+        # Avoid scheduling multiple loading operations if one is already
+        # underway. This prevents dangling dialogs when rapidly re-entering
+        # the screen.
+        if self.loading_dialog:
+            return super().on_pre_enter(*args)
+
         app = MDApp.get_running_app()
         if app and app.editing_exercise_index >= 0:
             self.preset_name = app.preset_editor.preset_name or "Preset"
@@ -229,34 +235,45 @@ class EditPresetScreen(MDScreen):
         return super().on_pre_enter(*args)
 
     def _load_preset(self):
-        app = MDApp.get_running_app()
-        if self.mode == "session":
-            self.preset_name = (
-                app.preset_editor.preset_name if app.preset_editor else "Preset"
-            )
-            self.current_tab = "sections"
-            if self.sections_box:
-                self.sections_box.clear_widgets()
-                for idx, sec in enumerate(app.preset_editor.sections):
-                    locked = self._is_section_locked(idx)
-                    self.add_section(sec["name"], index=idx, locked=locked)
-                if not app.preset_editor.sections:
-                    self.add_section()
-            self.update_save_enabled()
-        else:
-            app.init_preset_editor()
-            self.preset_name = app.preset_editor.preset_name or "Preset"
-            self.current_tab = "sections"
-            if self.sections_box:
-                self.sections_box.clear_widgets()
-                for idx, sec in enumerate(app.preset_editor.sections):
-                    self.add_section(sec["name"], index=idx)
-                if not app.preset_editor.sections:
-                    self.add_section()
-            self.update_save_enabled()
-        if self.loading_dialog:
-            self.loading_dialog.dismiss()
-            self.loading_dialog = None
+        """Populate UI widgets with preset data.
+
+        The loading dialog is dismissed in a ``finally`` block to ensure it
+        never persists on screen, even if an exception occurs while preparing
+        the preset.
+        """
+
+        try:
+            app = MDApp.get_running_app()
+            if self.mode == "session":
+                self.preset_name = (
+                    app.preset_editor.preset_name if app.preset_editor else "Preset"
+                )
+                self.current_tab = "sections"
+                if self.sections_box:
+                    self.sections_box.clear_widgets()
+                    for idx, sec in enumerate(app.preset_editor.sections):
+                        locked = self._is_section_locked(idx)
+                        self.add_section(sec["name"], index=idx, locked=locked)
+                    if not app.preset_editor.sections:
+                        self.add_section()
+                self.update_save_enabled()
+            else:
+                app.init_preset_editor()
+                self.preset_name = app.preset_editor.preset_name or "Preset"
+                self.current_tab = "sections"
+                if self.sections_box:
+                    self.sections_box.clear_widgets()
+                    for idx, sec in enumerate(app.preset_editor.sections):
+                        self.add_section(sec["name"], index=idx)
+                    if not app.preset_editor.sections:
+                        self.add_section()
+                self.update_save_enabled()
+        finally:
+            # Always dismiss the loading dialog to avoid leaving a spinner
+            # visible if an error occurs during preset loading.
+            if self.loading_dialog:
+                self.loading_dialog.dismiss()
+                self.loading_dialog = None
 
     def _is_section_locked(self, section_index: int) -> bool:
         """Return ``True`` if the section at ``section_index`` is locked."""
