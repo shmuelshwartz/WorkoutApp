@@ -1,10 +1,13 @@
-"""Utilities for synchronizing row heights across multiple widgets.
+"""Utilities for aligning widgets in a 2D grid.
 
-The :class:`RowController` maintains a mapping of row indices to
-widgets that should share the same height.  When any registered widget
-changes size, the tallest height for that row is applied to all widgets
-in the row.  This is required for the metric input screen where metric
-names and values live in separate containers but must align perfectly.
+The original implementation only synchronised row heights.  The metric
+input screen now renders a single grid where both rows and columns must
+align.  This module therefore provides :class:`GridController` which
+normalises row heights and column widths simultaneously.  Every widget in
+the same row shares the *minimum* height observed for that row and every
+widget in the same column shares the *minimum* width observed for that
+column.  Using the minimum keeps the layout compact on the small screens
+targeted by the application.
 """
 
 from collections import defaultdict
@@ -13,63 +16,94 @@ from typing import Dict, List, Any
 from kivy.clock import Clock
 
 
-class RowController:
-    """Track and apply uniform heights for rows of widgets.
+class GridController:
+    """Maintain uniform row heights and column widths.
 
-    Widgets register themselves with a row index via :meth:`register`.
-    The controller ensures every widget in the same row always shares the
-    maximum height seen for that row.  Updates are scheduled with
-    ``Clock`` so layout calculations have finished before measurements
-    occur.
+    Widgets register with a ``row`` and ``col`` index via :meth:`register`.
+    When a widget's size changes the controller recomputes the minimum
+    height for that row and the minimum width for that column, applying
+    those dimensions to all widgets in the same row or column.  Updates
+    are scheduled with :class:`~kivy.clock.Clock` so the widget's natural
+    size is available before measurements occur.
     """
 
     def __init__(self) -> None:
-        self._heights: Dict[int, float] = {}
-        self._widgets: Dict[int, List[Any]] = defaultdict(list)
+        self._row_heights: Dict[int, float] = {}
+        self._col_widths: Dict[int, float] = {}
+        self._rows: Dict[int, List[Any]] = defaultdict(list)
+        self._cols: Dict[int, List[Any]] = defaultdict(list)
 
     # ------------------------------------------------------------------
-    def register(self, row: int, widget: Any) -> None:
-        """Register *widget* to participate in unified row sizing.
+    def register(self, row: int, col: int, widget: Any) -> None:
+        """Register *widget* to participate in grid sizing.
 
         Parameters
         ----------
         row:
             Row index the widget belongs to.
+        col:
+            Column index the widget belongs to.
         widget:
-            The widget whose ``height`` should match others in the row.
+            The widget whose ``height`` and ``width`` should match others in
+            the same row and column.
         """
 
-        self._widgets[row].append(widget)
+        self._rows[row].append(widget)
+        self._cols[col].append(widget)
         if hasattr(widget, "bind"):
-            widget.bind(height=lambda inst, val: self._update_row(row, val))
+            widget.bind(
+                height=lambda inst, val: self._update_row(row),
+                width=lambda inst, val: self._update_col(col),
+            )
         # Defer initial sizing until after the next frame to ensure the
-        # widget's preferred height is available.
-        initial_height = getattr(widget, "height", 0)
-        Clock.schedule_once(lambda _dt: self._update_row(row, initial_height))
+        # widget's preferred size is available.
+        Clock.schedule_once(lambda _dt: self._update(row, col))
 
     # ------------------------------------------------------------------
-    def _update_row(self, row: int, height: float) -> None:
-        """Apply ``height`` to all widgets in *row* if it is the maximum."""
+    def _update_row(self, row: int) -> None:
+        """Apply the minimum height of row *row* to all its widgets."""
 
-        if height <= 0:
+        heights = [getattr(w, "height", 0) for w in self._rows[row] if getattr(w, "height", 0) > 0]
+        if not heights:
             return
-        # Recalculate the maximum height for the row to allow shrinking when
-        # widgets become smaller.  ``height`` is included in case the updated
-        # widget is not yet stored in ``_widgets``.
-        current = [getattr(w, "height", 0) for w in self._widgets[row]]
-        if height not in current:
-            current.append(height)
-        max_height = max(current) if current else 0
-        if max_height <= 0:
+        min_height = min(heights)
+        if min_height != self._row_heights.get(row):
+            self._row_heights[row] = min_height
+            for w in self._rows[row]:
+                w.height = min_height
+
+    # ------------------------------------------------------------------
+    def _update_col(self, col: int) -> None:
+        """Apply the minimum width of column *col* to all its widgets."""
+
+        widths = [getattr(w, "width", 0) for w in self._cols[col] if getattr(w, "width", 0) > 0]
+        if not widths:
             return
-        if max_height != self._heights.get(row, 0):
-            self._heights[row] = max_height
-            for w in self._widgets[row]:
-                w.height = max_height
+        min_width = min(widths)
+        if min_width != self._col_widths.get(col):
+            self._col_widths[col] = min_width
+            for w in self._cols[col]:
+                w.width = min_width
+
+    # ------------------------------------------------------------------
+    def _update(self, row: int, col: int) -> None:
+        """Update both row and column sizing for the given cell."""
+
+        self._update_row(row)
+        self._update_col(col)
 
     # ------------------------------------------------------------------
     def clear(self) -> None:
-        """Forget all tracked widgets and heights."""
+        """Forget all tracked widgets and dimensions."""
 
-        self._heights.clear()
-        self._widgets.clear()
+        self._row_heights.clear()
+        self._col_widths.clear()
+        self._rows.clear()
+        self._cols.clear()
+
+
+# Backwards compatible alias -------------------------------------------------
+# ``RowController`` previously only handled rows.  Expose it as an alias for
+# ``GridController`` so existing imports keep working.
+RowController = GridController
+
