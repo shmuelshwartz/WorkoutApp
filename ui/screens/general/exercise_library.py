@@ -77,15 +77,48 @@ class ExerciseLibraryScreen(MDScreen):
         return super().on_pre_enter(*args)
 
     def populate(self, show_loading: bool = False):
-        """Populate exercises or metrics depending on current tab."""
+        """Populate exercises or metrics depending on current tab.
+
+        Parameters
+        ----------
+        show_loading: bool
+            If ``True`` a modal loading spinner is displayed while the
+            population work is carried out.  The dialog is guaranteed to be
+            dismissed even if an error occurs, preventing the screen from
+            appearing to load indefinitely.
+        """
+
         if show_loading and not os.environ.get("KIVY_UNITTEST"):
             from main import LoadingDialog  # local import to avoid circular dependency
 
             self.loading_dialog = LoadingDialog()
             self.loading_dialog.open()
-            Clock.schedule_once(self._populate_impl, 0)
+            Clock.schedule_once(self._populate_with_dismiss, 0)
         else:
+            self._populate_with_dismiss(0)
+
+    def _populate_with_dismiss(self, dt: float) -> None:
+        """Populate the current tab and close the loading dialog safely.
+
+        The method wraps :meth:`_populate_impl` ensuring that the loading
+        dialog is dismissed regardless of success or failure so that the
+        user always sees the screen contents.
+
+        Parameters
+        ----------
+        dt: float
+            Time delta from :func:`Clock.schedule_once` (unused).
+        """
+
+        try:
             self._populate_impl()
+        except Exception as exc:  # pragma: no cover - logged for debugging
+            # Log the error rather than leaving the user stuck on a spinner.
+            print(f"Error populating library: {exc}")
+        finally:
+            if self.loading_dialog:
+                self.loading_dialog.dismiss()
+                self.loading_dialog = None
 
     def _populate_impl(self, dt: float | None = None):
         if self.current_tab == "exercises":
@@ -95,9 +128,6 @@ class ExerciseLibraryScreen(MDScreen):
 
     def _populate_exercises(self):
         if not self.exercise_list:
-            if self.loading_dialog:
-                self.loading_dialog.dismiss()
-                self.loading_dialog = None
             return
         self.exercise_list.data = []
         app = MDApp.get_running_app()
@@ -132,15 +162,9 @@ class ExerciseLibraryScreen(MDScreen):
                 }
             )
         self.exercise_list.data = data
-        if self.loading_dialog:
-            self.loading_dialog.dismiss()
-            self.loading_dialog = None
 
     def _populate_metrics(self):
         if not self.metric_list:
-            if self.loading_dialog:
-                self.loading_dialog.dismiss()
-                self.loading_dialog = None
             return
         self.metric_list.data = []
         app = MDApp.get_running_app()
@@ -175,9 +199,6 @@ class ExerciseLibraryScreen(MDScreen):
                 }
             )
         self.metric_list.data = data
-        if self.loading_dialog:
-            self.loading_dialog.dismiss()
-            self.loading_dialog = None
 
     def open_filter_popup(self):
         """Open the filter dialog."""
