@@ -224,4 +224,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS "idx_unique_preset_metric_active" ON "preset_p
 	"preset_id",
 	"library_metric_type_id"
 ) WHERE "deleted" = 0;
+
+INSERT INTO "library_metric_types" VALUES (1,'Reps','Number of repetitions performed per set.','int','post_set','set',1,NULL,0,0);
+INSERT INTO "library_metric_types" VALUES (2,'Weight','Load used for the exercise (measured in kg).','float','pre_set','set',1,NULL,0,0);
+INSERT INTO "library_metric_types" VALUES (3,'Tempo','Pace of movement (e.g., 21X1 means 2s down, 1s pause, explode up, 3s pause).','str','preset','exercise',0,NULL,0,0);
+INSERT INTO "library_metric_types" VALUES (4,'RPE','Rate of Perceived Exertion to measure effort.','slider','post_set','set',0,NULL,0,0);
+INSERT INTO "library_metric_types" VALUES (6,'Performing Side','Indicates which side is performing the movement.','enum','pre_set','set',1,'["Right", "Left"]',0,0);
+INSERT INTO "library_metric_types" VALUES (15,'Day Number','The Day number the preset is in your workout plan','int','preset','preset',1,NULL,0,0);
+INSERT INTO "library_metric_types" VALUES (16,'Macrocycle','The longest phase in your training plan, typically spanning several months and focused on your overall goal.','int','pre_session','session',1,NULL,0,0);
+INSERT INTO "library_metric_types" VALUES (17,'Mesocycle','A cycle within the macrocycle designed to develop targeted physical qualities.','int','pre_session','session',1,NULL,0,0);
+INSERT INTO "library_metric_types" VALUES (18,'Microcycle','The smallest structural unit within a mesocycle, typically one week long, used to organize training sessions.','int','pre_session','session',1,NULL,0,0);
+INSERT INTO "library_metric_types" VALUES (20,'Preset Focus','','str','preset','preset',1,NULL,0,0);
 COMMIT;
