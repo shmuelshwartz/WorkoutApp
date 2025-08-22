@@ -9,6 +9,7 @@ from core import (
     DEFAULT_REST_DURATION,
 )
 from backend.utils import _to_db_timing, _from_db_timing
+from .db_backup import create_backup
 
 
 class PresetEditor:
@@ -794,4 +795,5 @@ class PresetEditor:
             )
 
         self.conn.commit()
+        create_backup(self.conn)
         self.mark_saved()

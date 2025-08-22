@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from core import DEFAULT_DB_PATH
+from .db_backup import create_backup
 
 if TYPE_CHECKING:  # pragma: no cover - imported only for type checking
     from .exercise import Exercise
@@ -177,6 +178,8 @@ def save_exercise(exercise: "Exercise") -> None:
                 )
 
             conn.commit()
+        # create backup once the transaction succeeds
+        create_backup()
     except sqlite3.Error as exc:  # pragma: no cover - defensive
         raise ValueError(f"Failed to save exercise: {exc}") from exc
 

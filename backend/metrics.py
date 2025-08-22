@@ -7,6 +7,7 @@ from pathlib import Path
 
 from core import DEFAULT_DB_PATH
 from backend.utils import _to_db_timing, _from_db_timing
+from .db_backup import create_backup
 
 
 def get_metrics_for_exercise(
@@ -410,7 +411,10 @@ def add_metric_type(
         )
         metric_id = cursor.lastrowid
         conn.commit()
-        return metric_id
+    create_backup()
+
+
+    return metric_id
 
 
 def add_metric_to_exercise(
@@ -450,7 +454,7 @@ def add_metric_to_exercise(
                 (exercise_id, metric_id),
             )
             conn.commit()
-
+    create_backup()
 
 def remove_metric_from_exercise(
     exercise_name: str,
@@ -484,8 +488,7 @@ def remove_metric_from_exercise(
             (exercise_id, metric_id),
         )
         conn.commit()
-
-
+    create_backup()
 def update_metric_type(
     metric_type_name: str,
     *,
@@ -543,7 +546,7 @@ def update_metric_type(
                 params,
             )
             conn.commit()
-
+    create_backup()
 
 def set_section_exercise_metric_override(
     preset_name: str,
@@ -646,7 +649,7 @@ def set_section_exercise_metric_override(
                 ),
             )
         conn.commit()
-
+    create_backup()
 
 def set_exercise_metric_override(
     exercise_name: str,
@@ -746,6 +749,7 @@ def set_exercise_metric_override(
                 params,
             )
             conn.commit()
+    create_backup()
 
 
 def delete_metric_type(
@@ -807,7 +811,8 @@ def delete_metric_type(
             (mt_id,),
         )
         conn.commit()
-        return True
+    create_backup()
+    return True
 
 
 def uses_default_metric(

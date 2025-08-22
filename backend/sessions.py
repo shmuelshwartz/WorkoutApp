@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from backend.utils import _to_db_timing
 from core import DEFAULT_DB_PATH
+from .db_backup import create_backup
 
 if TYPE_CHECKING:  # pragma: no cover - for type checkers only
     from backend.workout_session import WorkoutSession
@@ -312,6 +313,8 @@ def save_completed_session(session: "WorkoutSession", db_path: Path | None = Non
                         """,
                         (set_id, metric_id, str(value)),
                     )
+
+    create_backup()
     session.saved = True
     session.clear_recovery_files()
 
