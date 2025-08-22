@@ -53,7 +53,7 @@ class SettingsScreen(MDScreen):
     def export_db(self) -> None:
         """Launch Android's 'Save as' picker to export the database."""
         try:
-            saf_backup.start_export(DB_PATH, suggested_name="workout.db")
+            saf_backup.start_export(DB_PATH)
         except Exception as exc:
             logging.exception("Database export failed")
             toast(f"Export failed: {exc}")
@@ -65,7 +65,7 @@ class SettingsScreen(MDScreen):
             temp_json = DB_PATH.with_name("workout_export.json")
             with open(temp_json, "w", encoding="utf-8") as fh:
                 json.dump(data, fh)
-            saf_backup.start_export(temp_json, suggested_name="workout.json")
+            saf_backup.start_export(temp_json)
         except Exception as exc:
             logging.exception("JSON export failed")
             toast(f"Export failed: {exc}")
@@ -77,3 +77,4 @@ class SettingsScreen(MDScreen):
         except Exception as exc:
             logging.exception("Import failed to start")
             toast(f"Import failed: {exc}")
+

@@ -12,6 +12,8 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 
+from .export_utils import make_export_name
+
 try:  # pragma: no cover - jnius is only available on Android
     from jnius import autoclass, JavaException  # type: ignore
 except Exception:  # pragma: no cover - allow import on non-Android
@@ -23,6 +25,8 @@ except Exception:  # pragma: no cover - allow import on non-Android
 # Request codes identifying export/import operations.
 REQ_EXPORT = 1001
 REQ_IMPORT = 1002
+
+EXPORT_PATH: Path | None = None
 
 try:  # pragma: no cover - Android-only classes
     PythonActivity = autoclass("org.kivy.android.PythonActivity")
@@ -41,24 +45,19 @@ def _require_android() -> None:
         raise RuntimeError("Android APIs unavailable")
 
 
-def start_export(db_path: Path, suggested_name: str = "workout.db") -> None:
-    """Launch the system 'Save as' picker.
+def start_export(db_path: Path) -> None:
+    """Launch the system folder picker for database export.
 
-    Parameters
-    ----------
-    db_path:
-        Path to the database to export. The file is not read until the user
-        confirms a destination.
-    suggested_name:
-        Default filename presented to the user in the picker.
+    The user selects a destination directory and the database is written using
+    an auto-generated filename.
     """
+
+    global EXPORT_PATH
+    EXPORT_PATH = db_path
 
     _require_android()
     act = PythonActivity.mActivity
-    intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
-    intent.addCategory(Intent.CATEGORY_OPENABLE)
-    intent.setType("application/octet-stream")
-    intent.putExtra(Intent.EXTRA_TITLE, suggested_name)
+    intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
     intent.addFlags(
         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
         | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
@@ -66,12 +65,13 @@ def start_export(db_path: Path, suggested_name: str = "workout.db") -> None:
     act.startActivityForResult(intent, REQ_EXPORT)
 
 
-def handle_export_result(request_code, result_code, data, db_path: Path, on_success, on_error) -> bool:
-    """Write ``db_path`` to the location chosen in the picker.
+def handle_export_result(request_code, result_code, data, on_success, on_error) -> bool:
+    """Write ``EXPORT_PATH`` to the folder chosen in the picker.
 
-    This function should be called from the application's global
-    ``on_activity_result`` callback. If ``request_code`` does not match an
-    export operation the function returns ``False``.
+    The filename is generated automatically. This function should be called
+    from the application's global ``on_activity_result`` callback. If
+    ``request_code`` does not match an export operation the function returns
+    ``False``.
     """
 
     if (
@@ -93,17 +93,28 @@ def handle_export_result(request_code, result_code, data, db_path: Path, on_succ
         )
         PythonActivity.mActivity.getContentResolver().takePersistableUriPermission(uri, flags)
 
+        if EXPORT_PATH is None:
+            raise IOError("No export source set")
+
         cr = PythonActivity.mActivity.getContentResolver()
-        outstream = cr.openOutputStream(uri, "w")
+        DocumentsContract = autoclass("android.provider.DocumentsContract")
+        name = make_export_name().replace(".db", EXPORT_PATH.suffix)
+        mime = "application/json" if EXPORT_PATH.suffix == ".json" else "application/octet-stream"
+        doc_uri = DocumentsContract.createDocument(cr, uri, mime, name)
+        if doc_uri is None:
+            raise IOError("Document creation failed")
+        outstream = cr.openOutputStream(doc_uri, "w")
         try:
-            with open(db_path, "rb") as f:
+            with open(EXPORT_PATH, "rb") as f:
                 buf = f.read()
             outstream.write(buf)
             outstream.flush()
         finally:
             outstream.close()
 
-        on_success("Exported successfully.")
+        saved_uri = doc_uri.toString()
+        logging.info("Exported database to %s", saved_uri)
+        on_success(f"Exported to {saved_uri}")
         return True
     except JavaException:
         logging.exception("Export failed (Java)")
