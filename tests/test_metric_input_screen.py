@@ -13,6 +13,7 @@ kivy_modules = {
     "kivy.uix": types.ModuleType("kivy.uix"),
     "kivy.uix.scrollview": types.ModuleType("kivy.uix.scrollview"),
     "kivy.uix.spinner": types.ModuleType("kivy.uix.spinner"),
+    "kivy.uix.boxlayout": types.ModuleType("kivy.uix.boxlayout"),
     "kivy.clock": types.ModuleType("kivy.clock"),
 }
 
@@ -53,7 +54,10 @@ class _TextField(_DummyWidget):
     def __init__(self, text="", **kwargs):
         self.text = text
     def bind(self, **kwargs):
-        self._binding = kwargs
+        if not hasattr(self, "_binding"):
+            self._binding = {}
+        for key, cb in kwargs.items():
+            self._binding.setdefault(key, []).append(cb)
 
 class _Slider(_DummyWidget):
     def __init__(self, value=0, **kwargs):
@@ -66,6 +70,12 @@ class _Slider(_DummyWidget):
 
     def on_value(self, instance, value):
         self.value = value
+        if hasattr(self, "_binding") and "value" in self._binding:
+            callbacks = self._binding["value"]
+            if callable(callbacks):
+                callbacks = [callbacks]
+            for cb in callbacks:
+                cb(instance, value)
 
 class _Spinner(_DummyWidget):
     def __init__(self, text="", values=()):
@@ -98,6 +108,16 @@ class _Layout(list):
 
     def __bool__(self):
         return True
+
+class _BoxLayout(_Layout):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.orientation = kwargs.get("orientation", "horizontal")
+        self.size_hint = kwargs.get("size_hint", (None, None))
+        self.height = kwargs.get("height", 0)
+        self.width = kwargs.get("width", 0)
+
+kivy_modules["kivy.uix.boxlayout"].BoxLayout = _BoxLayout
 
 kivymd_modules["kivymd.app"].MDApp = _DummyWidget
 kivymd_modules["kivymd.uix.screen"].MDScreen = _DummyWidget
@@ -170,18 +190,18 @@ def test_on_cell_change_updates_session():
     assert dummy_session.pending[(0, 0)] == {"Reps": 5}
 
 
-def test_slider_hint_updates_with_two_decimals():
-    """Slider widgets should display hint text with two decimal places."""
+def test_slider_label_updates_with_two_decimals():
+    """Slider widgets should display a label with two decimal places."""
     screen = MetricInputScreen()
     metric_module.MDApp.get_running_app = classmethod(lambda cls: None)
 
     metric = {"name": "RPE", "type": "slider"}
     widget = screen._create_input_widget(metric, 0.1, 0)
-    assert widget.hint_text == "0.10"
+    assert widget.label.text == "0.10"
 
     # Simulate value change
-    widget.on_value(widget, 0.567)
-    assert widget.hint_text == "0.57"
+    widget._on_slider_value(widget.slider, 0.567)
+    assert widget.label.text == "0.57"
 
 
 def test_metric_store_fallback_on_rebuild():
