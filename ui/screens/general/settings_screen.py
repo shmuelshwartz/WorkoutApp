@@ -16,7 +16,6 @@ except Exception:  # pragma: no cover - minimal stubs for testing
         pass
 
 from kivy.properties import StringProperty
-import json
 import logging
 
 from backend import settings as app_settings
@@ -53,7 +52,8 @@ class SettingsScreen(MDScreen):
     def export_db(self) -> None:
         """Launch Android's 'Save as' picker to export the database."""
         try:
-            saf_backup.start_export(DB_PATH)
+            temp_db = db_io.export_database(db_path=DB_PATH, dest_dir=DB_PATH.parent)
+            saf_backup.start_export(temp_db)
         except Exception as exc:
             logging.exception("Database export failed")
             toast(f"Export failed: {exc}")
@@ -61,10 +61,7 @@ class SettingsScreen(MDScreen):
     def export_json(self) -> None:
         """Export the SQLite database as a JSON file via SAF."""
         try:
-            data = db_io.sqlite_to_json(DB_PATH)
-            temp_json = DB_PATH.with_name("workout_export.json")
-            with open(temp_json, "w", encoding="utf-8") as fh:
-                json.dump(data, fh)
+            temp_json = db_io.export_database_json(db_path=DB_PATH, dest_dir=DB_PATH.parent)
             saf_backup.start_export(temp_json)
         except Exception as exc:
             logging.exception("JSON export failed")
