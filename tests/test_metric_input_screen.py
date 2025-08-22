@@ -57,8 +57,14 @@ class _TextField(_DummyWidget):
 class _Slider(_DummyWidget):
     def __init__(self, value=0, **kwargs):
         self.value = value
+        self.hint = False
+        self.hint_text = ""
+
     def bind(self, **kwargs):
         self._binding = kwargs
+
+    def on_value(self, instance, value):
+        self.value = value
 
 class _Spinner(_DummyWidget):
     def __init__(self, text="", values=()):
@@ -172,8 +178,8 @@ def test_slider_hint_updates_with_two_decimals():
     widget = screen._create_input_widget(metric, 0.1, 0)
     assert widget.hint_text == "0.10"
 
-    # Simulate value change via bound callback
-    widget._binding["value"](widget, 0.567)
+    # Simulate value change
+    widget.on_value(widget, 0.567)
     assert widget.hint_text == "0.57"
 
 
