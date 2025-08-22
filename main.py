@@ -133,6 +133,11 @@ try:  # pragma: no cover - Android APIs unavailable on non-Android hosts
 except Exception:
     activity = None  # type: ignore
 
+try:  # pragma: no cover - jnius is only available on Android
+    from jnius import JavaException  # type: ignore
+except Exception:  # pragma: no cover - fallback when jnius missing
+    JavaException = Exception  # type: ignore
+
 # Set a consistent window size on desktop for predictable layout.
 if os.name == "nt":
     if half_screen:
@@ -617,7 +622,11 @@ class WorkoutApp(MDApp):
                 activity.unbind(on_activity_result=_on_activity_result)
             except Exception:
                 pass
-            activity.bind(on_activity_result=_on_activity_result)
+            try:
+                activity.bind(on_activity_result=_on_activity_result)
+            except JavaException:
+                # Pydroid3's PythonActivity lacks ActivityResultListener support
+                print("Activity result listener unavailable; SAF intents disabled")
 
     def build(self):
         root = Builder.load_file(str(Path(__file__).with_name("main.kv")))
