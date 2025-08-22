@@ -14,7 +14,9 @@ from kivy.uix.spinner import Spinner
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.label import MDLabel
-from kivymd.uix.toolbar import MDToolbar
+# MDToolbar was removed in KivyMD 1.2.0; MDTopAppBar provides the
+# same functionality.
+from kivymd.uix.toolbar import MDTopAppBar
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDRaisedButton
@@ -95,7 +97,8 @@ class AddMetricPopup(MDScreen):
     # ------------------------------------------------------------------
     def _build_layout(self, title, content, buttons):
         layout = MDBoxLayout(orientation="vertical")
-        layout.add_widget(MDToolbar(title=title))
+        # Use MDTopAppBar for compatibility with KivyMD 1.2.0+
+        layout.add_widget(MDTopAppBar(title=title))
         layout.add_widget(content)
         button_box = MDBoxLayout(
             size_hint_y=None, height=dp(48), spacing=dp(8), padding=(dp(8), dp(8))
