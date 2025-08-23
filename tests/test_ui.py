@@ -665,6 +665,52 @@ def test_edit_exercise_go_next(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_exercise_add_metric_updates_list(monkeypatch):
+    """Adding a metric populates it in the metrics tab."""
+
+    class DummyMetricsList:
+        """Lightweight stand-in for :class:`~kivymd.uix.list.MDList`."""
+
+        def __init__(self):
+            self.children = []
+
+        def clear_widgets(self):  # pragma: no cover - simple container
+            self.children.clear()
+
+        def add_widget(self, widget):  # pragma: no cover - simple container
+            self.children.append(widget)
+
+    class DummyLabel:
+        def __init__(self, text):
+            self.text = text
+
+    class DummyScreen:
+        def __init__(self):
+            self.exercise_obj = Exercise()
+            self.metrics_list = DummyMetricsList()
+            self.save_enabled = False
+
+        def populate(self):
+            self.metrics_list.clear_widgets()
+            for m in self.exercise_obj.metrics:
+                self.metrics_list.add_widget(DummyLabel(m.get("name", "")))
+
+    monkeypatch.setattr(
+        metrics,
+        "get_all_metric_types",
+        lambda *a, **k: [{"name": "Reps", "scope": "exercise"}],
+    )
+
+    screen = DummyScreen()
+    popup = AddMetricPopup(screen, "dummy", popup_mode="select")
+    popup.close = lambda *a, **k: None
+    popup.add_metric("Reps")
+
+    names = [getattr(child, "text", "") for child in screen.metrics_list.children]
+    assert "Reps" in names
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_exercise_selection_panel_filters(monkeypatch):
     panel = ExerciseSelectionPanel()
     panel.exercise_list = type(
