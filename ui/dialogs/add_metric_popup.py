@@ -127,9 +127,9 @@ class AddMetricPopup(MDScreen):
             list_view.add_widget(item)
         scroll = ScrollView(do_scroll_y=True, size_hint=(1, 1))
         scroll.add_widget(list_view)
-        new_btn = MDRaisedButton(text="New Metric", on_release=self.show_new_metric_form)
+        # Only allow selecting existing metrics; creation is handled elsewhere.
         cancel_btn = MDRaisedButton(text="Cancel", on_release=self.close)
-        return scroll, [new_btn, cancel_btn], "Select Metric"
+        return scroll, [cancel_btn], "Select Metric"
 
     def _build_new_metric_widgets(self):
         default_height = dp(48)
