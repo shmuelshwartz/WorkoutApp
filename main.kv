@@ -152,7 +152,8 @@ RootUI:
         valign: "center"
     MDBoxLayout:
         size_hint_x: None
-        width: "36dp"
+        # Increased width prevents icon overlap
+        width: "48dp"
         orientation: "horizontal"
         spacing: "5dp"
         valign: "center"
@@ -191,7 +192,8 @@ RootUI:
         valign: "center"
     MDBoxLayout:
         size_hint_x: None
-        width: "36dp" if not root.locked else 0
+        # Reserve enough space for both icons when unlocked
+        width: "48dp" if not root.locked else 0
         orientation: "horizontal"
         spacing: "5dp"
         valign: "center"
