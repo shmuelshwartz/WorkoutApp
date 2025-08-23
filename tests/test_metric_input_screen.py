@@ -13,7 +13,6 @@ kivy_modules = {
     "kivy.uix": types.ModuleType("kivy.uix"),
     "kivy.uix.scrollview": types.ModuleType("kivy.uix.scrollview"),
     "kivy.uix.spinner": types.ModuleType("kivy.uix.spinner"),
-    "kivy.uix.boxlayout": types.ModuleType("kivy.uix.boxlayout"),
     "kivy.clock": types.ModuleType("kivy.clock"),
 }
 
@@ -96,6 +95,7 @@ class _Label(_DummyWidget):
 
 class _Layout(list):
     """Minimal container to emulate Kivy layouts in tests."""
+
     def __init__(self):
         super().__init__()
         self.cols = 0
@@ -108,16 +108,6 @@ class _Layout(list):
 
     def __bool__(self):
         return True
-
-class _BoxLayout(_Layout):
-    def __init__(self, *args, **kwargs):
-        super().__init__()
-        self.orientation = kwargs.get("orientation", "horizontal")
-        self.size_hint = kwargs.get("size_hint", (None, None))
-        self.height = kwargs.get("height", 0)
-        self.width = kwargs.get("width", 0)
-
-kivy_modules["kivy.uix.boxlayout"].BoxLayout = _BoxLayout
 
 kivymd_modules["kivymd.app"].MDApp = _DummyWidget
 kivymd_modules["kivymd.uix.screen"].MDScreen = _DummyWidget
@@ -190,20 +180,6 @@ def test_on_cell_change_updates_session():
     assert dummy_session.pending[(0, 0)] == {"Reps": 5}
 
 
-def test_slider_label_updates_with_two_decimals():
-    """Slider widgets should display a label with two decimal places."""
-    screen = MetricInputScreen()
-    metric_module.MDApp.get_running_app = classmethod(lambda cls: None)
-
-    metric = {"name": "RPE", "type": "slider"}
-    widget = screen._create_input_widget(metric, 0.1, 0)
-    assert widget.label.text == "0.10"
-
-    # Simulate value change
-    widget._on_slider_value(widget.slider, 0.567)
-    assert widget.label.text == "0.57"
-
-
 def test_metric_store_fallback_on_rebuild():
     """Widget should prefill metrics from session.metric_store for unfinished sets."""
     screen = MetricInputScreen()
@@ -238,7 +214,8 @@ def test_metric_store_fallback_on_rebuild():
     metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
 
     screen.session = dummy_session
-    screen.metric_grid = _Layout()
+    screen.metric_names = _Layout()
+    screen.metric_values = _Layout()
 
     screen.update_metrics()
     screen._on_cell_change("Reps", "int", 0, metric_module.MDTextField(text="5"))
@@ -281,12 +258,12 @@ def test_metric_defaults_prefilled():
     metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
 
     screen.session = dummy_session
-    screen.metric_grid = _Layout()
+    screen.metric_names = _Layout()
+    screen.metric_values = _Layout()
 
     screen.update_metrics()
 
     assert screen.metric_cells[("Grip Width", 0)].text == "wide"
-    assert dummy_session.metric_store[(0, 0)]["Grip Width"] == "wide"
 
 
 def test_save_metrics_records_new_set(monkeypatch):
@@ -323,56 +300,3 @@ def test_save_metrics_records_new_set(monkeypatch):
     assert dummy_app.record_new_set is False
 
 
-def test_time_metric_autofill_and_edit(monkeypatch):
-    """Time field auto-populates and updates session on edit."""
-    screen = MetricInputScreen()
-
-    class DummySession:
-        def __init__(self):
-            self.exercises = [
-                {
-                    "name": "Bench",
-                    "sets": 1,
-                    "metric_defs": [],
-                    "results": [
-                        {"started_at": 0.0, "ended_at": 5.0, "metrics": {}}
-                    ],
-                }
-            ]
-            self.metric_store = {}
-
-        def get_set_duration(self, ex, st):
-            res = self.exercises[ex]["results"][st]
-            return res["ended_at"] - res["started_at"]
-
-        def update_set_duration(self, ex, st, dur):
-            res = self.exercises[ex]["results"][st]
-            res["ended_at"] = res["started_at"] + dur
-
-    dummy_session = DummySession()
-    dummy_app = types.SimpleNamespace(workout_session=dummy_session)
-    monkeypatch.setattr(
-        metric_module.MDApp,
-        "get_running_app",
-        classmethod(lambda cls: dummy_app),
-        raising=False,
-    )
-
-    screen.session = dummy_session
-    screen.metric_grid = _Layout()
-    screen.update_metrics()
-
-    widget = screen.metric_cells[("Time", 0)]
-    assert widget.text == "5.0"
-
-    widget.text = "7.2"
-    screen._on_time_change(0, widget)
-    assert dummy_session.get_set_duration(0, 0) == pytest.approx(7.2)
-    assert widget.text == "7.2"
-
-    widget.text = "oops"
-    screen._on_time_change(0, widget)
-    assert widget.text == "7.2"
-
-    screen.update_metrics()
-    assert screen.metric_cells[("Time", 0)].text == "7.2"

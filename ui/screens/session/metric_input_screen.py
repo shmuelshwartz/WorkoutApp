@@ -1,3 +1,18 @@
+"""Workout metric entry screen.
+
+This module implements a fully scrollable grid allowing users to enter set
+metrics for each exercise in a workout session.  The design mirrors the
+reference implementation provided in the task description and keeps widgets
+compact for small screens.  Metric names live in a left column while per-set
+values occupy a horizontally scrollable grid.  The two regions keep their
+scroll positions in sync via the :class:`RowController` to ensure rows stay
+aligned.
+
+The class maintains minimal internal state to reduce memory usage on the
+target low-spec devices.  Each input widget writes directly to
+``session.metric_store`` when edited so no additional caches are required.
+"""
+
 from kivymd.app import MDApp
 from kivy.metrics import dp
 from kivy.properties import (
@@ -14,50 +29,7 @@ from kivy.uix.spinner import Spinner
 from kivymd.uix.label import MDLabel
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.button import MDFlatButton
-from kivy.uix.boxlayout import BoxLayout
-from ui.row_controller import GridController
-
-
-class MetricSlider(BoxLayout):
-    """Composite slider with an adjacent value label.
-
-    The widget arranges an :class:`MDSlider` and a small :class:`MDLabel`
-    horizontally so the current slider value is always visible.  Only the
-    minimal width required to fit both controls is used to keep layouts
-    compact on small screens.
-    """
-
-    def __init__(self, min: float = 0, max: float = 1, value: float = 0, **kwargs):
-        super().__init__(**kwargs)
-        self.orientation = "horizontal"
-        self.size_hint = (None, None)
-        self.height = dp(40)
-        self.width = dp(100)
-
-        # Slider occupies most of the space while remaining touch friendly.
-        self.slider = MDSlider(min=min, max=max, value=value, hint=False)
-        self.slider.size_hint = (None, None)
-        self.slider.height = dp(40)
-        self.slider.width = dp(74)
-
-        # Label shows the value to two decimal places to the right of the slider.
-        self.label = MDLabel(
-            text=f"{value:.2f}",
-            size_hint=(None, None),
-            width = dp(26),
-            height = dp(40),
-        )
-
-        self.add_widget(self.slider)
-        self.add_widget(self.label)
-
-        # Keep the label in sync when the slider value changes.
-        self.slider.bind(value=self._on_slider_value)
-
-    # ------------------------------------------------------------------
-    def _on_slider_value(self, _inst, value: float) -> None:
-        """Update the value label when *value* changes."""
-        self.label.text = f"{value:.2f}"
+from ui.row_controller import RowController
 
 
 class MetricInputScreen(MDScreen):
@@ -68,8 +40,15 @@ class MetricInputScreen(MDScreen):
     can_nav_left = BooleanProperty(False)
     can_nav_right = BooleanProperty(False)
     exercise_bar = ObjectProperty(None)
-    metric_grid = ObjectProperty(None)
-    metric_scroll = ObjectProperty(None)
+    metric_names = ObjectProperty(None)
+    metric_values = ObjectProperty(None)
+    metric_names_scroll = ObjectProperty(None)
+    metric_values_scroll = ObjectProperty(None)
+    # ``set_headers`` and ``set_header_scroll`` are retained for backward
+    # compatibility with existing tests but are no longer separate widgets in
+    # the redesigned layout where headers live inside ``metric_values``.
+    set_header_scroll = ObjectProperty(None)
+    set_headers = ObjectProperty(None)
 
     show_required = BooleanProperty(True)
     show_additional = BooleanProperty(False)
@@ -103,14 +82,47 @@ class MetricInputScreen(MDScreen):
 
         self._notes_widget = None
         self.exercise_bar = None
-        self.metric_grid = None
-        self.metric_scroll = None
+        self.metric_names = None
+        self.metric_values = None
+        self.metric_names_scroll = None
+        self.metric_values_scroll = None
+        self.set_header_scroll = None
+        self.set_headers = None
         self.metric_cells = {}
-        # Controller keeping cells aligned within the grid.
-        self.grid_controller = GridController()
+        # Controller keeping metric name/values rows in perfect alignment.
+        self.row_controller = RowController()
 
     # ------------------------------------------------------------------
-    # Navigation
+    # Layout synchronisation -------------------------------------------------
+    def on_kv_post(self, base_widget):
+        """Bind scroll views after the KV tree is ready."""
+        super().on_kv_post(base_widget)
+        if self.metric_values_scroll and self.metric_names_scroll:
+            self.metric_values_scroll.bind(scroll_y=self._sync_scroll_y)
+            self.metric_names_scroll.bind(scroll_y=self._sync_scroll_names)
+
+    def _sync_scroll_y(self, instance, value):
+        """Mirror vertical scrolling between name and value columns."""
+        if self.metric_names_scroll:
+            self.metric_names_scroll.scroll_y = value
+
+    def _sync_scroll_names(self, instance, value):
+        """Mirror vertical scrolling from the name column to the values grid."""
+        if self.metric_values_scroll:
+            self.metric_values_scroll.scroll_y = value
+
+    def _sync_scroll_x(self, instance, value):
+        """Keep set headers aligned with horizontal metric scrolling."""
+        if self.set_header_scroll:
+            self.set_header_scroll.scroll_x = value
+
+    def _sync_scroll_headers(self, instance, value):
+        """Update metric cells when headers are scrolled."""
+        if self.metric_values_scroll:
+            self.metric_values_scroll.scroll_x = value
+
+    # ------------------------------------------------------------------
+    # Navigation --------------------------------------------------------------
     def on_pre_enter(self, *args):
         app = MDApp.get_running_app()
         self.session = getattr(app, "workout_session", None)
@@ -123,10 +135,12 @@ class MetricInputScreen(MDScreen):
         return super().on_pre_enter(*args)
 
     def update_display(self):
+        """Refresh the highlighted exercise and metric grid."""
         self.highlight_current_exercise()
         self.update_metrics()
 
     def populate_exercise_bar(self):
+        """Create a button for each exercise allowing quick jumps."""
         if not self.exercise_bar:
             return
         self.exercise_bar.clear_widgets()
@@ -143,6 +157,7 @@ class MetricInputScreen(MDScreen):
             self.exercise_bar.add_widget(btn)
 
     def highlight_current_exercise(self):
+        """Tint the active exercise button for clarity."""
         if not self.exercise_bar:
             return
         for idx, child in enumerate(reversed(self.exercise_bar.children)):
@@ -151,10 +166,12 @@ class MetricInputScreen(MDScreen):
                 child.md_bg_color = color
 
     def select_exercise(self, index: int):
+        """Switch to exercise *index* and refresh the display."""
         self.exercise_idx = index
         self.update_display()
 
     def _update_navigation_label(self):
+        """Update the top label with current exercise and set information."""
         if not self.session or self.exercise_idx >= len(self.session.exercises):
             self.label_text = ""
             self.can_nav_left = False
@@ -174,6 +191,7 @@ class MetricInputScreen(MDScreen):
         self.can_nav_right = not (last_ex and last_set)
 
     def register_left_tap(self):
+        """Handle left navigation gestures with single/double/triple taps."""
         self._left_taps += 1
         if self._left_event:
             self._left_event.cancel()
@@ -191,6 +209,7 @@ class MetricInputScreen(MDScreen):
             self.navigate_left()
 
     def register_right_tap(self):
+        """Handle right navigation gestures with single/double/triple taps."""
         self._right_taps += 1
         if self._right_event:
             self._right_event.cancel()
@@ -208,6 +227,7 @@ class MetricInputScreen(MDScreen):
             self.navigate_right()
 
     def navigate_left(self):
+        """Move to the previous set or exercise."""
         if not self.can_nav_left:
             return
         if self.set_idx > 0:
@@ -218,6 +238,7 @@ class MetricInputScreen(MDScreen):
         self.update_display()
 
     def navigate_left_double(self):
+        """Jump to the first set of the current or previous exercise."""
         if self.set_idx > 0:
             self.set_idx = 0
         elif self.exercise_idx > 0:
@@ -226,6 +247,7 @@ class MetricInputScreen(MDScreen):
         self.update_display()
 
     def navigate_left_triple(self):
+        """Jump to the first exercise of the previous section."""
         if not self.session:
             return
         sections = getattr(self.session, "section_starts", [])
@@ -242,6 +264,7 @@ class MetricInputScreen(MDScreen):
         self.update_display()
 
     def navigate_right(self):
+        """Advance to the next set or exercise."""
         if not self.can_nav_right:
             return
         ex = self.session.exercises[self.exercise_idx]
@@ -253,12 +276,14 @@ class MetricInputScreen(MDScreen):
         self.update_display()
 
     def navigate_right_double(self):
+        """Jump to the first set of the next exercise."""
         if self.exercise_idx < len(self.session.exercises) - 1:
             self.exercise_idx += 1
             self.set_idx = 0
             self.update_display()
 
     def navigate_right_triple(self):
+        """Jump to the first exercise of the next section."""
         if not self.session:
             return
         sections = getattr(self.session, "section_starts", [])
@@ -272,8 +297,9 @@ class MetricInputScreen(MDScreen):
             self.update_display()
 
     # ------------------------------------------------------------------
-    # Filter buttons
+    # Filter buttons -----------------------------------------------------------
     def toggle_filter(self, name: str):
+        """Toggle visibility of a filter category."""
         attr = {
             "required": "show_required",
             "additional": "show_additional",
@@ -286,6 +312,7 @@ class MetricInputScreen(MDScreen):
             self.update_metrics()
 
     def filter_color(self, name: str):
+        """Return active color for filter *name*."""
         attr = {
             "required": "show_required",
             "additional": "show_additional",
@@ -295,19 +322,22 @@ class MetricInputScreen(MDScreen):
         return (0, 1, 0, 1) if attr and getattr(self, attr) else (1, 1, 1, 1)
 
     def _update_filter_colors(self):
+        """Refresh the visual state of filter buttons."""
         self.required_color = self.filter_color("required")
         self.additional_color = self.filter_color("additional")
         self.pre_color = self.filter_color("pre")
         self.post_color = self.filter_color("post")
 
     # ------------------------------------------------------------------
-    # Metrics
+    # Metrics -----------------------------------------------------------------
     def _sort_key(self, metric):
+        """Return a key sorting metrics by required status and timing."""
         required = 0 if metric.get("is_required") else 2
         timing = 0 if metric.get("input_timing") == "pre_set" else 1
         return required + timing
 
     def _apply_filters(self, metrics):
+        """Yield metrics visible under current filter settings."""
         visible = []
         for m in sorted(metrics, key=self._sort_key):
             required = m.get("is_required", False)
@@ -324,10 +354,12 @@ class MetricInputScreen(MDScreen):
         return visible
 
     def update_metrics(self):
-        if not self.metric_grid:
+        """Populate metric rows for the current exercise."""
+        if not (self.metric_names and self.metric_values):
             return
-        self.metric_grid.clear_widgets()
-        self.grid_controller.clear()
+        self.metric_names.clear_widgets()
+        self.metric_values.clear_widgets()
+        self.row_controller.clear()
         self.metric_cells.clear()
         if not self.session or self.exercise_idx >= len(self.session.exercises):
             return
@@ -339,34 +371,33 @@ class MetricInputScreen(MDScreen):
         ]
         metrics = self._apply_filters(metrics)
         set_count = exercise.get("sets", 0)
-        self.metric_grid.cols = max(1, set_count + 1)
+        self.metric_values.cols = max(1, set_count)
 
-        # Header row: blank cell on the left and set labels to the right.  Any
-        # decorative borders have been intentionally omitted so only the
-        # widgets themselves are rendered.
+        # Header row: blank cell on the left and set labels in the grid.
         header_placeholder = MDLabel(size_hint=(None, None), height=dp(30))
-        self.metric_grid.add_widget(header_placeholder)
-        self.grid_controller.register(0, 0, header_placeholder)
+        self._add_border(header_placeholder, ("top", "bottom", "left"))
+        self.metric_names.add_widget(header_placeholder)
+        self.row_controller.register(0, 0, header_placeholder)
         for s in range(set_count):
             lbl = MDLabel(
-                text=f"Set {s + 1}",
-                size_hint=(None, None),
-                width=dp(100),
-                height=dp(30),
+                text=f"Set {s + 1}", size_hint=(None, None), width=dp(80), height=dp(30)
             )
-            # Wider labels keep column widths consistent with enlarged inputs.
-            self.metric_grid.add_widget(lbl)
-            self.grid_controller.register(0, s + 1, lbl)
+            sides = ("top", "bottom", "right")
+            if s == 0:
+                sides += ("left",)
+            self._add_border(lbl, sides)
+            self.metric_values.add_widget(lbl)
+            self.row_controller.register(0, s + 1, lbl)
 
         results = exercise.get("results", [])
         for row, metric in enumerate(metrics, start=1):
             name = metric.get("name")
             name_lbl = MDLabel(text=name, size_hint=(None, None))
-            # Borders removed here as well to avoid unintended outlines.
-            self.metric_grid.add_widget(name_lbl)
-            self.grid_controller.register(row, 0, name_lbl)
+            self._add_border(name_lbl, ("top", "bottom", "left"))
+            self.metric_names.add_widget(name_lbl)
+            self.row_controller.register(row, 0, name_lbl)
             for s in range(set_count):
-                store = self.session.metric_store.setdefault((self.exercise_idx, s), {})
+                store = self.session.metric_store.get((self.exercise_idx, s), {})
                 value = None
                 if s < len(results):
                     value = results[s].get("metrics", {}).get(name)
@@ -374,38 +405,19 @@ class MetricInputScreen(MDScreen):
                     # Fallback to pre-set metrics stored in metric_store so
                     # previously entered values for unfinished sets reappear.
                     value = store.get(name)
-                    if value in (None, ""):
-                        default = metric.get("value")
-                        if default not in (None, ""):
-                            value = default
-                            store[name] = default
+                if value in (None, ""):
+                    # If no stored value exists yet, use the metric's default
+                    # to pre-populate the field for convenience.
+                    value = metric.get("value")
                 widget = self._create_input_widget(metric, value, s)
                 self.metric_cells[(name, s)] = widget
-                self.metric_grid.add_widget(widget)
-                self.grid_controller.register(row, s + 1, widget)
-
-        # Time metric row displayed for all sets.
-        time_row = len(metrics) + 1
-        time_lbl = MDLabel(text="Time", size_hint=(None, None))
-        self.metric_grid.add_widget(time_lbl)
-        self.grid_controller.register(time_row, 0, time_lbl)
-        for s in range(set_count):
-            duration = self.session.get_set_duration(self.exercise_idx, s)
-            text = f"{duration:.1f}" if duration is not None else ""
-            widget = MDTextField(multiline=False, input_filter="float", text=text)
-            widget.size_hint = (None, None)
-            widget.height = dp(40)
-            widget.width = dp(100)
-            widget.bind(
-                text=lambda inst, val, s=s: self._on_time_change(s, inst)
-            )
-            self.metric_cells[("Time", s)] = widget
-            self.metric_grid.add_widget(widget)
-            self.grid_controller.register(time_row, s + 1, widget)
+                self.metric_values.add_widget(widget)
+                self.row_controller.register(row, s + 1, widget)
 
     # ------------------------------------------------------------------
-    # Metric row helpers
+    # Metric row helpers ------------------------------------------------------
     def _parent_scroll(self, widget):
+        """Return the nearest :class:`ScrollView` ancestor of *widget*."""
         from kivy.uix.scrollview import ScrollView
 
         parent = widget.parent
@@ -416,6 +428,7 @@ class MetricInputScreen(MDScreen):
         return None
 
     def on_slider_touch_down(self, instance, touch):
+        """Disable vertical scrolling when interacting with a slider."""
         if instance.collide_point(*touch.pos):
             scroll = self._parent_scroll(instance)
             if scroll:
@@ -423,12 +436,14 @@ class MetricInputScreen(MDScreen):
         return False
 
     def on_slider_touch_up(self, instance, touch):
+        """Re-enable vertical scrolling after slider interaction."""
         scroll = self._parent_scroll(instance)
         if scroll:
             scroll.do_scroll_y = True
         return False
 
     def _on_cell_change(self, name, mtype, set_idx, widget):
+        """Persist changes from an input *widget* into the session store."""
         app = MDApp.get_running_app()
         session = getattr(app, "workout_session", None)
         if not session:
@@ -461,43 +476,22 @@ class MetricInputScreen(MDScreen):
         else:
             session.set_pre_set_metrics({name: value}, self.exercise_idx, set_idx)
 
-    def _on_time_change(self, set_idx: int, widget: MDTextField) -> None:
-        """Validate and store a manually edited set duration.
-
-        The displayed duration represents ``ended_at - started_at`` for the
-        corresponding set.  When the user edits the text field this handler
-        updates the underlying ``ended_at`` via
-        :meth:`WorkoutSession.update_set_duration` so subsequent loads reflect
-        the new value.  Invalid input restores the previous duration and leaves
-        session state unchanged.
-        """
-
-        app = MDApp.get_running_app()
-        session = getattr(app, "workout_session", None)
-        if not session:
-            return
-        try:
-            duration = float(widget.text)
-        except ValueError:
-            # Revert to the last known duration if parsing fails.
-            current = session.get_set_duration(self.exercise_idx, set_idx)
-            widget.text = f"{current:.1f}" if current is not None else ""
-            return
-        session.update_set_duration(self.exercise_idx, set_idx, duration)
-        widget.text = f"{duration:.1f}"
-
     def _create_input_widget(self, metric, value, set_idx):
+        """Create an input widget for *metric* preset to *value*."""
         name = metric.get("name")
         mtype = metric.get("type", "str")
         values = metric.get("values", [])
         if mtype == "slider":
-            widget = MetricSlider(min=0, max=1, value=value or 0)
-
-            def _value_change(inst, val, name=name, mtype=mtype, set_idx=set_idx):
-                self._on_cell_change(name, mtype, set_idx, inst)
-
-            widget.slider.bind(
-                value=_value_change,
+            widget = MDSlider(min=0, max=1, value=value or 0)
+            widget.bind(
+                # Capture loop variables to ensure each cell updates correctly
+                value=lambda inst,
+                val,
+                name=name,
+                mtype=mtype,
+                set_idx=set_idx: self._on_cell_change(
+                    name, mtype, set_idx, inst
+                ),
                 on_touch_down=self.on_slider_touch_down,
                 on_touch_up=self.on_slider_touch_up,
             )
@@ -528,6 +522,7 @@ class MetricInputScreen(MDScreen):
             widget = MDTextField(
                 multiline=False,
                 input_filter=input_filter,
+                text=str(value) if value not in (None, "") else "",
             )
             widget.bind(
                 text=lambda inst,
@@ -536,16 +531,47 @@ class MetricInputScreen(MDScreen):
                 mtype=mtype,
                 set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst)
             )
-            # ``MDTextField`` text is assigned after initialization to mirror
-            # the pattern in ``EditMetricPopup`` and avoid constructor-side
-            # quirks on small devices.
-            widget.text = "" if value in (None, "") else str(value)
         widget.size_hint = (None, None)
         widget.height = dp(40)
-        widget.width = dp(100)  # Increased for easier data entry on small screens.
-        # Borders previously drawn here introduced unwanted visual clutter.
-        # Removing them simplifies the interface without altering layout.
+        widget.width = dp(80)
+        sides = ("top", "bottom", "right")
+        if set_idx == 0:
+            sides += ("left",)
+        self._add_border(widget, sides)
         return widget
+
+    # ------------------------------------------------------------------
+    def _add_border(self, widget, sides=("left", "right", "top", "bottom")):
+        """Draw a 1px border around *widget* limited to ``sides``."""
+
+        try:
+            from kivy.graphics import Color, Line  # type: ignore
+        except Exception:
+            return
+
+        lines = {}
+        with widget.canvas.after:
+            Color(0, 0, 0, 1)
+            if "left" in sides:
+                lines["left"] = Line(points=[0, 0, 0, widget.height], width=1)
+            if "right" in sides:
+                lines["right"] = Line(points=[widget.width, 0, widget.width, widget.height], width=1)
+            if "top" in sides:
+                lines["top"] = Line(points=[0, widget.height, widget.width, widget.height], width=1)
+            if "bottom" in sides:
+                lines["bottom"] = Line(points=[0, 0, widget.width, 0], width=1)
+
+        def _update(_inst, _val):
+            if "left" in lines:
+                lines["left"].points = [0, 0, 0, widget.height]
+            if "right" in lines:
+                lines["right"].points = [widget.width, 0, widget.width, widget.height]
+            if "top" in lines:
+                lines["top"].points = [0, widget.height, widget.width, widget.height]
+            if "bottom" in lines:
+                lines["bottom"].points = [0, 0, widget.width, 0]
+
+        widget.bind(size=_update, pos=_update)
 
     # ------------------------------------------------------------------
     def save_metrics(self):
@@ -575,3 +601,4 @@ class MetricInputScreen(MDScreen):
 
         if getattr(self, "manager", None):
             self.manager.current = "rest"
+
