@@ -745,14 +745,17 @@ RootUI:
             text_color: 0.5, 0.5, 0.5, 1
             font_style: "Caption"
             adaptive_height: True
+            size_hint_y: 0.1  # occupy 10% of the vertical space for version display
         MDLabel:
-            text: "Welcome - start your fitness journey"
+            text: "this is a workout app for Shmuel Shwartz"
             halign: "center"
             theme_text_color: "Custom"
             text_color: 0.2, 0.6, 0.86, 1
+            size_hint_y: 0.7  # dedicate 70% of vertical space to the welcome message
         MDRaisedButton:
             text: "Enter"
             on_release: app.root.current = "home"
+            size_hint_y: 0.2  # button takes remaining 20% of the vertical space
 
 <SectionWidget>:
     orientation: "vertical"
