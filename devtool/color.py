@@ -1,7 +1,7 @@
 # App to visualize and test color palettes for the Workout app
 
 from kivymd.app import MDApp
-from kivy.uix.screenmanager import ScreenManager
+from kivy.uix.screenmanager import ScreenManager, NoTransition
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRaisedButton, MDFlatButton, MDIconButton
@@ -291,7 +291,8 @@ class ColorApp(MDApp):
 
     def build(self):
         self.theme_cls.theme_style = "Light"
-        manager = ScreenManager()
+        # Use NoTransition for instant screen switching while previewing colors
+        manager = ScreenManager(transition=NoTransition())
 
         self.edit_screen = EditColorsScreen(name="edit")
         self.edit_screen.build()
