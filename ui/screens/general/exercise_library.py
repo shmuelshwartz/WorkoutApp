@@ -14,9 +14,6 @@ from kivymd.uix.screen import MDScreen
 from ui.dialogs import FullScreenDialog
 from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.label import MDLabel
-from kivymd.uix.list import MDList, OneLineListItem
-from kivy.uix.scrollview import ScrollView
-from kivy.metrics import dp
 
 import os
 from backend import metrics, exercises
@@ -41,10 +38,6 @@ class ExerciseLibraryScreen(MDScreen):
     metric_cache_version = NumericProperty(-1)
 
     loading_dialog = ObjectProperty(None, allownone=True)
-    # Filtering modes: 'all', 'user', 'preloaded'
-    exercise_filter_mode = StringProperty("all")
-    metric_filter_mode = StringProperty("all")
-    filter_dialog = ObjectProperty(None, allownone=True)
 
     _search_event = None
     _metric_search_event = None
@@ -148,10 +141,7 @@ class ExerciseLibraryScreen(MDScreen):
             if app:
                 self.cache_version = app.exercise_library_version
         exercise_rows = self.all_exercises or []
-        if self.exercise_filter_mode == "user":
-            exercise_rows = [ex for ex in exercise_rows if ex[1]]
-        elif self.exercise_filter_mode == "preloaded":
-            exercise_rows = [ex for ex in exercise_rows if not ex[1]]
+
         if self.search_text:
             s = self.search_text.lower()
             exercise_rows = [ex for ex in exercise_rows if s in ex[0].lower()]
@@ -184,13 +174,12 @@ class ExerciseLibraryScreen(MDScreen):
             if app:
                 self.metric_cache_version = app.metric_library_version
         metrics = self.all_metrics or []
-        if self.metric_filter_mode == "user":
-            metrics = [m for m in metrics if m["is_user_created"]]
-        elif self.metric_filter_mode == "preloaded":
-            metrics = [m for m in metrics if not m["is_user_created"]]
         if self.metric_search_text:
             s = self.metric_search_text.lower()
             metrics = [m for m in metrics if s in m["name"].lower()]
+        # Sort metrics so that predefined types appear first and each group
+        # is ordered alphabetically. ``m['is_user_created']`` places
+        # user-created metrics after the predefined ones.
         metrics = sorted(
             metrics, key=lambda m: (m["is_user_created"], m["name"].lower())
         )
@@ -203,6 +192,8 @@ class ExerciseLibraryScreen(MDScreen):
                     "is_user_created": m["is_user_created"],
                     "edit_callback": self.open_edit_metric_popup,
                     "delete_callback": self.confirm_delete_metric,
+                    # Lock premade metrics so the pencil icon is hidden.
+                    "locked": not m["is_user_created"],
                 }
             )
         self.metric_list.data = data
@@ -230,14 +221,14 @@ class ExerciseLibraryScreen(MDScreen):
 
             self._metric_search_event = Clock.schedule_once(do_populate, 0.2)
 
-    def open_edit_exercise_popup(self, exercise_name):
+    def open_edit_exercise_popup(self, exercise_name, is_user_created):
         """Navigate to ``EditExerciseScreen`` with ``exercise_name`` loaded."""
         app = MDApp.get_running_app()
         if not app or not app.root:
             return
         screen = app.root.get_screen("edit_exercise")
         screen.exercise_name = exercise_name
-        screen.is_user_created = None
+        screen.is_user_created = is_user_created
         screen.section_index = -1
         screen.exercise_index = -1
         screen.previous_screen = "exercise_library"
@@ -249,7 +240,9 @@ class ExerciseLibraryScreen(MDScreen):
         def do_delete(*args):
             db_path = DEFAULT_DB_PATH
             try:
-                exercises.delete_exercise(exercise_name, db_path=db_path)
+                exercises.delete_exercise(
+                    exercise_name, db_path=db_path, is_user_created=True
+                )
                 app = MDApp.get_running_app()
                 if app:
                     app.exercise_library_version += 1
@@ -279,7 +272,9 @@ class ExerciseLibraryScreen(MDScreen):
         def do_delete(*args):
             db_path = DEFAULT_DB_PATH
             try:
-                metrics.delete_metric_type(metric_name, db_path=db_path)
+                metrics.delete_metric_type(
+                    metric_name, db_path=db_path, is_user_created=True
+                )
                 app = MDApp.get_running_app()
                 if app:
                     app.metric_library_version += 1
@@ -316,16 +311,25 @@ class ExerciseLibraryScreen(MDScreen):
         screen.previous_screen = "exercise_library"
         app.root.current = "edit_exercise"
 
-    def open_edit_metric_popup(self, metric_name):
-        """Open a dialog to edit a library metric type."""
+    def open_edit_metric_popup(self, metric_name, is_user_created):
+        """Open a dialog to edit a library metric type.
+
+        Parameters
+        ----------
+        metric_name: str
+            Name of the metric type to edit.
+        is_user_created: bool | str
+            Flag indicating whether the metric is user-defined. Kivy can
+            sometimes deliver this value as a string from the KV language so
+            it is normalised to a proper boolean before use.
+        """
 
         from main import EditMetricTypePopup  # local import to avoid circular dependency
 
-        is_user_created = False
-        for m in self.all_metrics or []:
-            if m.get("name") == metric_name:
-                is_user_created = m.get("is_user_created", False)
-                break
+        if isinstance(is_user_created, str):
+            is_user_created = is_user_created.lower() == "true"
+        else:
+            is_user_created = bool(is_user_created)
 
         popup = EditMetricTypePopup(self, metric_name, is_user_created)
         popup.open()
@@ -335,39 +339,6 @@ class ExerciseLibraryScreen(MDScreen):
 
         popup = EditMetricTypePopup(self, None, True)
         popup.open()
-
-    def open_filter_popup(self, target: str):
-        list_view = MDList()
-        options = [
-            ("All", "all"),
-            ("User Created", "user"),
-            ("Preloaded", "preloaded"),
-        ]
-        for label, mode in options:
-            item = OneLineListItem(text=label)
-            item.bind(on_release=lambda inst, m=mode: self.apply_filter(target, m))
-            list_view.add_widget(item)
-        scroll = ScrollView(do_scroll_y=True, size_hint_y=None, height=dp(200))
-        scroll.add_widget(list_view)
-        close_btn = MDRaisedButton(
-            text="Close", on_release=lambda *a: self.filter_dialog.dismiss()
-        )
-        self.filter_dialog = FullScreenDialog(
-            title="Filter",
-            content_cls=scroll,
-            buttons=[close_btn],
-        )
-        self.filter_dialog.open()
-
-    def apply_filter(self, target: str, mode: str):
-        if target == "exercise":
-            self.exercise_filter_mode = mode
-        else:
-            self.metric_filter_mode = mode
-        if self.filter_dialog:
-            self.filter_dialog.dismiss()
-            self.filter_dialog = None
-        self.populate()
 
     def switch_tab(self, tab: str):
         if tab in ("exercises", "metrics"):

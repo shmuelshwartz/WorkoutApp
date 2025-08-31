@@ -757,7 +757,7 @@ class ExerciseSelectionPanel(MDBoxLayout):
     """Panel for selecting exercises to add to a preset section."""
 
     exercise_list = ObjectProperty(None)
-    filter_mode = StringProperty("all")
+    filter_mode = StringProperty("both")
     filter_dialog = ObjectProperty(None, allownone=True)
     search_text = StringProperty("")
     all_exercises = ListProperty(None, allownone=True)
@@ -787,7 +787,7 @@ class ExerciseSelectionPanel(MDBoxLayout):
         exercise_rows = self.all_exercises or []
         if self.filter_mode == "user":
             exercise_rows = [ex for ex in exercise_rows if ex[1]]
-        elif self.filter_mode == "preloaded":
+        elif self.filter_mode == "premade":
             exercise_rows = [ex for ex in exercise_rows if not ex[1]]
         if self.search_text:
             s = self.search_text.lower()
@@ -823,9 +823,9 @@ class ExerciseSelectionPanel(MDBoxLayout):
     def open_filter_popup(self):
         list_view = MDList()
         options = [
-            ("All", "all"),
             ("User Created", "user"),
-            ("Preloaded", "preloaded"),
+            ("Premade", "premade"),
+            ("Both", "both"),
         ]
         for label, mode in options:
             item = OneLineListItem(text=label)
