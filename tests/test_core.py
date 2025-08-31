@@ -240,11 +240,11 @@ def test_delete_metric_type(sample_db):
         db_path=sample_db,
     )
     assert isinstance(metric_id, int)
-    assert metrics.delete_metric_type("Tempo", db_path=sample_db, is_user_created=True)
+    assert metrics.delete_metric_type("Tempo", db_path=sample_db)
     metric_list = metrics.get_all_metric_types(sample_db, include_user_created=True)
     assert all(m["name"] != "Tempo" for m in metric_list)
     assert (
-        metrics.delete_metric_type("Tempo", db_path=sample_db, is_user_created=True)
+        metrics.delete_metric_type("Tempo", db_path=sample_db)
         is False
     )
 
@@ -275,7 +275,7 @@ def test_delete_metric_type_in_use_by_preset_exercise(sample_db):
     conn.close()
 
     with pytest.raises(ValueError):
-        metrics.delete_metric_type("Velocity", db_path=sample_db, is_user_created=True)
+        metrics.delete_metric_type("Velocity", db_path=sample_db)
 
 
 def test_find_presets_and_apply_changes(sample_db):

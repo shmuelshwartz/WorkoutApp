@@ -52,28 +52,24 @@ def get_exercise_details(
 ) -> dict | None:
     """Return details for ``exercise_name``.
 
-    If ``is_user_created`` is ``None`` (the default), the user-created
-    copy will be preferred when both predefined and user-defined versions
-    exist.  Otherwise the requested variant will be fetched.
+    The ``is_user_created`` flag acts only as an optional filter and no
+    longer distinguishes separate copies of an exercise.  ``None`` (the
+    default) returns the matching exercise regardless of the flag.
 
     Returns ``None`` if the exercise does not exist.
     """
 
     with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
-        if is_user_created is None:
-            cursor.execute(
-                "SELECT name, description, is_user_created"
-                " FROM library_exercises WHERE name = ? AND deleted = 0"
-                " ORDER BY is_user_created DESC LIMIT 1",
-                (exercise_name,),
-            )
-        else:
-            cursor.execute(
-                "SELECT name, description, is_user_created"
-                " FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
-                (exercise_name, int(is_user_created)),
-            )
+        query = (
+            "SELECT name, description, is_user_created "
+            "FROM library_exercises WHERE name = ? AND deleted = 0"
+        )
+        params: list = [exercise_name]
+        if is_user_created is not None:
+            query += " AND is_user_created = ?"
+            params.append(int(is_user_created))
+        cursor.execute(query, params)
         row = cursor.fetchone()
         if not row:
             return None
@@ -109,15 +105,15 @@ def save_exercise(exercise: "Exercise") -> None:
             cursor = conn.cursor()
 
             cursor.execute(
-                "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = 1 AND deleted = 0",
+                "SELECT id FROM library_exercises WHERE LOWER(name) = LOWER(?) AND deleted = 0",
                 (exercise.name,),
             )
             row = cursor.fetchone()
             if row:
                 ex_id = row[0]
                 cursor.execute(
-                    "UPDATE library_exercises SET description = ? WHERE id = ?",
-                    (exercise.description, ex_id),
+                    "UPDATE library_exercises SET description = ?, is_user_created = ? WHERE id = ?",
+                    (exercise.description, int(exercise.is_user_created), ex_id),
                 )
                 cursor.execute(
                     "UPDATE library_exercise_metrics SET deleted = 1 WHERE exercise_id = ?",
@@ -125,8 +121,8 @@ def save_exercise(exercise: "Exercise") -> None:
                 )
             else:
                 cursor.execute(
-                    "INSERT INTO library_exercises (name, description, is_user_created) VALUES (?, ?, 1)",
-                    (exercise.name, exercise.description),
+                    "INSERT INTO library_exercises (name, description, is_user_created) VALUES (?, ?, ?)",
+                    (exercise.name, exercise.description, int(exercise.is_user_created)),
                 )
                 ex_id = cursor.lastrowid
 
@@ -180,30 +176,26 @@ def save_exercise(exercise: "Exercise") -> None:
             conn.commit()
         # create backup once the transaction succeeds
         create_backup()
+    except sqlite3.IntegrityError as exc:
+        raise ValueError("Exercise name must be unique") from exc
     except sqlite3.Error as exc:  # pragma: no cover - defensive
         raise ValueError(f"Failed to save exercise: {exc}") from exc
 
-    exercise.is_user_created = True
+    exercise.is_user_created = bool(exercise.is_user_created)
     exercise.mark_saved()
 
 
-def delete_exercise(
-    name: str,
-    db_path: Path = DEFAULT_DB_PATH,
-    *,
-    is_user_created: bool = True,
-) -> bool:
-    """Delete `name` from the exercises table.
+def delete_exercise(name: str, db_path: Path = DEFAULT_DB_PATH) -> bool:
+    """Delete ``name`` from the exercises table.
 
-    Only the variant matching `is_user_created` will be removed. The
-    function returns `True` when a row was deleted.
+    The function returns ``True`` when a row was deleted.
     """
 
     with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
-            (name, int(is_user_created)),
+            "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0",
+            (name,),
         )
         row = cursor.fetchone()
         if not row:

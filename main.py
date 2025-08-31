@@ -339,11 +339,9 @@ class EditMetricTypePopup(FullScreenDialog):
         # ``FullScreenDialog`` handles full-screen sizing.
         if metric_name:
             for m in screen.all_metrics or []:
-                if (
-                    m["name"] == metric_name
-                    and m.get("is_user_created", False) == is_user_created
-                ):
+                if m["name"] == metric_name:
                     self.metric = m
+                    self.is_user_created = m.get("is_user_created", False)
                     break
         content, buttons, title = self._build_widgets()
         super().__init__(
@@ -500,25 +498,7 @@ class EditMetricTypePopup(FullScreenDialog):
         # ``FullScreenDialog`` uses this reference to adjust height on open.
         self._scroll_view = layout
         info_widgets = []
-        if self.metric and not self.is_user_created:
-            has_copy = False
-            if self.screen and self.metric_name:
-                for m in self.screen.all_metrics or []:
-                    if m.get("name") == self.metric_name and m.get("is_user_created"):
-                        has_copy = True
-                        break
-            if has_copy:
-                msg = (
-                    "Built-in metric. Saving will overwrite your existing user copy."
-                )
-            else:
-                msg = (
-                    "Built-in metric. Saving will create a user copy you can edit."
-                )
-            label = MDLabel(text=msg, halign="center", size_hint_y=None)
-            label.bind(texture_size=lambda inst, val: setattr(inst, "height", val[1]))
-            info_widgets.append(label)
-        elif self.metric and self.is_user_created:
+        if self.metric:
             msg = (
                 "Changes here update the metric defaults. Exercises using this "
                 "metric without overrides will reflect the changes."
@@ -569,7 +549,7 @@ class EditMetricTypePopup(FullScreenDialog):
                 enum_values = [v.strip() for v in text.split(",") if v.strip()]
 
         db_path = DEFAULT_DB_PATH
-        if self.metric and self.is_user_created:
+        if self.metric:
             metrics.update_metric_type(
                 self.metric_name,
                 mtype=data.get("type"),
@@ -578,7 +558,6 @@ class EditMetricTypePopup(FullScreenDialog):
                 description=data.get("description"),
                 is_required=data.get("is_required"),
                 enum_values=enum_values,
-                is_user_created=True,
                 db_path=db_path,
             )
         else:
@@ -593,7 +572,7 @@ class EditMetricTypePopup(FullScreenDialog):
                     enum_values,
                     db_path=db_path,
                 )
-            except sqlite3.IntegrityError:
+            except ValueError:
                 if "name" in self.input_widgets:
                     self.input_widgets["name"].error = True
                 return

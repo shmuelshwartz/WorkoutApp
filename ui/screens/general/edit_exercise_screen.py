@@ -375,14 +375,14 @@ class EditExerciseScreen(MDScreen):
             return
 
         cursor.execute(
-            "SELECT 1 FROM library_exercises WHERE name = ? AND is_user_created = 1",
+            "SELECT 1 FROM library_exercises WHERE LOWER(name) = LOWER(?) AND deleted = 0",
             (name,),
         )
         exists = cursor.fetchone()
         original_name = None
         if self.exercise_obj._original:
             original_name = self.exercise_obj._original.get("name")
-        if exists and (original_name != name or not self.exercise_obj.is_user_created):
+        if exists and (not original_name or original_name.lower() != name.lower()):
             if self.name_field:
                 self.name_field.error = True
             conn.close()
@@ -397,16 +397,6 @@ class EditExerciseScreen(MDScreen):
             return
 
         msg = "Save changes to this exercise?"
-        if not self.exercise_obj.is_user_created:
-            cursor.execute(
-                "SELECT 1 FROM library_exercises WHERE name = ? AND is_user_created = 1",
-                (self.exercise_obj.name,),
-            )
-            exists = cursor.fetchone()
-            if exists:
-                msg = f"A user-defined copy of {self.exercise_obj.name} exists and will be overwritten."
-            else:
-                msg = f"{self.exercise_obj.name} is predefined. A user-defined copy will be created."
         conn.close()
 
         dialog = None
@@ -508,18 +498,9 @@ class EditExerciseScreen(MDScreen):
                 err.open()
 
         if update_in_preset:
-            label_text = (
-                "Update exercise in library"
-                if self.exercise_obj.is_user_created
-                else "Create editable copy in library"
-            )
-            msg = (
-                "Changes will apply only to this preset."
-                if self.exercise_obj.is_user_created
-                else f"{self.exercise_obj.name} is predefined and cannot be edited."
-            )
+            msg = "Changes will apply only to this preset."
             checkbox = MDCheckbox(size_hint=(None, None), height="40dp", width="40dp")
-            label = MDLabel(text=label_text, halign="left")
+            label = MDLabel(text="Update exercise in library", halign="left")
             content = MDBoxLayout(
                 orientation="horizontal",
                 spacing="8dp",
@@ -528,7 +509,6 @@ class EditExerciseScreen(MDScreen):
             )
             content.add_widget(checkbox)
             content.add_widget(label)
-            # Combine message and extra content in a vertical box layout.
             box = MDBoxLayout(
                 orientation="vertical",
                 spacing=dp(8),
