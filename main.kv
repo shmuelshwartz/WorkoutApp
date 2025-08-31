@@ -736,7 +736,7 @@ RootUI:
     md_bg_color: PINK_BG
     BoxLayout:
         orientation: "vertical"
-        spacing: 0
+        spacing: "10dp"
         padding: "20dp"
         MDLabel:
             text: app.app_version
@@ -744,31 +744,15 @@ RootUI:
             theme_text_color: "Custom"
             text_color: 0.5, 0.5, 0.5, 1
             font_style: "Caption"
-            size_hint_y: 0.1
-        ScrollView:
-            size_hint_y: 0.7
-            do_scroll_x: False
-            MDBoxLayout:
-                orientation: "vertical"
-                size_hint_y: None
-                height: self.minimum_height
-                padding: "10dp"
-                MDTextField:
-                    id: welcome_message
-                    text: root.message
-                    hint_text: "Welcome message"
-                    multiline: True
-                    mode: "rectangle"
-                    size_hint_y: None
-                    height: self.minimum_height
-                    on_text: root.message = self.text
-        AnchorLayout:
-            size_hint_y: 0.2
-            anchor_x: "center"
-            anchor_y: "center"
-            MDRaisedButton:
-                text: "Enter"
-                on_release: app.root.current = "home"
+            adaptive_height: True
+        MDLabel:
+            text: "Welcome - start your fitness journey"
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
+        MDRaisedButton:
+            text: "Enter"
+            on_release: app.root.current = "home"
 
 <SectionWidget>:
     orientation: "vertical"
