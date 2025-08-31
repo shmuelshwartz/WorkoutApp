@@ -47,12 +47,17 @@ def get_metrics_for_exercise(
     with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
 
-        query = "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0"
-        params = [exercise_name]
-        if is_user_created is not None:
-            query += " AND is_user_created = ?"
-            params.append(int(is_user_created))
-        cursor.execute(query, params)
+        if is_user_created is None:
+            cursor.execute(
+                # Prefer predefined exercises before user-created variants.
+                "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created ASC LIMIT 1",
+                (exercise_name,),
+            )
+        else:
+            cursor.execute(
+                "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
+                (exercise_name, int(is_user_created)),
+            )
         row = cursor.fetchone()
         if not row:
             return []
@@ -407,32 +412,30 @@ def add_metric_type(
 ) -> int:
     """Insert a new metric type and return its ID."""
 
-    try:
-        with sqlite3.connect(str(db_path)) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO library_metric_types
-                    (name, type, input_timing,
-                     is_required, scope, description, is_user_created,
-                     enum_values_json)
-                VALUES (?, ?, ?, ?, ?, ?, 1, ?)
-                """,
-                (
-                    name,
-                    mtype,
-                    input_timing,
-                    int(is_required),
-                    _sanitize_scope(scope, _MT_SCOPES, default="exercise"),
-                    description,
-                    json.dumps(enum_values) if enum_values is not None else None,
-                ),
-            )
-            metric_id = cursor.lastrowid
-            conn.commit()
-        create_backup()
-    except sqlite3.IntegrityError as exc:
-        raise ValueError("Metric type name must be unique") from exc
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO library_metric_types
+                (name, type, input_timing,
+                 is_required, scope, description, is_user_created,
+                 enum_values_json)
+            VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+            """,
+            (
+                name,
+                mtype,
+                input_timing,
+                int(is_required),
+                _sanitize_scope(scope, _MT_SCOPES, default="exercise"),
+                description,
+                json.dumps(enum_values) if enum_values is not None else None,
+            ),
+        )
+        metric_id = cursor.lastrowid
+        conn.commit()
+    create_backup()
+
 
     return metric_id
 
@@ -525,12 +528,17 @@ def update_metric_type(
 
     with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
-        query = "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0"
-        params = [metric_type_name]
-        if is_user_created is not None:
-            query += " AND is_user_created = ?"
-            params.append(int(is_user_created))
-        cursor.execute(query, params)
+        if is_user_created is None:
+            cursor.execute(
+                # Prefer predefined metric types before user-created variants.
+                "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0 ORDER BY is_user_created ASC LIMIT 1",
+                (metric_type_name,),
+            )
+        else:
+            cursor.execute(
+                "SELECT id FROM library_metric_types WHERE name = ? AND is_user_created = ? AND deleted = 0",
+                (metric_type_name, int(is_user_created)),
+            )
         row = cursor.fetchone()
         if not row:
             raise ValueError(f"Metric type '{metric_type_name}' not found")
@@ -687,19 +695,25 @@ def set_exercise_metric_override(
 ) -> None:
     """Apply an override for ``metric_type_name`` for a specific exercise.
 
-    ``is_user_created`` acts only as an optional filter when identifying the
-    exercise.  ``None`` matches regardless of the flag.
+    ``is_user_created`` selects between predefined and user-created copies of
+    the exercise.  If ``None`` (the default), the predefined variant will be
+    chosen when it exists.
     """
 
     with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
 
-        query = "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0"
-        params = [exercise_name]
-        if is_user_created is not None:
-            query += " AND is_user_created = ?"
-            params.append(int(is_user_created))
-        cursor.execute(query, params)
+        if is_user_created is None:
+            cursor.execute(
+                # Prefer predefined exercises before user-created variants.
+                "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created ASC LIMIT 1",
+                (exercise_name,),
+            )
+        else:
+            cursor.execute(
+                "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
+                (exercise_name, int(is_user_created)),
+            )
         row = cursor.fetchone()
         if not row:
             raise ValueError(f"Exercise '{exercise_name}' not found")
@@ -770,18 +784,24 @@ def set_exercise_metric_override(
     create_backup()
 
 
-def delete_metric_type(name: str, db_path: Path = DEFAULT_DB_PATH) -> bool:
+def delete_metric_type(
+    name: str,
+    db_path: Path = DEFAULT_DB_PATH,
+    *,
+    is_user_created: bool = True,
+) -> bool:
     """Delete ``name`` from the metric types table.
 
-    The function returns ``True`` when a row was deleted.  A ``ValueError`` is
+    Only the variant matching ``is_user_created`` will be removed. The
+    function returns ``True`` when a row was deleted.  A ``ValueError`` is
     raised if the metric type is still referenced by any exercise or preset.
     """
 
     with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id FROM library_metric_types WHERE name = ? AND deleted = 0",
-            (name,),
+            "SELECT id FROM library_metric_types WHERE name = ? AND is_user_created = ? AND deleted = 0",
+            (name, int(is_user_created)),
         )
         row = cursor.fetchone()
         if not row:
@@ -838,12 +858,17 @@ def uses_default_metric(
 
     with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
-        query = "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0"
-        params = [exercise_name]
-        if is_user_created is not None:
-            query += " AND is_user_created = ?"
-            params.append(int(is_user_created))
-        cursor.execute(query, params)
+        if is_user_created is None:
+            cursor.execute(
+                # Prefer predefined exercises before user-created variants.
+                "SELECT id FROM library_exercises WHERE name = ? AND deleted = 0 ORDER BY is_user_created ASC LIMIT 1",
+                (exercise_name,),
+            )
+        else:
+            cursor.execute(
+                "SELECT id FROM library_exercises WHERE name = ? AND is_user_created = ? AND deleted = 0",
+                (exercise_name, int(is_user_created)),
+            )
         row = cursor.fetchone()
         if not row:
             return False

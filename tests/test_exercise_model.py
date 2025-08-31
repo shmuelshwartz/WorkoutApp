@@ -17,9 +17,10 @@ def test_exercise_load_modify_save(sample_db):
     })
     exercises.save_exercise(ex)
 
-    loaded = Exercise("Push-up", db_path=sample_db)
+    loaded = Exercise("Push-up", db_path=sample_db, is_user_created=True)
     names = [m["name"] for m in loaded.metrics]
     assert "Weight" in names
+    assert loaded.is_user_created
 
 
 def test_had_metric(sample_db):
@@ -28,7 +29,7 @@ def test_had_metric(sample_db):
     ex.add_metric({"name": "Weight"})
     assert not ex.had_metric("Weight")
     exercises.save_exercise(ex)
-    loaded = Exercise("Push-up", db_path=sample_db)
+    loaded = Exercise("Push-up", db_path=sample_db, is_user_created=True)
     assert loaded.had_metric("Weight")
 
 
