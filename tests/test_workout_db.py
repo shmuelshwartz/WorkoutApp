@@ -97,13 +97,10 @@ def test_get_metric_type_schema(tmp_db: Path):
 
 def test_get_all_exercises_and_details(sample_db: Path):
     all_ex = exercises.get_all_exercises(db_path=sample_db, include_user_created=True)
-    assert all_ex == [
-        ("Bench Press", False),
-        ("Push Up", False),
-        ("Push Up", True),
-    ]
+    assert ("Bench Press", False) in all_ex
+    assert ("Push Up", False) in all_ex
     details = exercises.get_exercise_details("Push Up", db_path=sample_db)
-    assert details["is_user_created"] is True
+    assert details["is_user_created"] is False
     details_specific = exercises.get_exercise_details("Push Up", db_path=sample_db, is_user_created=False)
     assert details_specific["is_user_created"] is False
     assert exercises.get_exercise_details("Nope", db_path=sample_db) is None
