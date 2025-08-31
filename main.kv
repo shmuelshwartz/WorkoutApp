@@ -45,36 +45,41 @@ RootUI:
 
 <HomeScreen>:
     md_bg_color: PINK_BG
-    ScrollView:
-        do_scroll_x: False
-        MDBoxLayout:
-            id: content_box  # TINY-SCREEN: safe-area padding
-            orientation: "vertical"
-            size_hint_y: None
-            height: self.minimum_height
-            spacing: "10dp"
-            padding: "20dp"
-            MDLabel:
-                text: "Home"
-                font_size: scaled_sp(20)  # TINY-SCREEN: apply font scale
-                halign: "center"
-                theme_text_color: "Custom"
-                text_color: 0.2, 0.6, 0.86, 1
-            MDRaisedButton:
-                text: "Presets"
-                on_release: app.root.current = "presets"
-            MDRaisedButton:
-                text: "Library"
-                on_release: app.root.current = "exercise_library"
-            MDRaisedButton:
-                text: "Progress"
-                on_release: app.root.current = "progress"
-            MDRaisedButton:
-                text: "Settings"
-                on_release: app.open_settings('home')
-            MDRaisedButton:
-                text: "History"
-                on_release: app.root.current = "workout_history"
+    MDBoxLayout:
+        id: content_box  # TINY-SCREEN: safe-area padding
+        orientation: "vertical"
+        padding: "20dp"
+        spacing: "10dp"
+        MDLabel:
+            text: "Home"
+            font_size: scaled_sp(20)  # TINY-SCREEN: apply font scale
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 0.86, 1
+            size_hint_y: 0.1  # fixed title bar
+        ScrollView:
+            do_scroll_x: False
+            size_hint_y: 0.9  # navigation buttons scroll here
+            MDBoxLayout:
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: "10dp"
+                MDRaisedButton:
+                    text: "Presets"
+                    on_release: app.root.current = "presets"
+                MDRaisedButton:
+                    text: "Library"
+                    on_release: app.root.current = "exercise_library"
+                MDRaisedButton:
+                    text: "Progress"
+                    on_release: app.root.current = "progress"
+                MDRaisedButton:
+                    text: "Settings"
+                    on_release: app.open_settings('home')
+                MDRaisedButton:
+                    text: "History"
+                    on_release: app.root.current = "workout_history"
 
 <PresetsScreen>:
     preset_list: preset_list
