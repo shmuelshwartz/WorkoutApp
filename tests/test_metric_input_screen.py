@@ -12,6 +12,7 @@ kivy_modules = {
     "kivy.properties": types.ModuleType("kivy.properties"),
     "kivy.uix": types.ModuleType("kivy.uix"),
     "kivy.uix.scrollview": types.ModuleType("kivy.uix.scrollview"),
+    "kivy.uix.boxlayout": types.ModuleType("kivy.uix.boxlayout"),
     "kivy.uix.spinner": types.ModuleType("kivy.uix.spinner"),
     "kivy.clock": types.ModuleType("kivy.clock"),
 }
@@ -48,6 +49,9 @@ kivymd_modules = {
 class _DummyWidget:
     def __init__(self, *args, **kwargs):
         pass
+
+    def bind(self, **kwargs):
+        self._binding = kwargs
 
 class _TextField(_DummyWidget):
     def __init__(self, text="", **kwargs):
@@ -92,11 +96,12 @@ class _Checkbox(_DummyWidget):
 class _Label(_DummyWidget):
     def __init__(self, text="", **kwargs):
         self.text = text
+        self.height = 0
 
 class _Layout(list):
     """Minimal container to emulate Kivy layouts in tests."""
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__()
         self.cols = 0
 
@@ -118,6 +123,7 @@ kivymd_modules["kivymd.uix.selectioncontrol"].MDCheckbox = _Checkbox
 kivymd_modules["kivymd.uix.button"].MDFlatButton = _DummyWidget
 kivy_modules["kivy.uix.spinner"].Spinner = _Spinner
 kivy_modules["kivy.uix.scrollview"].ScrollView = _DummyWidget
+kivy_modules["kivy.uix.boxlayout"].BoxLayout = _Layout
 
 for name, module in kivymd_modules.items():
     module.__spec__ = ModuleSpec(name, loader=None)
@@ -136,7 +142,7 @@ for name in list(kivy_modules.keys()) + list(kivymd_modules.keys()):
     sys.modules.pop(name, None)
 
 
-def test_apply_filters_and_ordering():
+def test_metrics_sorted_by_required_and_timing():
     screen = MetricInputScreen()
     metrics = [
         {"name": "A", "is_required": True, "input_timing": "pre_set"},
@@ -144,9 +150,6 @@ def test_apply_filters_and_ordering():
         {"name": "C", "is_required": False, "input_timing": "pre_set"},
         {"name": "D", "is_required": False, "input_timing": "post_set"},
     ]
-    visible = screen._apply_filters(metrics)
-    assert [m["name"] for m in visible] == ["A", "B"]
-    screen.toggle_filter("additional")
     visible = screen._apply_filters(metrics)
     assert [m["name"] for m in visible] == ["A", "B", "C", "D"]
 
@@ -214,13 +217,12 @@ def test_metric_store_fallback_on_rebuild():
     metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
 
     screen.session = dummy_session
-    screen.metric_names = _Layout()
-    screen.metric_values = _Layout()
+    screen.metrics_list = _Layout()
 
     screen.update_metrics()
     screen._on_cell_change("Reps", "int", 0, metric_module.MDTextField(text="5"))
     screen.update_metrics()
-    assert screen.metric_cells[("Reps", 0)].text == "5"
+    assert screen.metric_cells["Reps"].text == "5"
 
 
 def test_metric_defaults_prefilled():
@@ -258,12 +260,11 @@ def test_metric_defaults_prefilled():
     metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
 
     screen.session = dummy_session
-    screen.metric_names = _Layout()
-    screen.metric_values = _Layout()
+    screen.metrics_list = _Layout()
 
     screen.update_metrics()
 
-    assert screen.metric_cells[("Grip Width", 0)].text == "wide"
+    assert screen.metric_cells["Grip Width"].text == "wide"
 
 
 def test_save_metrics_records_new_set(monkeypatch):
