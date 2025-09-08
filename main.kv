@@ -17,8 +17,7 @@ RootUI:
         name: "preset_detail"
     ExerciseLibraryScreen:
         name: "exercise_library"
-    ProgressScreen:
-        name: "progress"
+    # ProgressScreen intentionally omitted until implemented
     WorkoutHistoryScreen:
         name: "workout_history"
     ViewPreviousWorkoutScreen:
@@ -72,9 +71,7 @@ RootUI:
                 MDRaisedButton:
                     text: "Library"
                     on_release: app.root.current = "exercise_library"
-                MDRaisedButton:
-                    text: "Progress"
-                    on_release: app.root.current = "progress"
+                # Progress screen removed; button hidden until feature is implemented
                 MDRaisedButton:
                     text: "Settings"
                     on_release: app.open_settings('home')
@@ -321,21 +318,6 @@ RootUI:
                             MDIconButton:
                                 icon: "plus"
                                 on_release: root.new_metric()
-
-<ProgressScreen@MDScreen>:
-    md_bg_color: PINK_BG
-    BoxLayout:
-        orientation: "vertical"
-        spacing: "10dp"
-        padding: "20dp"
-        MDLabel:
-            text: "Progress - track your performance"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: 0.2, 0.6, 0.86, 1
-        MDRaisedButton:
-            text: "Back"
-            on_release: app.root.current = root.return_to
 
 <WorkoutHistoryScreen>:
     md_bg_color: PINK_BG
