@@ -47,14 +47,18 @@ kivymd_modules = {
 }
 
 class _DummyWidget:
-    def __init__(self, *args, **kwargs):
-        pass
+    def __init__(self, *args, disabled=False, **kwargs):
+        self.disabled = disabled
 
     def bind(self, **kwargs):
         self._binding = kwargs
 
+    def on_pre_enter(self, *args, **kwargs):
+        pass
+
 class _TextField(_DummyWidget):
     def __init__(self, text="", **kwargs):
+        super().__init__(**kwargs)
         self.text = text
     def bind(self, **kwargs):
         if not hasattr(self, "_binding"):
@@ -64,6 +68,7 @@ class _TextField(_DummyWidget):
 
 class _Slider(_DummyWidget):
     def __init__(self, value=0, **kwargs):
+        super().__init__(**kwargs)
         self.value = value
         self.hint = False
         self.hint_text = ""
@@ -81,14 +86,16 @@ class _Slider(_DummyWidget):
                 cb(instance, value)
 
 class _Spinner(_DummyWidget):
-    def __init__(self, text="", values=()):
+    def __init__(self, text="", values=(), **kwargs):
+        super().__init__(**kwargs)
         self.text = text
         self.values = values
     def bind(self, **kwargs):
         self._binding = kwargs
 
 class _Checkbox(_DummyWidget):
-    def __init__(self, active=False):
+    def __init__(self, active=False, **kwargs):
+        super().__init__(**kwargs)
         self.active = active
     def bind(self, **kwargs):
         self._binding = kwargs
@@ -110,6 +117,10 @@ class _Layout(list):
 
     def add_widget(self, widget):
         self.append(widget)
+
+    @property
+    def children(self):
+        return list(reversed(self))
 
     def __bool__(self):
         return True
@@ -322,5 +333,100 @@ def test_save_metrics_records_new_set(monkeypatch):
     assert dummy_session.recorded
     assert manager.current == "rest"
     assert dummy_app.record_new_set is False
+
+
+def test_session_and_set_navigation_read_only(monkeypatch):
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.current_exercise = 0
+            self.exercises = [
+                {
+                    "name": "Bench",
+                    "sets": 3,
+                    "metric_defs": [
+                        {
+                            "name": "Reps",
+                            "type": "int",
+                            "is_required": True,
+                            "input_timing": "post_set",
+                        }
+                    ],
+                    "results": [],
+                }
+            ]
+            self.metric_store = {}
+            self.exercise_history = {
+                0: [
+                    {
+                        "date": "Mon 23 Aug 25",
+                        "sets": [
+                            {"metrics": {"Reps": 8}},
+                            {"metrics": {"Reps": 7}},
+                        ],
+                    }
+                ]
+            }
+
+        def edit_set_metrics(self, *args, **kwargs):
+            pass
+
+        def set_pre_set_metrics(self, *args, **kwargs):
+            pass
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(workout_session=dummy_session)
+    monkeypatch.setattr(metric_module.MDApp, "get_running_app", classmethod(lambda cls: dummy_app))
+
+    screen.metrics_list = _Layout()
+    screen.exercise_bar = _Layout()
+    screen.on_pre_enter()
+
+    assert screen.label_text == "Current session\nSet 1"
+    assert screen.can_skip_left
+    assert not screen.metric_cells["Reps"].disabled
+
+    screen.skip_left()
+    assert screen.label_text.startswith("Mon 23 Aug 25")
+    assert screen.metric_cells["Reps"].disabled
+    assert screen.metric_cells["Reps"].text == "8"
+
+    screen.navigate_right()
+    assert screen.label_text.endswith("Set 2")
+    assert screen.metric_cells["Reps"].text == "7"
+
+    screen.skip_right()
+    assert screen.label_text == "Current session\nSet 1"
+    assert not screen.metric_cells["Reps"].disabled
+
+
+def test_skip_buttons_disabled_without_history(monkeypatch):
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.current_exercise = 0
+            self.exercises = [
+                {
+                    "name": "Bench",
+                    "sets": 1,
+                    "metric_defs": [],
+                    "results": [],
+                }
+            ]
+            self.metric_store = {}
+            self.exercise_history = {}
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(workout_session=dummy_session)
+    monkeypatch.setattr(metric_module.MDApp, "get_running_app", classmethod(lambda cls: dummy_app))
+
+    screen.metrics_list = _Layout()
+    screen.exercise_bar = _Layout()
+    screen.on_pre_enter()
+
+    assert not screen.can_skip_left
+    assert not screen.can_skip_right
 
 

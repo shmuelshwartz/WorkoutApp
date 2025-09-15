@@ -609,9 +609,13 @@ RootUI:
                 padding: "0dp", "0dp"
         BoxLayout:
             size_hint_y: None
-            height: dp(40)
+            height: dp(60)
             spacing: dp(10)
             padding: "0dp", "10dp"
+            MDIconButton:
+                icon: "skip-previous"
+                disabled: not root.can_skip_left
+                on_release: root.skip_left()
             MDIconButton:
                 icon: "chevron-left"
                 disabled: not root.can_nav_left
@@ -620,10 +624,16 @@ RootUI:
                 text: root.label_text
                 halign: "center"
                 valign: "middle"
+                size_hint_y: None
+                text_size: self.width, None
             MDIconButton:
                 icon: "chevron-right"
                 disabled: not root.can_nav_right
                 on_release: root.navigate_right()
+            MDIconButton:
+                icon: "skip-next"
+                disabled: not root.can_skip_right
+                on_release: root.skip_right()
         ScrollView:
             do_scroll_x: False
             do_scroll_y: True
