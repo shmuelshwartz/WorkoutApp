@@ -165,6 +165,29 @@ def test_metrics_sorted_by_required_and_timing():
     assert [m["name"] for m in visible] == ["A", "B", "C", "D"]
 
 
+def test_update_metrics_handles_missing_defs():
+    screen = MetricInputScreen()
+
+    class DummySession:
+        def __init__(self):
+            self.exercises = [
+                {"name": "Bench", "sets": 1, "metric_defs": None, "results": []}
+            ]
+            self.metric_store = {}
+
+    dummy_session = DummySession()
+    dummy_app = types.SimpleNamespace(workout_session=dummy_session)
+    metric_module.MDApp.get_running_app = classmethod(lambda cls: dummy_app)
+
+    screen.session = dummy_session
+    screen.metrics_list = _Layout()
+
+    screen.update_metrics()
+
+    assert screen.metric_cells == {}
+    assert len(screen.metrics_list) == 0
+
+
 def test_on_cell_change_updates_session():
     screen = MetricInputScreen()
 

@@ -103,6 +103,10 @@ class PresetOverviewScreen(MDScreen):
         preset_name = app.selected_preset
         metric_defs = metrics.get_metrics_for_preset(preset_name)
         pre_metrics = [m for m in metric_defs if m.get("input_timing") == "pre_session"]
+        if self._pre_session_metric_data:
+            for m in pre_metrics:
+                if m["name"] in self._pre_session_metric_data:
+                    m["value"] = self._pre_session_metric_data[m["name"]]
         if pre_metrics:
             popup = PreSessionMetricPopup(
                 pre_metrics,
