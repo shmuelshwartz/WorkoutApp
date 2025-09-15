@@ -117,10 +117,14 @@ class PreSessionMetricPopup(MDScreen):
         row.add_widget(MDLabel(text=name, size_hint_x=0.4))
         default = metric.get("value")
         if mtype == "slider":
-            widget = MDSlider(min=0, max=1, value=default or 0)
+            widget = MDSlider(min=0, max=1, value=default if default is not None else 0)
+            row.value_entered = default is not None
+            widget.bind(on_touch_up=lambda *_: setattr(row, "value_entered", True))
         elif mtype == "enum":
-            text = default if default not in (None, "") else (values[0] if values else "")
+            text = "" if default in (None, "") else str(default)
             widget = Spinner(text=text, values=values)
+            row.value_entered = default not in (None, "")
+            widget.bind(text=lambda *_: setattr(row, "value_entered", True))
         else:
             input_filter = None
             if mtype == "int":
@@ -175,10 +179,15 @@ class PreSessionMetricPopup(MDScreen):
                 else:
                     value = text
             elif isinstance(widget, MDSlider):
-                value = float(widget.value)
+                if getattr(row, "value_entered", False):
+                    value = float(widget.value)
+                elif required:
+                    valid = False
+                    continue
             elif isinstance(widget, Spinner):
-                value = widget.text
-                if required and value == "":
+                if getattr(row, "value_entered", False):
+                    value = widget.text
+                elif required:
                     valid = False
                     continue
             data[name] = value

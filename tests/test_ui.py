@@ -522,6 +522,33 @@ def test_pre_session_popup_prefills_defaults():
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_pre_session_popup_null_and_save():
+    metrics_defs = [
+        {"name": "Mood", "type": "str"},
+        {"name": "Style", "type": "enum", "values": ["wide", "narrow"]},
+        {"name": "Energy", "type": "slider"},
+    ]
+
+    collected = {}
+
+    popup = PreSessionMetricPopup(metrics_defs, lambda d: collected.update(d), previous_screen="prev")
+    valid, data = popup._collect()
+    assert valid and data == {"Mood": None, "Style": None, "Energy": None}
+
+    for row in popup.metric_list.children:
+        if row.metric_name == "Mood":
+            row.input_widget.text = "great"
+        elif row.metric_name == "Style":
+            row.input_widget.text = "wide"
+        elif row.metric_name == "Energy":
+            row.input_widget.value = 0.5
+            row.value_entered = True
+
+    popup._on_save()
+    assert collected == {"Mood": "great", "Style": "wide", "Energy": 0.5}
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_add_metric_popup_filters_scope(monkeypatch):
     class DummyScreen:
         exercise_obj = type("obj", (), {"metrics": []})()
@@ -1018,6 +1045,50 @@ def test_pre_session_metrics_prompt_before_start(monkeypatch):
     assert dummy_app.workout_session.data == {"M1": 5}
     assert len(popup_calls) == 1
     assert screen.manager.current == "rest"
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_open_metric_popup_prefills_previous(monkeypatch):
+    from kivy.lang import Builder
+    from pathlib import Path
+
+    Builder.load_file(str(Path(__file__).resolve().parents[1] / "main.kv"))
+
+    class DummyList:
+        def clear_widgets(self):
+            pass
+
+        def add_widget(self, widget):
+            pass
+
+    screen = PresetOverviewScreen()
+    screen.details_list = DummyList()
+    screen.workout_list = DummyList()
+
+    app = type("A", (), {"selected_preset": "Test"})()
+    monkeypatch.setattr(App, "get_running_app", lambda: app)
+    monkeypatch.setattr(
+        metrics,
+        "get_metrics_for_preset",
+        lambda name: [{"name": "M1", "input_timing": "pre_session"}],
+    )
+
+    captured = []
+
+    class DummyPopup:
+        def __init__(self, metrics, callback, previous_screen, **kwargs):
+            captured.extend(metrics)
+
+        def open(self):
+            pass
+
+    monkeypatch.setattr(
+        "ui.dialogs.pre_session_metric_popup.PreSessionMetricPopup", DummyPopup
+    )
+
+    screen._pre_session_metric_data = {"M1": 5}
+    screen.open_metric_popup()
+    assert captured and captured[0]["value"] == 5
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
