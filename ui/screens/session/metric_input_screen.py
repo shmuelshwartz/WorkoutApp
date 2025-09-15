@@ -124,6 +124,8 @@ class MetricInputScreen(MDScreen):
 
     def _apply_filters(self, metrics):
         """Return metrics sorted in display order."""
+        if not metrics:
+            return []
         return sorted(metrics, key=self._sort_key)
 
     def update_metrics(self):
@@ -135,7 +137,7 @@ class MetricInputScreen(MDScreen):
             return
 
         exercise = self.session.exercises[self.exercise_idx]
-        metrics = self._apply_filters(exercise.get("metric_defs", []))
+        metrics = self._apply_filters(exercise.get("metric_defs") or [])
         results = exercise.get("results", [])
         store = self.session.metric_store.get((self.exercise_idx, self.set_idx), {})
 
