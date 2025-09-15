@@ -150,10 +150,13 @@ class MetricInputScreen(MDScreen):
                 value = store.get(name)
             if value in (None, ""):
                 value = metric.get("value")
-            row = self._create_row(metric, value)
+            row = self._create_row(metric)
             self.metrics_list.add_widget(row)
+            widget = self.metric_cells.get(name)
+            if widget is not None:
+                self._set_widget_value(widget, metric, value)
 
-    def _create_row(self, metric, value):
+    def _create_row(self, metric):
         name = metric.get("name", "")
         row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40))
         name_lbl = MDLabel(text=name, size_hint_x=0.4, size_hint_y=None, halign="left", valign="middle")
@@ -161,7 +164,7 @@ class MetricInputScreen(MDScreen):
             texture_size=lambda inst, _val: setattr(inst, "height", inst.texture_size[1]),
             width=lambda inst, _val: setattr(inst, "text_size", (inst.width, None)),
         )
-        widget = self._create_input_widget(metric, value)
+        widget = self._create_input_widget(metric)
         widget.size_hint_x = 0.6
         widget.size_hint_y = None
         widget.height = dp(40)
@@ -181,6 +184,21 @@ class MetricInputScreen(MDScreen):
     def _resize_textfield(self, widget):
         lines = widget.text.count("\n") + 1
         widget.height = dp(40) + (lines - 1) * dp(20)
+
+    def _set_widget_value(self, widget, metric, value):
+        """Assign ``value`` to ``widget`` after it has been added to the UI."""
+        mtype = metric.get("type", "str")
+        name = metric.get("name", "")
+        if isinstance(widget, MDTextField):
+            widget.text = "" if value in (None, "") else str(value)
+            if name.lower() == "notes":
+                self._resize_textfield(widget)
+        elif isinstance(widget, MDSlider):
+            widget.value = value if value not in (None, "") else 0
+        elif isinstance(widget, Spinner):
+            widget.text = str(value) if value not in (None, "") else ""
+        elif isinstance(widget, MDCheckbox):
+            widget.active = bool(value)
 
     def on_slider_touch_down(self, instance, touch):
         """Disable vertical scrolling when interacting with a slider."""
@@ -237,25 +255,25 @@ class MetricInputScreen(MDScreen):
         else:
             session.set_pre_set_metrics({name: value}, self.exercise_idx, set_idx)
 
-    def _create_input_widget(self, metric, value):
+    def _create_input_widget(self, metric):
         name = metric.get("name")
         mtype = metric.get("type", "str")
         values = metric.get("values", [])
         set_idx = self.set_idx
         if mtype == "slider":
-            widget = MDSlider(min=0, max=1, value=value or 0)
+            widget = MDSlider(min=0, max=1, value=0)
             widget.bind(
                 value=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst),
                 on_touch_down=self.on_slider_touch_down,
                 on_touch_up=self.on_slider_touch_up,
             )
         elif mtype == "enum":
-            widget = Spinner(text=str(value) if value not in (None, "") else "", values=values)
+            widget = Spinner(text="", values=values)
             widget.bind(
                 text=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst)
             )
         elif mtype == "bool":
-            widget = MDCheckbox(active=bool(value))
+            widget = MDCheckbox(active=False)
             widget.bind(
                 active=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst)
             )
@@ -269,14 +287,13 @@ class MetricInputScreen(MDScreen):
             widget = MDTextField(
                 multiline=multiline,
                 input_filter=input_filter,
-                text=str(value) if value not in (None, "") else "",
+                text="",
             )
             widget.bind(
                 text=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst)
             )
             if multiline:
                 widget.bind(text=lambda inst, _val: self._resize_textfield(inst))
-                self._resize_textfield(widget)
         widget.size_hint = (None, None)
         widget.height = dp(40)
         return widget
