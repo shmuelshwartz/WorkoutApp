@@ -9,9 +9,12 @@ atomic rename to avoid partial writes.
 from __future__ import annotations
 
 from pathlib import Path
+import contextlib
+import errno
 import os
-import sqlite3
 import shutil
+import sqlite3
+import tempfile
 
 # Path to the active database and location for the single backup copy.
 DB_PATH = Path(__file__).resolve().parents[1] / "data" / "workout.db"
@@ -37,20 +40,45 @@ def create_backup(conn: sqlite3.Connection | None = None) -> None:
         connection to :data:`DB_PATH` is created.
     """
 
-    tmp_backup = BACKUP_PATH.with_suffix(".tmp")
-    if conn is None:
-        with sqlite3.connect(str(DB_PATH)) as src, sqlite3.connect(str(tmp_backup)) as dst:
-            src.backup(dst)
-    else:
-        with sqlite3.connect(str(tmp_backup)) as dst:
-            conn.backup(dst)
+    BACKUP_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    # ``sqlite3.Connection.backup`` requires a file path, so we create a named
+    # temporary file and close the descriptor immediately.  Using the system
+    # temporary directory avoids interference from sync tools (e.g. OneDrive)
+    # that may hold open handles on files created inside ``data/backup``.
+    tmp_fd, tmp_name = tempfile.mkstemp(prefix="workout_backup_", suffix=".db")
+    os.close(tmp_fd)
+    tmp_backup = Path(tmp_name)
+
     try:
-        os.replace(tmp_backup, BACKUP_PATH)
-    except PermissionError:
-        # On Windows the destination may be locked if opened by another process.
-        with open(tmp_backup, "rb") as src, open(BACKUP_PATH, "wb") as dst:
-            shutil.copyfileobj(src, dst)
-        os.remove(tmp_backup)
+        if conn is None:
+            with sqlite3.connect(str(DB_PATH)) as src, sqlite3.connect(str(tmp_backup)) as dst:
+                src.backup(dst)
+        else:
+            with sqlite3.connect(str(tmp_backup)) as dst:
+                conn.backup(dst)
+
+        def _copy_into_backup() -> None:
+            with open(tmp_backup, "rb") as src, open(BACKUP_PATH, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+
+        try:
+            os.replace(tmp_backup, BACKUP_PATH)
+        except PermissionError:
+            # On Windows the destination may be locked if opened by another
+            # process.  Fall back to copying the bytes in-place.
+            _copy_into_backup()
+        except OSError as exc:
+            # ``os.replace`` may fail when the temporary directory resides on a
+            # different filesystem.  ``EXDEV`` signals that we should use an
+            # explicit copy instead of a rename.
+            if exc.errno == errno.EXDEV:
+                _copy_into_backup()
+            else:
+                raise
+    finally:
+        with contextlib.suppress(FileNotFoundError, PermissionError):
+            tmp_backup.unlink()
 
 
 def restore_if_corrupt() -> None:
