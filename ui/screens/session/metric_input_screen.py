@@ -235,14 +235,25 @@ class MetricInputScreen(MDScreen):
                 value = store.get(name)
             if value in (None, ""):
                 value = metric.get("value")
-            row = self._create_row(metric, value, read_only=read_only)
 
+            row, widget = self._create_row(metric, read_only=read_only)
             self.metrics_list.add_widget(row)
-            widget = self.metric_cells.get(name)
+
+            # Populate the widget only after it is part of the layout. This
+            # mirrors ``EditMetricPopup`` and prevents corrupted text when the
+            # screen is revisited on compact devices.
             if widget is not None:
                 self._set_widget_value(widget, metric, value)
 
-    def _create_row(self, metric, value, read_only=False):
+    def _create_row(self, metric, read_only=False):
+        """Return the layout row and empty widget for ``metric``.
+
+        Widgets are instantiated without preset values so that callers can
+        populate them only after the row has been attached to the layout. This
+        mirrors the lifecycle used in :class:`EditMetricPopup`, which prevents
+        the corrupted text observed when revisiting the metric input screen on
+        small devices.
+        """
 
         name = metric.get("name", "")
         row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40))
@@ -251,7 +262,7 @@ class MetricInputScreen(MDScreen):
             texture_size=lambda inst, _val: setattr(inst, "height", inst.texture_size[1]),
             width=lambda inst, _val: setattr(inst, "text_size", (inst.width, None)),
         )
-        widget = self._create_input_widget(metric, value, read_only=read_only)
+        widget = self._create_input_widget(metric, read_only=read_only)
 
         widget.size_hint_x = 0.6
         widget.size_hint_y = None
@@ -267,14 +278,19 @@ class MetricInputScreen(MDScreen):
         row.add_widget(name_lbl)
         row.add_widget(widget)
         self.metric_cells[name] = widget
-        return row
+        return row, widget
 
     def _resize_textfield(self, widget):
         lines = widget.text.count("\n") + 1
         widget.height = dp(40) + (lines - 1) * dp(20)
 
     def _set_widget_value(self, widget, metric, value):
-        """Assign ``value`` to ``widget`` after it has been added to the UI."""
+        """Assign ``value`` to ``widget`` after it has been added to the UI.
+
+        The delayed assignment keeps parity with :class:`EditMetricPopup`,
+        ensuring that text fields and other controls render cleanly each time
+        the metric list is rebuilt.
+        """
         mtype = metric.get("type", "str")
         name = metric.get("name", "")
         if isinstance(widget, MDTextField):
@@ -343,14 +359,15 @@ class MetricInputScreen(MDScreen):
         else:
             session.set_pre_set_metrics({name: value}, self.exercise_idx, set_idx)
 
-    def _create_input_widget(self, metric, value, read_only=False):
+    def _create_input_widget(self, metric, read_only=False):
+        """Instantiate an input control without assigning its stored value."""
 
         name = metric.get("name")
         mtype = metric.get("type", "str")
         values = metric.get("values", [])
         set_idx = self.set_idx
         if mtype == "slider":
-            widget = MDSlider(min=0, max=1, value=value or 0, disabled=read_only)
+            widget = MDSlider(min=0, max=1, disabled=read_only)
             if not read_only:
                 widget.bind(
                     value=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst),
@@ -359,7 +376,7 @@ class MetricInputScreen(MDScreen):
                 )
         elif mtype == "enum":
             widget = Spinner(
-                text=str(value) if value not in (None, "") else "",
+                text=values[0] if values else "",
                 values=values,
                 disabled=read_only,
 
@@ -369,7 +386,7 @@ class MetricInputScreen(MDScreen):
                     text=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst)
                 )
         elif mtype == "bool":
-            widget = MDCheckbox(active=bool(value), disabled=read_only)
+            widget = MDCheckbox(disabled=read_only)
             if not read_only:
                 widget.bind(
                     active=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst),
@@ -385,7 +402,6 @@ class MetricInputScreen(MDScreen):
             widget = MDTextField(
                 multiline=multiline,
                 input_filter=input_filter,
-                text=str(value) if value not in (None, "") else "",
                 disabled=read_only,
 
             )
