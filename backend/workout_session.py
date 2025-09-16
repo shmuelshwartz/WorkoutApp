@@ -1,6 +1,7 @@
 import sqlite3
 import time
 import json
+from datetime import datetime
 from pathlib import Path
 
 from backend.metrics import (
@@ -121,6 +122,9 @@ class WorkoutSession:
         for ex_idx, ex in enumerate(self.preset_snapshot):
             for set_idx in range(ex["sets"]):
                 self.metric_store[(ex_idx, set_idx)] = {}
+        # cache historic sessions for quick access in the metric input screen
+        self.exercise_history: dict[int, list[dict]] = {}
+        self._exercise_history_cache: dict[int, list[dict]] = {}
 
         # Precompute merged exercise data so screens can access it instantly
         # without repeatedly building dictionaries. Each entry contains the
@@ -182,6 +186,141 @@ class WorkoutSession:
                 "results": entry["results"],
             }
 
+    @staticmethod
+    def _convert_history_value(metric_type: str | None, value: str | None):
+        """Return ``value`` converted to a type suitable for display widgets."""
+
+        if value is None:
+            return ""
+        if metric_type == "int":
+            try:
+                return int(float(value))
+            except (TypeError, ValueError):  # pragma: no cover - defensive
+                return value
+        if metric_type in {"float", "slider"}:
+            try:
+                return float(value)
+            except (TypeError, ValueError):  # pragma: no cover - defensive
+                return value
+        if metric_type == "bool":
+            if isinstance(value, str):
+                lowered = value.strip().lower()
+                if lowered in {"1", "true", "yes", "on"}:
+                    return True
+                if lowered in {"0", "false", "no", "off"}:
+                    return False
+            return bool(value)
+        return value
+
+    @staticmethod
+    def _format_history_date(started_at: float | None) -> str:
+        """Return a two-line label string for historic sessions."""
+
+        if not started_at:
+            return ""
+        return datetime.fromtimestamp(started_at).strftime("%a %d %b %y")
+
+    def _query_exercise_history(self, library_exercise_id: int) -> list[dict]:
+        """Fetch previous sessions for ``library_exercise_id`` from the database."""
+
+        if not library_exercise_id:
+            return []
+
+        sessions: dict[float, list[dict]] = {}
+        order: list[float] = []
+
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT ss.started_at, se.id
+                FROM session_section_exercises se
+                JOIN session_session_sections sec
+                  ON se.section_id = sec.id AND sec.deleted = 0
+                JOIN session_sessions ss
+                  ON sec.session_id = ss.id AND ss.deleted = 0
+                WHERE se.library_exercise_id = ?
+                  AND se.deleted = 0
+                ORDER BY ss.started_at, sec.position, se.position
+                """,
+                (library_exercise_id,),
+            )
+
+            for started_at, section_ex_id in cursor.fetchall():
+                cursor.execute(
+                    """
+                    SELECT id
+                    FROM session_exercise_sets
+                    WHERE section_exercise_id = ? AND deleted = 0
+                    ORDER BY set_number
+                    """,
+                    (section_ex_id,),
+                )
+                set_rows = cursor.fetchall()
+                if not set_rows:
+                    continue
+
+                collected_sets: list[dict] = []
+                for (set_id,) in set_rows:
+                    cursor.execute(
+                        """
+                        SELECT m.metric_name, m.type, sm.value
+                        FROM session_set_metrics sm
+                        JOIN session_exercise_metrics m
+                          ON sm.exercise_metric_id = m.id
+                        WHERE sm.exercise_set_id = ?
+                          AND sm.deleted = 0
+                          AND m.deleted = 0
+                        ORDER BY m.position
+                        """,
+                        (set_id,),
+                    )
+                    metrics = {}
+                    for name, mtype, value in cursor.fetchall():
+                        metrics[name] = self._convert_history_value(mtype, value)
+                    collected_sets.append({"metrics": metrics})
+
+                if not collected_sets:
+                    continue
+
+                if started_at not in sessions:
+                    sessions[started_at] = []
+                    order.append(started_at)
+                sessions[started_at].extend(collected_sets)
+
+        history: list[dict] = []
+        for started_at in order:
+            history.append(
+                {
+                    "date": self._format_history_date(started_at),
+                    "sets": sessions[started_at],
+                }
+            )
+        return history
+
+    def get_exercise_history(self, exercise_index: int) -> list[dict]:
+        """Return cached history entries for ``exercise_index``."""
+
+        if exercise_index < 0 or exercise_index >= len(self.exercises):
+            return []
+
+        if exercise_index in self.exercise_history:
+            return self.exercise_history[exercise_index]
+
+        exercise = self.exercises[exercise_index]
+        library_exercise_id = exercise.get("library_exercise_id")
+        if not library_exercise_id:
+            self.exercise_history[exercise_index] = []
+            return []
+
+        if library_exercise_id in self._exercise_history_cache:
+            history = self._exercise_history_cache[library_exercise_id]
+        else:
+            history = self._query_exercise_history(library_exercise_id)
+            self._exercise_history_cache[library_exercise_id] = history
+
+        self.exercise_history[exercise_index] = history
+        return history
     def load_exercise_details(self, index: int) -> dict:
         """Load full details for the exercise at ``index`` if needed.
 
