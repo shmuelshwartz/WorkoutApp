@@ -1,6 +1,7 @@
 TESTING = True
 # Feature flag: when True the UI is scaled to half size while staying centered.
 half_screen = False
+APP_VERSION = "0.1.3"
 import os
 os.environ["KIVY_AUDIO"] = "sdl2"
 import tiny_screen  # TINY-SCREEN: env overrides
@@ -621,7 +622,7 @@ class WorkoutApp(MDApp):
     # Incremented when a metric type is added or edited
     metric_library_version: int = 0
     # Displayed application version on the welcome screen
-    app_version = StringProperty("0.1.2")
+    app_version = StringProperty(APP_VERSION)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
