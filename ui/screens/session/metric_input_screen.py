@@ -192,6 +192,52 @@ class MetricInputScreen(MDScreen):
             return []
         return sorted(metrics, key=self._sort_key)
 
+    @staticmethod
+    def _value_is_missing(value) -> bool:
+        """Return ``True`` when ``value`` represents a missing entry."""
+
+        # Treat common textual sentinels (e.g. "None") the same as empty
+        # values so downstream widgets can rely on consistent input.
+
+        if value in (None, ""):
+            return True
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"none", "null", "nan"}:
+                return True
+        return False
+
+    def _coerce_slider_value(self, value) -> float:
+        """Return a numeric slider value from arbitrary stored ``value``."""
+
+        # Historic database rows sometimes store the literal string "None".
+        # Sanitising here avoids ``ValueError`` when instantiating sliders.
+
+        if self._value_is_missing(value):
+            return 0.0
+        if isinstance(value, (int, float)):
+            return float(value)
+        try:
+            return float(str(value))
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _coerce_checkbox_value(self, value) -> bool:
+        """Return a boolean suitable for checkbox widgets."""
+
+        # Accept a few common string sentinels so history rows display
+        # correctly when revisiting past workouts.
+
+        if self._value_is_missing(value):
+            return False
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"1", "true", "yes", "on"}:
+                return True
+            if lowered in {"0", "false", "no", "off"}:
+                return False
+        return bool(value)
+
     def update_metrics(self):
         if not self.metrics_list:
             return
@@ -230,11 +276,19 @@ class MetricInputScreen(MDScreen):
             name = metric.get("name")
             value = None
             if self.set_idx < len(results):
-                value = results[self.set_idx].get("metrics", {}).get(name)
+                metrics_map = results[self.set_idx].get("metrics", {})
+                value = metrics_map.get(name)
             else:
                 value = store.get(name)
-            if value in (None, ""):
-                value = metric.get("value")
+
+            if self._value_is_missing(value):
+                # Older session rows may contain textual placeholders like
+                # "None". Treat them as empty before falling back to defaults.
+                default = metric.get("value")
+                value = None if self._value_is_missing(default) else default
+
+            row = self._create_row(metric, value, read_only=read_only)
+
 
             row, widget = self._create_row(metric, read_only=read_only)
             self.metrics_list.add_widget(row)
@@ -294,15 +348,15 @@ class MetricInputScreen(MDScreen):
         mtype = metric.get("type", "str")
         name = metric.get("name", "")
         if isinstance(widget, MDTextField):
-            widget.text = "" if value in (None, "") else str(value)
+            widget.text = "" if self._value_is_missing(value) else str(value)
             if name.lower() == "notes":
                 self._resize_textfield(widget)
         elif isinstance(widget, MDSlider):
-            widget.value = value if value not in (None, "") else 0
+            widget.value = self._coerce_slider_value(value)
         elif isinstance(widget, Spinner):
-            widget.text = str(value) if value not in (None, "") else ""
+            widget.text = "" if self._value_is_missing(value) else str(value)
         elif isinstance(widget, MDCheckbox):
-            widget.active = bool(value)
+            widget.active = self._coerce_checkbox_value(value)
 
     def on_slider_touch_down(self, instance, touch):
         """Disable vertical scrolling when interacting with a slider."""
@@ -367,7 +421,9 @@ class MetricInputScreen(MDScreen):
         values = metric.get("values", [])
         set_idx = self.set_idx
         if mtype == "slider":
-            widget = MDSlider(min=0, max=1, disabled=read_only)
+            slider_value = self._coerce_slider_value(value)
+            widget = MDSlider(min=0, max=1, value=slider_value, disabled=read_only)
+
             if not read_only:
                 widget.bind(
                     value=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst),
@@ -375,18 +431,20 @@ class MetricInputScreen(MDScreen):
                     on_touch_up=self.on_slider_touch_up,
                 )
         elif mtype == "enum":
+            text = "" if self._value_is_missing(value) else str(value)
             widget = Spinner(
-                text=values[0] if values else "",
+                text=text,
+
                 values=values,
                 disabled=read_only,
-
             )
             if not read_only:
                 widget.bind(
                     text=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst)
                 )
         elif mtype == "bool":
-            widget = MDCheckbox(disabled=read_only)
+            widget = MDCheckbox(active=self._coerce_checkbox_value(value), disabled=read_only)
+
             if not read_only:
                 widget.bind(
                     active=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst),
@@ -398,12 +456,14 @@ class MetricInputScreen(MDScreen):
                 input_filter = "int"
             elif mtype == "float":
                 input_filter = "float"
+            text = "" if self._value_is_missing(value) else str(value)
             multiline = name.lower() == "notes"
             widget = MDTextField(
                 multiline=multiline,
                 input_filter=input_filter,
-                disabled=read_only,
+                text=text,
 
+                disabled=read_only,
             )
             if not read_only:
                 widget.bind(
