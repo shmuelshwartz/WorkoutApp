@@ -611,7 +611,7 @@ RootUI:
         BoxLayout:
             size_hint_y: None
             height: dp(60)
-            spacing: dp(4)
+            spacing: dp(1)
             padding: "0dp", "8dp"
             MDIconButton:
                 icon: "skip-previous"
@@ -633,7 +633,7 @@ RootUI:
                 valign: "middle"
                 size_hint_y: None
                 text_size: self.width, None
-                font_size: scaled_sp(14)
+                font_size: scaled_sp(12)
             MDIconButton:
                 icon: "chevron-right"
                 disabled: not root.can_nav_right
