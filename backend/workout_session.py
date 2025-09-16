@@ -1081,6 +1081,13 @@ class WorkoutSession:
         obj.section_starts = data.get("section_starts", [])
         obj.section_names = data.get("section_names", [])
         obj.exercise_sections = data.get("exercise_sections", [])
+        # ``exercise_history`` and ``_exercise_history_cache`` are runtime caches that
+        # are intentionally omitted from the persisted recovery payload.  They must be
+        # recreated when loading so recovered sessions can access metric history
+        # without raising ``AttributeError`` when the MetricInputScreen queries past
+        # workouts.
+        obj.exercise_history = {}
+        obj._exercise_history_cache = {}
         obj._rebuild_exercises()
         return obj
 
