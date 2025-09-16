@@ -282,25 +282,11 @@ def test_confirm_finish_opens_dialog(monkeypatch):
     assert opened["value"]
 
 
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_confirm_finish_discard(monkeypatch):
     """Pressing discard abandons the session and returns to home."""
 
     import importlib
-
-    captured = {}
-
-    class DummyDialog:
-        def __init__(self, *a, **k):
-            captured["buttons"] = k.get("buttons", [])
-
-        def open(self):
-            pass
-
-        def dismiss(self):
-            pass
-
-    def dummy_button(*_a, **k):
-        return type("B", (), {"on_release": k.get("on_release")})
 
     try:
         rest_screen_module = importlib.import_module("ui.screens.session.rest_screen")
@@ -308,6 +294,27 @@ def test_confirm_finish_discard(monkeypatch):
         pytest.skip("RestScreen module not available")
     if not hasattr(rest_screen_module, "MDFlatButton"):
         pytest.skip("RestScreen stub without discard support")
+
+    captured = {"dismissed": 0}
+
+    class DummyDialog:
+        def __init__(self, *a, **k):
+            captured["buttons"] = k.get("buttons", [])
+            self._previous = None
+
+        def open(self):
+            app = rest_screen_module.MDApp.get_running_app()
+            self._previous = app.root.current
+            app.root.current = "_dialog"
+
+        def dismiss(self):
+            captured["dismissed"] += 1
+            app = rest_screen_module.MDApp.get_running_app()
+            if self._previous is not None:
+                app.root.current = self._previous
+
+    def dummy_button(*_a, **k):
+        return type("B", (), {"on_release": k.get("on_release")})
 
     monkeypatch.setattr(rest_screen_module, "FullScreenDialog", DummyDialog)
     monkeypatch.setattr(rest_screen_module, "MDRaisedButton", dummy_button)
@@ -320,7 +327,8 @@ def test_confirm_finish_discard(monkeypatch):
             cleared["value"] = True
 
     dummy_root = type("R", (), {"current": "rest"})()
-    dummy_app = type("A", (), {"root": dummy_root, "workout_session": DummySession()})()
+    dummy_session = DummySession()
+    dummy_app = type("A", (), {"root": dummy_root, "workout_session": dummy_session})()
 
     class DummyAppClass:
         @staticmethod
@@ -332,12 +340,89 @@ def test_confirm_finish_discard(monkeypatch):
     screen = rest_screen_module.RestScreen()
     screen.confirm_finish()
 
+    assert dummy_root.current == "_dialog"
+
     discard_btn = captured["buttons"][1]
     discard_btn.on_release(None)
 
+    assert captured["dismissed"] == 1
     assert dummy_root.current == "home"
     assert cleared["value"]
     assert dummy_app.workout_session is None
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_confirm_finish_cancel_keeps_session(monkeypatch):
+    """Cancel should close the dialog and leave the session untouched."""
+
+    import importlib
+
+    try:
+        rest_screen_module = importlib.import_module("ui.screens.session.rest_screen")
+    except ModuleNotFoundError:
+        pytest.skip("RestScreen module not available")
+    if not hasattr(rest_screen_module, "MDFlatButton"):
+        pytest.skip("RestScreen stub without discard support")
+
+    captured = {"dismissed": 0}
+
+    class DummyDialog:
+        def __init__(self, *a, **k):
+            captured["buttons"] = k.get("buttons", [])
+            self._previous = None
+
+        def open(self):
+            app = rest_screen_module.MDApp.get_running_app()
+            self._previous = app.root.current
+            app.root.current = "_dialog"
+
+        def dismiss(self):
+            captured["dismissed"] += 1
+            app = rest_screen_module.MDApp.get_running_app()
+            if self._previous is not None:
+                app.root.current = self._previous
+
+    def dummy_button(*_a, **k):
+        return type("B", (), {"on_release": k.get("on_release")})
+
+    monkeypatch.setattr(rest_screen_module, "FullScreenDialog", DummyDialog)
+    monkeypatch.setattr(rest_screen_module, "MDRaisedButton", dummy_button)
+    monkeypatch.setattr(rest_screen_module, "MDFlatButton", dummy_button)
+
+    class DummySession:
+        def __init__(self):
+            self.cleared = False
+
+        def clear_recovery_files(self):
+            self.cleared = True
+
+    dummy_root = type("R", (), {"current": "rest"})()
+    dummy_session = DummySession()
+    dummy_app = type(
+        "A",
+        (),
+        {"root": dummy_root, "workout_session": dummy_session},
+    )()
+
+    class DummyAppClass:
+        @staticmethod
+        def get_running_app():
+            return dummy_app
+
+    monkeypatch.setattr(rest_screen_module, "MDApp", DummyAppClass)
+
+    screen = rest_screen_module.RestScreen()
+    screen.confirm_finish()
+
+    assert dummy_root.current == "_dialog"
+
+    cancel_btn = captured["buttons"][0]
+    cancel_btn.on_release(None)
+
+    assert captured["dismissed"] == 1
+    assert dummy_root.current == "rest"
+    assert dummy_session.cleared is False
+    assert dummy_app.workout_session is dummy_session
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")

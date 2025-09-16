@@ -304,46 +304,54 @@ class RestScreen(MDScreen):
             toast("No next exercise")
                 
     def confirm_finish(self):
-        dialog = None
+        """Ask the user how to proceed when finishing a workout."""
+
+        dialog_state = {"dialog": None}
+
+        def close_dialog(*_args):
+            """Dismiss the confirmation dialog and clear cached references."""
+
+            dialog_obj = dialog_state.get("dialog")
+            if dialog_obj:
+                dialog_obj.dismiss()
+                dialog_state["dialog"] = None
 
         def do_finish(*_args):
+            """Finalize the session and move to the summary screen."""
+
             app = MDApp.get_running_app()
-            if app:
-                session = getattr(app, "workout_session", None)
-                if session and session.end_time is None:
-                    session.end_time = time.time()
+            session = getattr(app, "workout_session", None) if app else None
+            if session and session.end_time is None:
+                session.end_time = time.time()
+            close_dialog()
             if app and app.root:
                 app.root.current = "workout_summary"
-            if dialog:
-                dialog.dismiss()
 
         def do_discard(*_args):
             """Abandon the current session without saving."""
 
             app = MDApp.get_running_app()
-            if app:
-                session = getattr(app, "workout_session", None)
-                if session:
-                    session.clear_recovery_files()
-                    app.workout_session = None
+            session = getattr(app, "workout_session", None) if app else None
+            if session:
+                session.clear_recovery_files()
+                app.workout_session = None
+            close_dialog()
             if app and app.root:
                 app.root.current = "home"
-            if dialog:
-                dialog.dismiss()
 
-        dialog = FullScreenDialog(
+        dialog_state["dialog"] = FullScreenDialog(
             title="Finish Workout?",
             content_cls=MDLabel(
                 text="Are you sure you want to finish this workout?",
                 halign="center",
             ),
             buttons=[
-                MDRaisedButton(text="Cancel", on_release=lambda *_: dialog.dismiss()),
+                MDRaisedButton(text="Cancel", on_release=close_dialog),
                 MDFlatButton(text="Discard", on_release=do_discard),
                 MDRaisedButton(text="Save", on_release=do_finish),
             ],
         )
-        dialog.open()
+        dialog_state["dialog"].open()
 
     def on_touch_down(self, touch):
         if self.ids.timer_label.collide_point(*touch.pos):
