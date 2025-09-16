@@ -607,33 +607,47 @@ RootUI:
                 height: dp(40)
                 spacing: dp(10)
                 padding: "0dp", "0dp"
+        # TINY-SCREEN: compact navigation row so icons stay visible on narrow widths
         BoxLayout:
             size_hint_y: None
             height: dp(60)
-            spacing: dp(10)
-            padding: "0dp", "10dp"
+            spacing: dp(4)
+            padding: "0dp", "8dp"
             MDIconButton:
                 icon: "skip-previous"
                 disabled: not root.can_skip_left
                 on_release: root.skip_left()
+                size_hint: None, None
+                size: dp(40), dp(40)
+                user_font_size: scaled_sp(20)
             MDIconButton:
                 icon: "chevron-left"
                 disabled: not root.can_nav_left
                 on_release: root.navigate_left()
+                size_hint: None, None
+                size: dp(40), dp(40)
+                user_font_size: scaled_sp(20)
             MDLabel:
                 text: root.label_text
                 halign: "center"
                 valign: "middle"
                 size_hint_y: None
                 text_size: self.width, None
+                font_size: scaled_sp(14)
             MDIconButton:
                 icon: "chevron-right"
                 disabled: not root.can_nav_right
                 on_release: root.navigate_right()
+                size_hint: None, None
+                size: dp(40), dp(40)
+                user_font_size: scaled_sp(20)
             MDIconButton:
                 icon: "skip-next"
                 disabled: not root.can_skip_right
                 on_release: root.skip_right()
+                size_hint: None, None
+                size: dp(40), dp(40)
+                user_font_size: scaled_sp(20)
         ScrollView:
             do_scroll_x: False
             do_scroll_y: True
