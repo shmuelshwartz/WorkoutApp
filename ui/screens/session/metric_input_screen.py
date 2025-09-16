@@ -41,6 +41,8 @@ class MetricInputScreen(MDScreen):
         self.session_idx = 0
         self.sessions: list[dict] = []
         self.metric_cells = {}
+        self._history_loaded = False
+        self._history_available = False
 
     # ------------------------------------------------------------------
     # Screen lifecycle --------------------------------------------------
@@ -52,7 +54,7 @@ class MetricInputScreen(MDScreen):
         else:
             self.exercise_idx = 0
         self.populate_exercise_bar()
-        self._load_history()
+        self._reset_history_state()
         self.update_display()
         return super().on_pre_enter(*args)
 
@@ -105,7 +107,7 @@ class MetricInputScreen(MDScreen):
             except IndexError:
                 return
 
-        self._load_history()
+        self._reset_history_state()
         self.update_display()
 
     # ------------------------------------------------------------------
@@ -131,8 +133,12 @@ class MetricInputScreen(MDScreen):
         self.label_text = f"{session_label}\nSet {self.set_idx + 1}"
         self.can_nav_left = self.set_idx > 0
         self.can_nav_right = self.set_idx < max(total_sets - 1, 0)
-        self.can_skip_left = self.session_idx > 0
-        self.can_skip_right = self.session_idx < len(self.sessions) - 1
+        if not self._history_loaded:
+            self.can_skip_left = self._history_available
+            self.can_skip_right = False
+        else:
+            self.can_skip_left = self.session_idx > 0
+            self.can_skip_right = self.session_idx < len(self.sessions) - 1
         self.md_bg_color = PURPLE_BG if current_is_latest else PINK_BG
 
     def navigate_left(self):
@@ -152,20 +158,38 @@ class MetricInputScreen(MDScreen):
             self.update_display()
 
     def skip_left(self):
-        if self.session_idx > 0:
-            self.session_idx -= 1
-            self.set_idx = 0
-            self.update_display()
+        if not self._history_available:
+            return
+
+        if not self._history_loaded:
+            self._load_history()
+            if len(self.sessions) <= 1:
+                return
+            target_idx = len(self.sessions) - 2
+        else:
+            target_idx = self.session_idx - 1
+
+        if target_idx < 0:
+            return
+
+        self.session_idx = target_idx
+        self.set_idx = 0
+        self.update_display()
 
     def skip_right(self):
+        if not self._history_loaded:
+            return
         if self.session_idx < len(self.sessions) - 1:
             self.session_idx += 1
             self.set_idx = 0
             self.update_display()
 
     def _load_history(self):
-        """Load past session data for the current exercise."""
-        self.sessions = []
+        """Load past session data for the current exercise on demand."""
+
+        if self._history_loaded:
+            return
+
         history = []
         if self.session:
             getter = getattr(self.session, "get_exercise_history", None)
@@ -173,11 +197,46 @@ class MetricInputScreen(MDScreen):
                 history = getter(self.exercise_idx) or []
             elif hasattr(self.session, "exercise_history"):
                 history = self.session.exercise_history.get(self.exercise_idx, [])
+
+        placeholder = {"date": None, "sets": []}
+        if self.sessions:
+            placeholder.update(self.sessions[-1])
+
         if history:
-            self.sessions.extend(history)
-        # always append placeholder for the current session
-        self.sessions.append({"date": None})
+            self.sessions = list(history) + [placeholder]
+            self._history_available = True
+        else:
+            self.sessions = [placeholder]
+            self._history_available = False
+
+        self._history_loaded = True
         self.session_idx = len(self.sessions) - 1
+
+    def _reset_history_state(self):
+        """Reset cached history and record whether entries exist."""
+
+        self.sessions = [{"date": None, "sets": []}]
+        self.session_idx = len(self.sessions) - 1
+        self._history_loaded = False
+        self._history_available = self._check_history_available()
+
+    def _check_history_available(self) -> bool:
+        """Return ``True`` if the current exercise has historic sessions."""
+
+        if not self.session or self.exercise_idx >= len(self.session.exercises):
+            return False
+
+        checker = getattr(self.session, "has_exercise_history", None)
+        if callable(checker):
+            try:
+                return bool(checker(self.exercise_idx))
+            except Exception:  # pragma: no cover - defensive
+                return False
+
+        if hasattr(self.session, "exercise_history"):
+            history = self.session.exercise_history.get(self.exercise_idx, [])
+            return bool(history)
+        return False
 
     # ------------------------------------------------------------------
     # Metric rendering --------------------------------------------------
@@ -255,7 +314,7 @@ class MetricInputScreen(MDScreen):
                 return
 
         if not self.sessions:
-            self.sessions = [{"date": None}]
+            self.sessions = [{"date": None, "sets": []}]
             self.session_idx = 0
 
         exercise = self.session.exercises[self.exercise_idx]
@@ -286,9 +345,6 @@ class MetricInputScreen(MDScreen):
                 # "None". Treat them as empty before falling back to defaults.
                 default = metric.get("value")
                 value = None if self._value_is_missing(default) else default
-
-            row = self._create_row(metric, value, read_only=read_only)
-
 
             row, widget = self._create_row(metric, read_only=read_only)
             self.metrics_list.add_widget(row)
@@ -420,10 +476,9 @@ class MetricInputScreen(MDScreen):
         mtype = metric.get("type", "str")
         values = metric.get("values", [])
         set_idx = self.set_idx
-        if mtype == "slider":
-            slider_value = self._coerce_slider_value(value)
-            widget = MDSlider(min=0, max=1, value=slider_value, disabled=read_only)
 
+        if mtype == "slider":
+            widget = MDSlider(min=0, max=1, value=0, disabled=read_only)
             if not read_only:
                 widget.bind(
                     value=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst),
@@ -431,10 +486,8 @@ class MetricInputScreen(MDScreen):
                     on_touch_up=self.on_slider_touch_up,
                 )
         elif mtype == "enum":
-            text = "" if self._value_is_missing(value) else str(value)
             widget = Spinner(
-                text=text,
-
+                text="",
                 values=values,
                 disabled=read_only,
             )
@@ -443,26 +496,22 @@ class MetricInputScreen(MDScreen):
                     text=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst)
                 )
         elif mtype == "bool":
-            widget = MDCheckbox(active=self._coerce_checkbox_value(value), disabled=read_only)
-
+            widget = MDCheckbox(active=False, disabled=read_only)
             if not read_only:
                 widget.bind(
                     active=lambda inst, val, name=name, mtype=mtype, set_idx=set_idx: self._on_cell_change(name, mtype, set_idx, inst),
                 )
-
         else:
             input_filter = None
             if mtype == "int":
                 input_filter = "int"
             elif mtype == "float":
                 input_filter = "float"
-            text = "" if self._value_is_missing(value) else str(value)
             multiline = name.lower() == "notes"
             widget = MDTextField(
                 multiline=multiline,
                 input_filter=input_filter,
-                text=text,
-
+                text="",
                 disabled=read_only,
             )
             if not read_only:
@@ -471,7 +520,8 @@ class MetricInputScreen(MDScreen):
                 )
             if multiline:
                 widget.bind(text=lambda inst, _val: self._resize_textfield(inst))
-        widget.size_hint = (None, None)
+
+        widget.size_hint_y = None
         widget.height = dp(40)
         return widget
 

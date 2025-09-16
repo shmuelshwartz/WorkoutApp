@@ -125,6 +125,7 @@ class WorkoutSession:
         # cache historic sessions for quick access in the metric input screen
         self.exercise_history: dict[int, list[dict]] = {}
         self._exercise_history_cache: dict[int, list[dict]] = {}
+        self._exercise_history_available: dict[int, bool] = {}
 
         # Precompute merged exercise data so screens can access it instantly
         # without repeatedly building dictionaries. Each entry contains the
@@ -319,8 +320,60 @@ class WorkoutSession:
             history = self._query_exercise_history(library_exercise_id)
             self._exercise_history_cache[library_exercise_id] = history
 
+        self._exercise_history_available[library_exercise_id] = bool(history)
         self.exercise_history[exercise_index] = history
         return history
+
+    def has_exercise_history(self, exercise_index: int) -> bool:
+        """Return ``True`` if any past sessions exist for ``exercise_index``."""
+
+        if exercise_index < 0 or exercise_index >= len(self.exercises):
+            return False
+
+        if exercise_index in self.exercise_history:
+            return bool(self.exercise_history[exercise_index])
+
+        exercise = self.exercises[exercise_index]
+        library_exercise_id = exercise.get("library_exercise_id")
+        if not library_exercise_id:
+            self.exercise_history[exercise_index] = []
+            return False
+
+        if library_exercise_id in self._exercise_history_available:
+            return self._exercise_history_available[library_exercise_id]
+
+        if library_exercise_id in self._exercise_history_cache:
+            cached = bool(self._exercise_history_cache[library_exercise_id])
+            self._exercise_history_available[library_exercise_id] = cached
+            if cached and exercise_index not in self.exercise_history:
+                self.exercise_history[exercise_index] = self._exercise_history_cache[library_exercise_id]
+            elif exercise_index not in self.exercise_history:
+                self.exercise_history[exercise_index] = []
+            return cached
+
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT 1
+                  FROM session_section_exercises se
+                  JOIN session_session_sections sec
+                    ON se.section_id = sec.id AND sec.deleted = 0
+                  JOIN session_sessions ss
+                    ON sec.session_id = ss.id AND ss.deleted = 0
+                 WHERE se.library_exercise_id = ?
+                   AND se.deleted = 0
+                 LIMIT 1
+                """,
+                (library_exercise_id,),
+            )
+            has_history = cursor.fetchone() is not None
+
+        if not has_history:
+            self._exercise_history_cache[library_exercise_id] = []
+            self.exercise_history.setdefault(exercise_index, [])
+        self._exercise_history_available[library_exercise_id] = has_history
+        return has_history
     def load_exercise_details(self, index: int) -> dict:
         """Load full details for the exercise at ``index`` if needed.
 
@@ -1088,6 +1141,7 @@ class WorkoutSession:
         # workouts.
         obj.exercise_history = {}
         obj._exercise_history_cache = {}
+        obj._exercise_history_available = {}
         obj._rebuild_exercises()
         return obj
 
