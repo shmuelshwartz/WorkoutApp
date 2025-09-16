@@ -90,8 +90,21 @@ class MetricInputScreen(MDScreen):
                 child.md_bg_color = color
 
     def select_exercise(self, index: int):
+        """Switch to another exercise from the navigation bar."""
+
+        if not self.session or index < 0 or index >= len(self.session.exercises):
+            return
+
         self.exercise_idx = index
         self.set_idx = 0
+
+        if hasattr(self.session, "load_exercise_details"):
+            try:
+                # Ensure metric definitions are ready before rendering inputs.
+                self.session.load_exercise_details(index)
+            except IndexError:
+                return
+
         self._load_history()
         self.update_display()
 
@@ -180,6 +193,14 @@ class MetricInputScreen(MDScreen):
         self.metric_cells.clear()
         if not self.session or self.exercise_idx >= len(self.session.exercises):
             return
+
+        if hasattr(self.session, "load_exercise_details"):
+            try:
+                # Loading details on-demand ensures metric definitions exist
+                # when switching between exercises.
+                self.session.load_exercise_details(self.exercise_idx)
+            except IndexError:
+                return
 
         if not self.sessions:
             self.sessions = [{"date": None}]
