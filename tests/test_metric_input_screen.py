@@ -4,6 +4,10 @@ import sys
 from pathlib import Path
 import importlib.util
 import pytest
+import time
+
+from backend.sessions import save_completed_session
+from backend.workout_session import WorkoutSession
 
 # Stub minimal Kivy/KivyMD modules required by metric_input_screen
 kivy_modules = {
@@ -428,5 +432,43 @@ def test_skip_buttons_disabled_without_history(monkeypatch):
 
     assert not screen.can_skip_left
     assert not screen.can_skip_right
+
+
+def test_metric_input_screen_loads_history_from_database(sample_db, monkeypatch):
+    screen = MetricInputScreen()
+
+    completed = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    completed.record_metrics(0, 0, {"Reps": 10})
+    completed.mark_set_completed()
+    completed.record_metrics(0, 1, {"Reps": 9})
+    completed.mark_set_completed()
+    completed.record_metrics(1, 0, {"Reps": 5, "Weight": 100, "Machine": "A"})
+    completed.mark_set_completed()
+    completed.record_metrics(1, 1, {"Reps": 5, "Weight": 95, "Machine": "B"})
+    completed.end_time = time.time()
+    save_completed_session(completed, db_path=sample_db)
+
+    session = WorkoutSession("Push Day", db_path=sample_db, rest_duration=1)
+    session.load_exercise_details(0)
+    dummy_app = types.SimpleNamespace(workout_session=session)
+    monkeypatch.setattr(
+        metric_module.MDApp, "get_running_app", classmethod(lambda cls: dummy_app)
+    )
+
+    screen.metrics_list = _Layout()
+    screen.exercise_bar = _Layout()
+    screen.on_pre_enter()
+
+    assert screen.can_skip_left
+
+    screen.skip_left()
+    first_line = screen.label_text.split("\n")[0]
+    assert first_line != "Current session"
+    assert screen.metric_cells["Reps"].disabled
+    assert screen.metric_cells["Reps"].text == "10"
+
+    screen.skip_right()
+    assert screen.label_text.startswith("Current session")
+    assert not screen.metric_cells["Reps"].disabled
 
 

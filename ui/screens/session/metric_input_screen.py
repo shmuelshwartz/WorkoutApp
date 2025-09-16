@@ -153,8 +153,14 @@ class MetricInputScreen(MDScreen):
     def _load_history(self):
         """Load past session data for the current exercise."""
         self.sessions = []
-        if self.session and hasattr(self.session, "exercise_history"):
-            history = self.session.exercise_history.get(self.exercise_idx, [])
+        history = []
+        if self.session:
+            getter = getattr(self.session, "get_exercise_history", None)
+            if callable(getter):
+                history = getter(self.exercise_idx) or []
+            elif hasattr(self.session, "exercise_history"):
+                history = self.session.exercise_history.get(self.exercise_idx, [])
+        if history:
             self.sessions.extend(history)
         # always append placeholder for the current session
         self.sessions.append({"date": None})
