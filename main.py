@@ -1,7 +1,7 @@
 TESTING = True
 # Feature flag: when True the UI is scaled to half size while staying centered.
 half_screen = False
-APP_VERSION = "0.1.8"
+APP_VERSION = "0.1.9"
 import os
 os.environ["KIVY_AUDIO"] = "sdl2"
 import tiny_screen  # TINY-SCREEN: env overrides
