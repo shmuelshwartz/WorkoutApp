@@ -1,0 +1,87 @@
+📋 Development & Migration Guidelines
+General Rules
+
+Document everything in detail. Any code you write must be clearly documented.
+
+Keep documentation consistent. If you make changes, update all relevant documentation to match.
+
+Check codex_mistakes.md. Always review this file before making changes to avoid repeating known mistakes.
+
+Never modify database files directly. Do not edit .db files or other binary artifacts. Only interact with databases via queries, migrations, or Python scripts.
+
+Exclude database binaries from file change lists. Only list source code or migration scripts unless explicitly told otherwise.
+
+Do not write to .md files. Documentation updates should only happen if specifically requested.
+
+🔄 Migration Workflow
+1. 🧱 Backup and Setup
+
+Copy workout.db → backups/workout_<EPOCH>.db.bak
+
+Copy workout.db → workout_new.db (this is the migration target)
+
+Never work directly on workout.db
+
+2. 📐 Define New Schema
+
+Recreate the new schema manually in workout_new.db
+
+Do not use CREATE TABLE IF NOT EXISTS
+
+Include all constraints and structural changes explicitly
+
+Run PRAGMA foreign_keys = OFF; before making schema changes
+
+3. 🔁 Data Migration Logic
+
+Use Python scripts to copy and transform data from workout.db → workout_new.db
+
+Handle these cases carefully:
+
+Relaxed constraint: Copy data as-is
+
+Tightened constraint: Replace invalid/null values with fallbacks
+
+Added column: Populate with default or computed values
+
+Dropped column: Abort migration if any values exist
+
+Merged/split tables: Implement custom transformation logic
+
+Enum changes: Convert values to/from JSON or correct format
+
+👉 Every step must log clearly (e.g., "Copied 200 rows from exercises")
+
+4. 🔐 Foreign Key Safety
+
+Keep PRAGMA foreign_keys = OFF during migration
+
+Re-enable only after all data is inserted
+
+Then run PRAGMA foreign_key_check;
+
+Abort migration if violations are found
+
+5. ✅ Finalization
+
+Do not create views or indexes during table migration
+
+After successful migration:
+
+Replace workout.db with workout_new.db
+
+Keep the .bak backup safe
+
+Print a clear success or failure message
+
+🔥 Error Handling
+
+Abort immediately on any exception
+
+Do not attempt partial rollbacks of views or indexes
+
+Recovery path = the .bak backup
+
+
+
+DO NOT IN ANY ALTER ANY DB OR .MD FILES EVER!!! UNLESS EXPLICITLY ASKED
