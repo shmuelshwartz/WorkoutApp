@@ -80,6 +80,10 @@ class AddMetricPopup(MDScreen):
     def open(self) -> None:
         """Display the dialog as a new screen."""
         app = MDApp.get_running_app()
+        if self.screen and hasattr(self.screen, "skip_next_reload"):
+            # Prevent the parent screen from reloading data (and discarding
+            # pending edits) when this dialog is dismissed.
+            self.screen.skip_next_reload = True
         app.root.add_widget(self)
         app.root.current = self.name
         app._dialog_stack.append(self)
