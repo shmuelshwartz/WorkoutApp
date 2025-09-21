@@ -27,8 +27,10 @@ def get_metrics_for_exercise(
 ) -> list:
     """Return metric definitions for ``exercise_name``.
 
-    Each item in the returned list is a dictionary with ``name`` and ``type``
-    keys. ``values`` will contain any allowed values for ``enum`` metrics.
+    Each dictionary contains the display label, capture timing, validation
+    flags, and canonical identifiers under ``library_metric_type_id`` and
+    ``library_metric_type_name``. ``values`` includes the allowed options for
+    ``enum`` metrics when present.
     """
 
     with sqlite3.connect(str(db_path)) as conn:
@@ -51,8 +53,8 @@ def get_metrics_for_exercise(
 
         cursor.execute(
             """
-        SELECT mt.id,
-               mt.name,
+        SELECT mt.id AS library_metric_type_id,
+               mt.name AS library_metric_type_name,
                COALESCE(em.type, mt.type),
                COALESCE(em.input_timing, mt.input_timing),
                COALESCE(em.is_required, mt.is_required),
@@ -71,7 +73,7 @@ def get_metrics_for_exercise(
         metrics = []
         for (
             metric_type_id,
-            name,
+            metric_type_name,
             mtype,
             input_timing,
             is_required,
@@ -88,7 +90,7 @@ def get_metrics_for_exercise(
                     values = []
             metrics.append(
                 {
-                    "name": name,
+                    "name": metric_type_name,
                     "type": mtype,
                     "input_timing": input_timing,
                     "is_required": bool(is_required),
@@ -97,6 +99,7 @@ def get_metrics_for_exercise(
                     "values": values,
                     "value": value,
                     "library_metric_type_id": metric_type_id,
+                    "library_metric_type_name": metric_type_name,
                     "preset_exercise_metric_id": None,
                 }
             )
@@ -114,7 +117,8 @@ def get_metrics_for_exercise(
                    COALESCE(sem.enum_values_json, mt.enum_values_json),
                    COALESCE(sem.metric_description, mt.description),
                    sem.value,
-                   COALESCE(sem.library_metric_type_id, mt.id)
+                   COALESCE(sem.library_metric_type_id, mt.id),
+                   mt.name AS library_metric_type_name
             FROM preset_exercise_metrics sem
             JOIN preset_section_exercises se ON sem.section_exercise_id = se.id
             JOIN preset_preset_sections s ON se.section_id = s.id
@@ -138,6 +142,7 @@ def get_metrics_for_exercise(
                 description,
                 value,
                 lib_type_id,
+                lib_type_name,
             ) in cursor.fetchall():
                 values = []
                 if mtype == "enum" and enum_json:
@@ -155,13 +160,14 @@ def get_metrics_for_exercise(
                     "description": description,
                     "value": value,
                     "library_metric_type_id": lib_type_id,
+                    "library_metric_type_name": lib_type_name,
                 }
             names = {m["name"] for m in metrics}
             for m in metrics:
                 o = overrides.get(m["name"])
                 if o:
                     for k, v in o.items():
-                        if k == "library_metric_type_id" and v is None:
+                        if k in {"library_metric_type_id", "library_metric_type_name"} and v is None:
                             continue
                         m[k] = v
             for name, data in overrides.items():
@@ -174,7 +180,11 @@ def get_metrics_for_exercise(
 def get_metrics_for_preset(
     preset_name: str, db_path: Path = DEFAULT_DB_PATH
 ) -> list:
-    """Return preset-level metric definitions for ``preset_name``."""
+    """Return preset-level metric definitions for ``preset_name``.
+
+    The returned dictionaries mirror :func:`get_metrics_for_exercise`, exposing
+    both the preset display label and the canonical library metric metadata.
+    """
 
     with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
@@ -190,6 +200,7 @@ def get_metrics_for_preset(
             """
             SELECT pm.id,
                    COALESCE(pm.library_metric_type_id, mt.id),
+                   mt.name AS library_metric_type_name,
                    pm.metric_name,
                    COALESCE(pm.metric_description, mt.description),
                    COALESCE(pm.type, mt.type),
@@ -209,6 +220,7 @@ def get_metrics_for_preset(
         for (
             pm_id,
             lib_type_id,
+            lib_type_name,
             name,
             description,
             mtype,
@@ -235,6 +247,7 @@ def get_metrics_for_preset(
                     "description": description,
                     "value": value,
                     "library_metric_type_id": lib_type_id,
+                    "library_metric_type_name": lib_type_name,
                     "preset_metric_id": pm_id,
                 }
             )

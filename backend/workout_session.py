@@ -15,6 +15,29 @@ from core import (
 )
 
 
+# Canonical metric name used for tempo tracking.
+_TEMPO_METRIC_TYPE_NAME = "Tempo"
+# Cached lowercase representation to avoid repeated ``str.lower`` calls when
+# scanning metric definitions during a session.
+_TEMPO_METRIC_TYPE_NAME_LOWER = _TEMPO_METRIC_TYPE_NAME.lower()
+
+
+def _is_tempo_metric(metric_def: dict[str, object]) -> bool:
+    """Return ``True`` if ``metric_def`` represents the tempo metric type.
+
+    The canonical metric type name is the primary identifier, supporting newer
+    session data that ships with ``library_metric_type_name``.  Persisted
+    sessions created before the introduction of canonical names only contain
+    ``library_metric_type_id``; the fallback ID check preserves compatibility
+    with those records so they remain readable.
+    """
+
+    type_name = metric_def.get("library_metric_type_name")
+    if isinstance(type_name, str) and type_name.strip().lower() == _TEMPO_METRIC_TYPE_NAME_LOWER:
+        return True
+    return metric_def.get("library_metric_type_id") == 3
+
+
 # Directory for persisting in-progress session state.  This lives within the
 # repository's ``data`` folder so the files are part of the code base and will
 # survive across app restarts.
@@ -631,15 +654,14 @@ class WorkoutSession:
         metric_defs = (
             self.preset_snapshot[exercise_index].get("metric_defs") or []
         )
-        tempo_name = next(
-            (
-                m["name"]
-                for m in metric_defs
-                if m.get("library_metric_type_id") == 3
-            ),
+        tempo_metric = next(
+            (m for m in metric_defs if _is_tempo_metric(m)),
             None,
         )
-        if not tempo_name:
+        if not tempo_metric:
+            return None
+        tempo_name = tempo_metric.get("name")
+        if not isinstance(tempo_name, str) or not tempo_name:
             return None
         value = self.metric_store.get((exercise_index, set_index), {}).get(tempo_name)
         if value is None:
