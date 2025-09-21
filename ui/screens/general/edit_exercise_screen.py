@@ -62,6 +62,7 @@ class EditExerciseScreen(MDScreen):
     exercise_rest = NumericProperty(DEFAULT_REST_DURATION)
     section_length = NumericProperty(0)
     mode = StringProperty("library")
+    skip_next_reload = BooleanProperty(False)
 
     def __init__(self, mode: str = "library", **kwargs):
         super().__init__(**kwargs)
@@ -145,6 +146,14 @@ class EditExerciseScreen(MDScreen):
         # If a loading dialog is already active, avoid reloading the screen
         # and simply continue with the normal transition.
         if self.loading_dialog:
+            return super().on_pre_enter(*args)
+
+        # Dialog screens (e.g. metric pickers) temporarily switch away from
+        # this screen.  When they close, :meth:`on_pre_enter` fires again but
+        # we must not discard unsaved, in-memory edits.  The flag is set just
+        # before those dialogs are shown to skip the reload on the way back.
+        if self.skip_next_reload:
+            self.skip_next_reload = False
             return super().on_pre_enter(*args)
 
         if self.previous_screen == "edit_preset":
@@ -303,6 +312,7 @@ class EditExerciseScreen(MDScreen):
     def open_add_metric_popup(self):
         if self.mode == "session":
             return
+        self.skip_next_reload = True
         popup = AddMetricPopup(
             self, self.manager.current, popup_mode="select", mode=self.mode
         )
@@ -311,6 +321,7 @@ class EditExerciseScreen(MDScreen):
     def open_new_metric_popup(self):
         if self.mode == "session":
             return
+        self.skip_next_reload = True
         popup = AddMetricPopup(
             self, self.manager.current, popup_mode="new", mode=self.mode
         )
@@ -319,6 +330,7 @@ class EditExerciseScreen(MDScreen):
     def open_edit_metric_popup(self, metric):
         if self.mode == "session":
             return
+        self.skip_next_reload = True
         popup = EditMetricPopup(self, metric, mode=self.mode, previous_screen=self.manager.current if self.manager else "")
         popup.open()
 

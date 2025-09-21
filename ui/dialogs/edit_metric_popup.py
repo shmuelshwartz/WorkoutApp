@@ -287,6 +287,10 @@ class EditMetricPopup(MDScreen):
             self.previous_screen = app.root.current
         if not self.name:
             self.name = f"_dialog_{id(self)}"
+        if self.screen and hasattr(self.screen, "skip_next_reload"):
+            # Returning from the dialog should keep unsaved edits intact on
+            # compact devices where reloading is expensive and confusing.
+            self.screen.skip_next_reload = True
         app.root.add_widget(self)
         app.root.current = self.name
         if hasattr(app, "_dialog_stack"):

@@ -823,6 +823,25 @@ def test_edit_exercise_add_metric_updates_list(monkeypatch):
 
 
 @pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
+def test_edit_exercise_skip_reload_flag():
+    """Dialogs should not trigger a database reload when dismissed."""
+
+    screen = EditExerciseScreen()
+    screen.skip_next_reload = True
+
+    called = {"load": False}
+
+    def fake_load():
+        called["load"] = True
+
+    screen._load_exercise = fake_load
+    screen.on_pre_enter()
+
+    assert called["load"] is False
+    assert screen.skip_next_reload is False
+
+
+@pytest.mark.skipif(not kivy_available, reason="Kivy and KivyMD are required")
 def test_exercise_selection_panel_filters(monkeypatch):
     panel = ExerciseSelectionPanel()
     panel.exercise_list = type(
